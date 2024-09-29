@@ -1,0 +1,34 @@
+<svg width="300" height="420" viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg">
+  <!-- Atomic symbol -->
+  <g transform="translate(150, 150) scale(1.2)" stroke="white" fill="none">
+    <!-- Outer circles -->
+    <ellipse rx="100" ry="50" stroke-width="3" />
+    <ellipse rx="100" ry="50" transform="rotate(60)" stroke-width="3" />
+    <ellipse rx="100" ry="50" transform="rotate(-60)" stroke-width="3" />
+    
+    <!-- Inner dotted circle -->
+    <circle r="30" stroke-width="1" stroke-dasharray="2,4" />
+    
+    <!-- Outer dots -->
+    <circle cx="0" cy="-50" r="5" fill="white" />
+    <circle cx="43.3" cy="25" r="5" fill="white" />
+    <circle cx="-43.3" cy="25" r="5" fill="white" />
+    <circle cx="0" cy="50" r="5" fill="white" />
+    <circle cx="43.3" cy="-25" r="5" fill="white" />
+    <circle cx="-43.3" cy="-25" r="5" fill="white" />
+    
+    <!-- Inner dots -->
+    <circle cx="0" cy="-30" r="3" fill="white" />
+    <circle cx="26" cy="15" r="3" fill="white" />
+    <circle cx="-26" cy="15" r="3" fill="white" />
+    
+    <!-- Center dot -->
+    <circle r="5" fill="white" />
+  </g>
+  
+  <!-- REGNEXT text -->
+  <text x="150" y="350" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">REGNEXT</text>
+  
+  <!-- Intuitive Reporting text -->
+  <text x="150" y="390" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">INTUITIVE REPORTING</text>
+</svg>
