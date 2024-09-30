@@ -1,4 +1,4 @@
-import { Edge, Node } from "@xyflow/react";
+import { Edge, Node, Position } from "@xyflow/react";
 
 export interface TableColumn {
   id?: string; // Make id optional
@@ -10,23 +10,28 @@ export interface TableColumn {
 }
 
 export interface DatabaseTableData {
-  [key: string]: unknown;
   label: string;
   columns: TableColumn[];
   schemaColor: string;
+  [key: string]: unknown; // Add index signature
 }
 
-export interface CustomNodeProps extends Node<DatabaseTableData> {}
+export interface CustomNodeProps extends Node<DatabaseTableData> {
+  zIndex?: number;
+}
 
 export interface EdgeData {
-  [key: string]: unknown; // Add index signature
   sourceKey: string;
   targetKey: string;
   relation: string;
   label: string;
+  [key: string]: unknown; // Add index signature
 }
 
-export interface CustomEdge extends Edge<EdgeData> {}
+export interface CustomEdge extends Edge<EdgeData> {
+  sourcePosition?: Position;
+  targetPosition?: Position;
+}
 
 export interface DatabaseTable {
   name: string;

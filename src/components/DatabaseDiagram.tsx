@@ -1,24 +1,26 @@
 import {
+  CustomNodeProps,
+  DatabaseConfig,
+  EdgeConfig,
+  EdgeData,
+} from "@/types/databaseTypes";
+import {
   addEdge,
   Background,
   BackgroundVariant,
   Connection,
   Controls,
   Edge,
+  EdgeTypes,
   MarkerType,
   MiniMap,
   Node,
+  NodeTypes,
   ReactFlow,
+  ReactFlowProps,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-
-import {
-  CustomEdge,
-  CustomNodeProps,
-  DatabaseConfig,
-  EdgeConfig,
-} from "@/types/databaseTypes";
 import "@xyflow/react/dist/style.css";
 import { Edit, Trash2 } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
@@ -27,27 +29,39 @@ import ColumnSelectionModal from "./ColumnSelectionModal";
 import CustomEdgeComponent from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
-import { EdgeTypes, NodeTypes } from "@xyflow/react";
+// Type overrides
+type OverriddenEdge = Omit<Edge, "data"> & { data: EdgeData };
+type OverriddenNode = Omit<Node, "data"> & { data: CustomNodeProps["data"] };
 
-const nodeTypes: NodeTypes = {
-  databaseTable: DatabaseTableNode,
+// Override ReactFlow props
+type OverriddenReactFlowProps = Omit<ReactFlowProps, "edges" | "nodes"> & {
+  edges: OverriddenEdge[];
+  nodes: OverriddenNode[];
+  onEdgeClick?: (event: React.MouseEvent, edge: OverriddenEdge) => void;
+  onNodeClick?: (event: React.MouseEvent, node: OverriddenNode) => void;
 };
 
+// Override node types
+const nodeTypes: NodeTypes = {
+  databaseTable: DatabaseTableNode as any,
+};
+
+// Override edge types
 const edgeTypes: EdgeTypes = {
-  custom: CustomEdgeComponent,
+  custom: CustomEdgeComponent as any,
 };
 
 const DatabaseDiagram: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_highlightedEdges, setHighlightedEdges] = useState<string[]>([]);
-  const [selectedEdge, setSelectedEdge] = useState<CustomEdge | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<OverriddenEdge | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(
     null
   );
 
-  const initialNodes: Node[] = useMemo(
+  const initialNodes: OverriddenNode[] = useMemo(
     () =>
       databaseConfig.tables.map((table: DatabaseConfig["tables"][0]) => ({
         id: table.schema
@@ -78,7 +92,7 @@ const DatabaseDiagram: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
 
-  const initialEdges: Edge[] = useMemo(() => {
+  const initialEdges: OverriddenEdge[] = useMemo(() => {
     return databaseConfig.edgeConfigs.map(
       (edgeConfig: EdgeConfig, index: number) => ({
         id: `e${index}`,
@@ -113,7 +127,11 @@ const DatabaseDiagram: React.FC = () => {
   }, []);
 
   const handleColumnSelection = useCallback(
-    (sourceColumn: string, targetColumn: string, edgeToUpdate?: CustomEdge) => {
+    (
+      sourceColumn: string,
+      targetColumn: string,
+      edgeToUpdate?: OverriddenEdge
+    ) => {
       if (edgeToUpdate) {
         setEdges((eds) =>
           eds.map((e) =>
@@ -163,7 +181,7 @@ const DatabaseDiagram: React.FC = () => {
   );
 
   const onEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: CustomEdge) => {
+    (event: React.MouseEvent, edge: OverriddenEdge) => {
       event.stopPropagation();
       setSelectedEdge(edge);
     },
@@ -183,10 +201,13 @@ const DatabaseDiagram: React.FC = () => {
     }
   }, [selectedEdge, setEdges]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    setSelectedNode(node.id);
-    setSelectedEdge(null);
-  }, []);
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: OverriddenNode) => {
+      setSelectedNode(node.id);
+      setSelectedEdge(null);
+    },
+    []
+  );
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
@@ -262,8 +283,8 @@ const DatabaseDiagram: React.FC = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onEdgeClick={onEdgeClick}
-          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick as OverriddenReactFlowProps["onEdgeClick"]}
+          onNodeClick={onNodeClick as OverriddenReactFlowProps["onNodeClick"]}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -301,8 +322,8 @@ const DatabaseDiagram: React.FC = () => {
           </button>
         </div>
       </div>
-      {selectedEdge && (
-        <div className=" bg-gray-100 p-4 overflow-y-auto">
+      {selectedEdge && selectedEdge.data && (
+        <div className="bg-gray-100 p-4 overflow-y-auto">
           <h3 className="font-bold text-lg mb-2">Selected Edge Details</h3>
           <p>
             <strong>Source:</strong> {selectedEdge.source}
@@ -335,7 +356,6 @@ const DatabaseDiagram: React.FC = () => {
           </div>
         </div>
       )}
-
       {isModalOpen && (pendingConnection || selectedEdge) && (
         <ColumnSelectionModal
           sourceNode={
@@ -355,11 +375,7 @@ const DatabaseDiagram: React.FC = () => {
             setSelectedEdge(null);
           }}
           onSelect={(sourceColumn, targetColumn) =>
-            handleColumnSelection(
-              sourceColumn,
-              targetColumn,
-              selectedEdge as Edge | undefined
-            )
+            handleColumnSelection(sourceColumn, targetColumn, selectedEdge)
           }
           initialSourceColumn={selectedEdge?.data?.sourceKey}
           initialTargetColumn={selectedEdge?.data?.targetKey}

@@ -1,4 +1,4 @@
-import { CustomNodeProps } from "@/types/databaseTypes";
+import { CustomNodeProps, TableColumn } from "@/types/databaseTypes";
 import React, { useEffect, useState } from "react";
 
 interface ColumnSelectionModalProps {
@@ -8,11 +8,6 @@ interface ColumnSelectionModalProps {
   onSelect: (sourceColumn: string, targetColumn: string) => void;
   initialSourceColumn?: string;
   initialTargetColumn?: string;
-}
-
-interface Column {
-  id: string;
-  name: string;
 }
 
 const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
@@ -61,7 +56,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
                 required
               >
                 <option value="">Select a column</option>
-                {sourceNode?.data?.columns?.map((column: Column) => (
+                {sourceNode?.data?.columns?.map((column: TableColumn) => (
                   <option key={column.id} value={column.name}>
                     {column.name}
                   </option>
@@ -79,7 +74,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
                 required
               >
                 <option value="">Select a column</option>
-                {targetNode?.data?.columns?.map((column: Column) => (
+                {targetNode?.data?.columns?.map((column: TableColumn) => (
                   <option key={column.id} value={column.name}>
                     {column.name}
                   </option>
