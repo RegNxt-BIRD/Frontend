@@ -103,7 +103,7 @@ const Data: React.FC = () => {
     useSWR<TableData[]>("/BIRD/table?");
   const { data: frameworks, error: frameworksError } = useSWR<Framework[]>(
     "/api/v1/frameworks/",
-    async (url) => {
+    async (url: string) => {
       const response = await fastApiInstance.get(url);
       return response.data;
     }

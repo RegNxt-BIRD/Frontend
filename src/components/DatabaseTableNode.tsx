@@ -1,25 +1,8 @@
-import { Handle, NodeProps, Position } from "@xyflow/react";
-import React from "react";
+import { CustomNodeProps } from "@/types/databaseTypes";
+import { Handle, Position } from "@xyflow/react";
+import React, { memo } from "react";
 
-interface Column {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  key?: boolean;
-  handleType?: "source" | "target";
-}
-
-interface DatabaseTableNodeData {
-  label: string;
-  columns: Column[];
-  schemaColor: string;
-}
-
-const DatabaseTableNode: React.FC<NodeProps<DatabaseTableNodeData>> = ({
-  id,
-  data,
-}) => {
+const DatabaseTableNode: React.FC<CustomNodeProps> = memo(({ data, id }) => {
   return (
     <div
       className="px-4 py-2 shadow-md rounded-md bg-white border-2"
@@ -27,7 +10,7 @@ const DatabaseTableNode: React.FC<NodeProps<DatabaseTableNodeData>> = ({
     >
       <div className="font-bold">{data.label}</div>
       {data.columns.map((column) => (
-        <div key={column.id} className="flex items-center text-sm">
+        <div key={column.name} className="flex items-center text-sm">
           <Handle
             type="source"
             position={Position.Right}
@@ -48,5 +31,8 @@ const DatabaseTableNode: React.FC<NodeProps<DatabaseTableNodeData>> = ({
       ))}
     </div>
   );
-};
+});
+
+DatabaseTableNode.displayName = "DatabaseTableNode";
+
 export default DatabaseTableNode;

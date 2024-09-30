@@ -1,13 +1,18 @@
-import { Node } from "@xyflow/react";
+import { CustomNodeProps } from "@/types/databaseTypes";
 import React, { useEffect, useState } from "react";
 
 interface ColumnSelectionModalProps {
-  sourceNode: Node | undefined;
-  targetNode: Node | undefined;
+  sourceNode: CustomNodeProps | undefined;
+  targetNode: CustomNodeProps | undefined;
   onClose: () => void;
   onSelect: (sourceColumn: string, targetColumn: string) => void;
   initialSourceColumn?: string;
   initialTargetColumn?: string;
+}
+
+interface Column {
+  id: string;
+  name: string;
 }
 
 const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
@@ -48,7 +53,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block mb-2">
-              Source Column ({sourceNode?.data.label}):
+              Source Column ({sourceNode?.data?.label}):
               <select
                 className="w-full border rounded p-2 mt-1"
                 value={selectedSourceColumn}
@@ -56,7 +61,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
                 required
               >
                 <option value="">Select a column</option>
-                {sourceNode?.data.columns.map((column: any) => (
+                {sourceNode?.data?.columns?.map((column: Column) => (
                   <option key={column.id} value={column.name}>
                     {column.name}
                   </option>
@@ -66,7 +71,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
           </div>
           <div className="mb-4">
             <label className="block mb-2">
-              Target Column ({targetNode?.data.label}):
+              Target Column ({targetNode?.data?.label}):
               <select
                 className="w-full border rounded p-2 mt-1"
                 value={selectedTargetColumn}
@@ -74,7 +79,7 @@ const ColumnSelectionModal: React.FC<ColumnSelectionModalProps> = ({
                 required
               >
                 <option value="">Select a column</option>
-                {targetNode?.data.columns.map((column: any) => (
+                {targetNode?.data?.columns?.map((column: Column) => (
                   <option key={column.id} value={column.name}>
                     {column.name}
                   </option>

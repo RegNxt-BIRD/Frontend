@@ -12,25 +12,35 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
+
+import {
+  CustomEdge,
+  CustomNodeProps,
+  DatabaseConfig,
+  EdgeConfig,
+} from "@/types/databaseTypes";
 import "@xyflow/react/dist/style.css";
 import { Edit, Trash2 } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { databaseConfig } from "../databaseConfig";
 import ColumnSelectionModal from "./ColumnSelectionModal";
-import CustomEdge from "./CustomEdge";
+import CustomEdgeComponent from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
-const nodeTypes = {
+import { EdgeTypes, NodeTypes } from "@xyflow/react";
+
+const nodeTypes: NodeTypes = {
   databaseTable: DatabaseTableNode,
 };
 
-const edgeTypes = {
-  custom: CustomEdge,
+const edgeTypes: EdgeTypes = {
+  custom: CustomEdgeComponent,
 };
 
 const DatabaseDiagram: React.FC = () => {
-  const [highlightedEdges, setHighlightedEdges] = useState<string[]>([]);
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_highlightedEdges, setHighlightedEdges] = useState<string[]>([]);
+  const [selectedEdge, setSelectedEdge] = useState<CustomEdge | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(
@@ -39,7 +49,7 @@ const DatabaseDiagram: React.FC = () => {
 
   const initialNodes: Node[] = useMemo(
     () =>
-      databaseConfig.tables.map((table) => ({
+      databaseConfig.tables.map((table: DatabaseConfig["tables"][0]) => ({
         id: table.schema
           ? `${table.schema}.${table.name}`
           : `public.${table.name}`,
@@ -65,11 +75,12 @@ const DatabaseDiagram: React.FC = () => {
     []
   );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
 
   const initialEdges: Edge[] = useMemo(() => {
-    const edges = databaseConfig.edgeConfigs.map((edgeConfig, index) => {
-      return {
+    return databaseConfig.edgeConfigs.map(
+      (edgeConfig: EdgeConfig, index: number) => ({
         id: `e${index}`,
         source: edgeConfig.source,
         target: edgeConfig.target,
@@ -88,9 +99,8 @@ const DatabaseDiagram: React.FC = () => {
           sourceKey: edgeConfig.sourceKey,
           targetKey: edgeConfig.targetKey,
         },
-      };
-    });
-    return edges;
+      })
+    );
   }, []);
 
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -103,7 +113,7 @@ const DatabaseDiagram: React.FC = () => {
   }, []);
 
   const handleColumnSelection = useCallback(
-    (sourceColumn: string, targetColumn: string, edgeToUpdate?: Edge) => {
+    (sourceColumn: string, targetColumn: string, edgeToUpdate?: CustomEdge) => {
       if (edgeToUpdate) {
         setEdges((eds) =>
           eds.map((e) =>
@@ -152,10 +162,13 @@ const DatabaseDiagram: React.FC = () => {
     [pendingConnection, setEdges]
   );
 
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    event.stopPropagation();
-    setSelectedEdge(edge);
-  }, []);
+  const onEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: CustomEdge) => {
+      event.stopPropagation();
+      setSelectedEdge(edge);
+    },
+    []
+  );
 
   const onEdgeEdit = useCallback(() => {
     if (selectedEdge) {
@@ -325,23 +338,31 @@ const DatabaseDiagram: React.FC = () => {
 
       {isModalOpen && (pendingConnection || selectedEdge) && (
         <ColumnSelectionModal
-          sourceNode={nodes.find(
-            (node) =>
-              node.id === (pendingConnection?.source || selectedEdge?.source)
-          )}
-          targetNode={nodes.find(
-            (node) =>
-              node.id === (pendingConnection?.target || selectedEdge?.target)
-          )}
+          sourceNode={
+            nodes.find(
+              (node) =>
+                node.id === (pendingConnection?.source || selectedEdge?.source)
+            ) as CustomNodeProps | undefined
+          }
+          targetNode={
+            nodes.find(
+              (node) =>
+                node.id === (pendingConnection?.target || selectedEdge?.target)
+            ) as CustomNodeProps | undefined
+          }
           onClose={() => {
             setIsModalOpen(false);
             setSelectedEdge(null);
           }}
           onSelect={(sourceColumn, targetColumn) =>
-            handleColumnSelection(sourceColumn, targetColumn, selectedEdge)
+            handleColumnSelection(
+              sourceColumn,
+              targetColumn,
+              selectedEdge as Edge | undefined
+            )
           }
-          initialSourceColumn={selectedEdge?.data.sourceKey}
-          initialTargetColumn={selectedEdge?.data.targetKey}
+          initialSourceColumn={selectedEdge?.data?.sourceKey}
+          initialTargetColumn={selectedEdge?.data?.targetKey}
         />
       )}
     </div>

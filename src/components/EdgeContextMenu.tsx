@@ -16,7 +16,6 @@ const EdgeContextMenu: React.FC<EdgeContextMenuProps> = ({
   edge,
   onEdit,
   onDelete,
-  onClose,
 }) => {
   return (
     <div
