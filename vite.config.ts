@@ -28,6 +28,7 @@ export default defineConfig({
             "@radix-ui/react-toast",
             "@radix-ui/react-tooltip",
           ],
+          table: ["@tanstack/react-table", "@xyflow/react"],
         },
       },
     },
