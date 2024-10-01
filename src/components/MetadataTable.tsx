@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -20,25 +21,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { Circle, Info, Key, Plus, Save, Search, Trash } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface MetadataItem {
   dataset_version_column_id: number;
-  dataset_version_id: number;
-  column_order: number;
   code: string;
   label: string;
   description: string;
-  role: string;
-  dimension_type: string;
   datatype: string;
   datatype_format: string;
   is_mandatory: boolean;
   is_key: boolean;
   value_statement: string;
   is_filter: boolean;
-  is_report_snapshot_field: boolean;
 }
 
 interface MetadataTableProps {
@@ -47,6 +45,23 @@ interface MetadataTableProps {
   isLoading: boolean;
   onSave: (updatedData: Record<string, string>[]) => void;
 }
+
+const getInputType = (datatype: string): string => {
+  switch (datatype.toLowerCase()) {
+    case "number":
+    case "integer":
+    case "float":
+    case "double":
+    case "integer(6)":
+      return "number";
+    case "gregorianday":
+      return "date";
+    case "???":
+    case "string":
+    default:
+      return "text";
+  }
+};
 
 export const MetadataTable: React.FC<MetadataTableProps> = ({
   metadata,
@@ -68,29 +83,32 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   const handleCellChange = (
     rowIndex: number,
     columnName: string,
-    value: string
+    value: string | boolean
   ) => {
-    const newTableData = [...localTableData];
-    newTableData[rowIndex] = { ...newTableData[rowIndex], [columnName]: value };
-    setLocalTableData(newTableData);
+    setLocalTableData((prevData) => {
+      const newData = [...prevData];
+      newData[rowIndex] = {
+        ...newData[rowIndex],
+        [columnName]: value.toString(),
+      };
+      return newData;
+    });
     setIsDataModified(true);
   };
 
   const handleAddRow = () => {
     if (!metadata) return;
-    const newRow: Record<string, string> = {};
-    metadata.forEach((column) => {
-      newRow[column.code] = "";
-    });
-    setLocalTableData([...localTableData, newRow]);
+    const newRow = Object.fromEntries(
+      metadata.map((column) => [column.code, ""])
+    );
+    setLocalTableData((prevData) => [...prevData, newRow]);
     setIsDataModified(true);
   };
 
   const handleDeleteRow = (rowIndex: number) => {
-    const newTableData = localTableData.filter(
-      (_, index) => index !== rowIndex
+    setLocalTableData((prevData) =>
+      prevData.filter((_, index) => index !== rowIndex)
     );
-    setLocalTableData(newTableData);
     setIsDataModified(true);
   };
 
@@ -100,17 +118,74 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   };
 
   const filteredMetadata = useMemo(() => {
-    if (!metadata || !Array.isArray(metadata)) return [];
-    return metadata.filter((item) =>
-      item.label.toLowerCase().includes(searchTerm.toLowerCase())
+    return (
+      metadata?.filter((item) =>
+        item.label.toLowerCase().includes(searchTerm.toLowerCase())
+      ) || []
     );
   }, [metadata, searchTerm]);
+
+  const renderInputField = (
+    item: MetadataItem,
+    row: Record<string, string>,
+    rowIndex: number
+  ) => {
+    const inputType = getInputType(item.datatype);
+
+    switch (inputType) {
+      case "date":
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !row[item.code] && "text-muted-foreground"
+                )}
+              >
+                {row[item.code] ? (
+                  format(new Date(row[item.code]), "yyyy-MM")
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={row[item.code] ? new Date(row[item.code]) : undefined}
+                onSelect={(date) =>
+                  handleCellChange(
+                    rowIndex,
+                    item.code,
+                    date ? format(date, "yyyy-MM-dd") : ""
+                  )
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        );
+      default:
+        return (
+          <Input
+            type={inputType}
+            value={row[item.code] || ""}
+            onChange={(e) =>
+              handleCellChange(rowIndex, item.code, e.target.value)
+            }
+            className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
+          />
+        );
+    }
+  };
 
   if (isLoading) {
     return <Skeleton className="w-full h-[400px]" />;
   }
 
-  if (!metadata || !Array.isArray(metadata) || metadata.length === 0) {
+  if (!metadata || metadata.length === 0) {
     return <div>No metadata available</div>;
   }
 
@@ -196,14 +271,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
                                     <strong>Is Mandatory:</strong>{" "}
                                     {item.is_mandatory ? "Yes" : "No"}
                                   </p>
-                                  <p>
-                                    <strong>Is Filter:</strong>{" "}
-                                    {item.is_filter ? "Yes" : "No"}
-                                  </p>
-                                  <p>
-                                    <strong>Value Statement:</strong>{" "}
-                                    {item.value_statement || "N/A"}
-                                  </p>
                                 </div>
                               </PopoverContent>
                             </Popover>
@@ -237,17 +304,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
                         key={`${rowIndex}-${item.dataset_version_column_id}`}
                         className="px-4 py-2 text-sm"
                       >
-                        <Input
-                          value={row[item.code] || ""}
-                          onChange={(e) =>
-                            handleCellChange(
-                              rowIndex,
-                              item.code,
-                              e.target.value
-                            )
-                          }
-                          className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
-                        />
+                        {renderInputField(item, row, rowIndex)}
                       </TableCell>
                     ))}
                   </TableRow>
