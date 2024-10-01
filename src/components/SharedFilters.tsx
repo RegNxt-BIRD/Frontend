@@ -3,10 +3,9 @@ import React from "react";
 
 interface SharedColumnFiltersProps {
   filters: {
-    framework: string;
-    type: string;
     code: string;
     label: string;
+    type: string;
     description: string;
   };
   setFilter: (key: string, value: string) => void;
