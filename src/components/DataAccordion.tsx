@@ -42,7 +42,7 @@ interface DataItem {
   name: string;
   description: string;
   maintenanceAgency: string;
-  frameworkCode: string;
+  framework: string;
   version: string;
   entityType: string;
 }
@@ -94,6 +94,10 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
   const [globalFilter, setGlobalFilter] = useState("");
   const [frameworkFilter, setFrameworkFilter] = useState(ALL_FRAMEWORKS);
 
+  const frameworks = useMemo(() => {
+    return Array.from(new Set(data.map((item) => item.framework)));
+  }, [data]);
+
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       const matchesGlobal = Object.values(item).some(
@@ -103,24 +107,20 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
       );
       const matchesFramework =
         frameworkFilter === ALL_FRAMEWORKS ||
-        item.frameworkCode === frameworkFilter;
+        item.framework === frameworkFilter;
       return matchesGlobal && matchesFramework;
     });
   }, [data, globalFilter, frameworkFilter]);
 
   const groupedData = useMemo(() => {
     return filteredData.reduce((acc, item) => {
-      if (!acc[item.frameworkCode]) {
-        acc[item.frameworkCode] = [];
+      if (!acc[item.framework]) {
+        acc[item.framework] = [];
       }
-      acc[item.frameworkCode].push(item);
+      acc[item.framework].push(item);
       return acc;
     }, {} as Record<string, DataItem[]>);
   }, [filteredData]);
-
-  const frameworks = useMemo(() => {
-    return Array.from(new Set(data?.map((item) => item.frameworkCode)));
-  }, [data]);
 
   return (
     <div className="space-y-4">
@@ -137,7 +137,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_FRAMEWORKS}>All Frameworks</SelectItem>
-            {frameworks?.map((framework) => (
+            {frameworks.map((framework) => (
               <SelectItem key={framework} value={framework}>
                 {framework}
               </SelectItem>
@@ -147,16 +147,20 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
       </div>
 
       <Accordion type="single" collapsible className="w-full space-y-2">
-        {Object.entries(groupedData)?.map(([frameworkCode, items]) => (
-          <AccordionItem value={frameworkCode} key={frameworkCode}>
+        {Object.entries(groupedData).map(([framework, items]) => (
+          <AccordionItem value={framework} key={framework}>
             <AccordionTrigger className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg">
-              <span className="font-semibold">{frameworkCode}</span>
+              <span className="font-semibold">{framework}</span>
               <span className="ml-2 text-sm text-gray-500">
                 ({items.length} items)
               </span>
             </AccordionTrigger>
             <AccordionContent>
-              <DataTable data={items} onRowClick={onTableClick} />
+              <DataTable
+                data={items}
+                columns={columns}
+                onRowClick={onTableClick}
+              />
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -167,9 +171,11 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
 
 function DataTable({
   data,
+  columns,
   onRowClick,
 }: {
   data: DataItem[];
+  columns: ColumnDef<DataItem>[];
   onRowClick: (item: DataItem) => void;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -197,7 +203,7 @@ function DataTable({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup?.headers?.map((header) => (
+                {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null

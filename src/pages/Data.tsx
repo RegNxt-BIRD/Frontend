@@ -1,5 +1,6 @@
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
+import DateRangePicker from "@/components/DateRangePicker";
 import { MetadataTable } from "@/components/MetadataTable";
 import DataSkeleton from "@/components/skeletons/DataSkeleton";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import axiosInstance, { fastApiInstance } from "@/lib/axios";
+import { fastApiInstance } from "@/lib/axios";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -28,29 +29,39 @@ interface Framework {
 }
 
 interface TableData {
-  dataSetId: number;
-  category: string;
-  businessId: string;
+  dataset_id: number;
   code: string;
-  name: string;
+  label: string;
   description: string;
-  maintenanceAgency: string;
-  frameworkCode: string;
-  version: string;
-  entityType: string;
+  framework: string;
+  type: string;
+}
+
+interface DatasetInfo {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
 }
 
 interface MetadataItem {
-  dataSetId: number;
-  columnId: number;
-  columnName: string;
-  columnLabel: string;
-  columnDataType: string;
-  isMandatory: boolean;
-  isKey: boolean;
-  isFilter: boolean;
-  filterStatement: string;
-  existPhysically: boolean;
+  dataset_version_column_id: number;
+  dataset_version_id: number;
+  column_order: number;
+  code: string;
+  label: string;
+  description: string;
+  role: string;
+  dimension_type: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+  is_report_snapshot_field: boolean;
 }
 
 const SelectionDisplay: React.FC<{
@@ -91,7 +102,8 @@ const Data: React.FC = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
   const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
-  const [metadata, setMetadata] = useState<MetadataItem[]>([]);
+  const [datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null);
+  const [metadata, setMetadata] = useState<MetadataItem[] | null>(null);
   const [metadataTableData, setMetadataTableData] = useState<
     Record<string, string>[]
   >([]);
@@ -99,8 +111,20 @@ const Data: React.FC = () => {
   const { toast } = useToast();
 
   const { data: layers, error: layersError } = useSWR<Layer[]>("/BIRD/layer");
-  const { data: dataTableJson, error: dataError } =
-    useSWR<TableData[]>("/BIRD/table?");
+
+  const { data: dataTableJson, error: dataError } = useSWR<TableData[]>(
+    "/api/v1/datasets/",
+    async (url: string) => {
+      const response = await fastApiInstance.get(url);
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        console.error("Unexpected data format received:", response.data);
+        return [];
+      }
+    }
+  );
+
   const { data: frameworks, error: frameworksError } = useSWR<Framework[]>(
     "/api/v1/frameworks/",
     async (url: string) => {
@@ -109,7 +133,7 @@ const Data: React.FC = () => {
     }
   );
 
-  const isLoading = !layers || !frameworks || !dataTableJson;
+  const isLoading = !layers || !frameworks || !Array.isArray(dataTableJson);
   const error = layersError || frameworksError || dataError;
 
   useEffect(() => {
@@ -126,18 +150,42 @@ const Data: React.FC = () => {
     async (dataSetId: number) => {
       setIsMetadataLoading(true);
       try {
-        const metadataResponse = await axiosInstance.get(
-          `/BIRD/MetaData?dataSetId=${dataSetId}`
+        console.log("Fetching metadata for dataSetId:", dataSetId);
+        const metadataResponse = await fastApiInstance.get(
+          `/api/v1/datasets/${dataSetId}/`
         );
-        setMetadata(metadataResponse.data);
 
-        const tableDataResponse = await axiosInstance.post("/BIRD/Data", {
-          processId: dataSetId,
-          parameters: [{ name: "1", value: "1" }],
-        });
-        setMetadataTableData(tableDataResponse.data);
+        if (
+          typeof metadataResponse.data === "object" &&
+          !Array.isArray(metadataResponse.data)
+        ) {
+          setDatasetInfo(metadataResponse.data);
+          // Fetch the actual metadata columns
+          const columnsResponse = await fastApiInstance.get(
+            `/api/v1/datasets/version-columns/${dataSetId}/`
+          );
+          if (Array.isArray(columnsResponse.data)) {
+            setMetadata(columnsResponse.data);
+          } else {
+            console.error("Unexpected columns format:", columnsResponse.data);
+            setMetadata(null);
+          }
+        } else {
+          console.error("Unexpected metadata format:", metadataResponse.data);
+          setDatasetInfo(null);
+          setMetadata(null);
+          toast({
+            title: "Warning",
+            description:
+              "Metadata format is unexpected. Some features may not work correctly.",
+            variant: "warning",
+          });
+        }
       } catch (error) {
         console.error("Error fetching metadata:", error);
+        setDatasetInfo(null);
+        setMetadata(null);
+        setMetadataTableData([]);
         toast({
           title: "Error",
           description: "Failed to fetch metadata. Please try again.",
@@ -151,8 +199,11 @@ const Data: React.FC = () => {
   );
 
   useEffect(() => {
-    if (selectedTable) {
-      fetchMetadata(selectedTable.dataSetId);
+    if (selectedTable && selectedTable.dataset_id) {
+      console.log("Fetching metadata for:", selectedTable);
+      fetchMetadata(selectedTable.dataset_id);
+    } else {
+      console.log("Selected table or dataset_id is undefined:", selectedTable);
     }
   }, [selectedTable, fetchMetadata]);
 
@@ -172,18 +223,20 @@ const Data: React.FC = () => {
 
   const handleSaveMetadata = useCallback(
     async (updatedData: Record<string, string>[]) => {
+      if (!selectedTable) {
+        console.error("No table selected for saving metadata");
+        return;
+      }
       try {
         await fastApiInstance.post(
-          `/api/v1/datasets/${selectedTable?.dataSetId}/save_data/`,
+          `/api/v1/datasets/${selectedTable.dataset_id}/save_data/`,
           updatedData
         );
         toast({
           title: "Success",
           description: "Data saved successfully.",
         });
-        if (selectedTable) {
-          fetchMetadata(selectedTable.dataSetId);
-        }
+        fetchMetadata(selectedTable.dataset_id);
       } catch (error) {
         console.error("Error saving data:", error);
         toast({
@@ -197,13 +250,12 @@ const Data: React.FC = () => {
   );
 
   const filteredData = useMemo(() => {
-    if (!dataTableJson) return [];
+    if (!Array.isArray(dataTableJson)) return [];
     return dataTableJson.filter((item: TableData) => {
       const frameworkMatch =
-        selectedFramework === NO_FILTER ||
-        item.frameworkCode === selectedFramework;
+        selectedFramework === NO_FILTER || item.framework === selectedFramework;
       const layerMatch =
-        selectedLayer === NO_FILTER || item.entityType === selectedLayer;
+        selectedLayer === NO_FILTER || item.type === selectedLayer;
       return frameworkMatch && layerMatch;
     });
   }, [dataTableJson, selectedFramework, selectedLayer]);
@@ -253,6 +305,7 @@ const Data: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
+        <DateRangePicker />
       </div>
       <div>
         <SelectionDisplay
@@ -272,7 +325,7 @@ const Data: React.FC = () => {
       {selectedTable && (
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">
-            {selectedTable.name} Metadata
+            {datasetInfo?.label || selectedTable.label} Metadata
           </h2>
           <MetadataTable
             metadata={metadata}

@@ -24,20 +24,25 @@ import { Circle, Info, Key, Plus, Save, Search, Trash } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface MetadataItem {
-  dataSetId: number;
-  columnId: number;
-  columnName: string;
-  columnLabel: string;
-  columnDataType: string;
-  isMandatory: boolean;
-  isKey: boolean;
-  isFilter: boolean;
-  filterStatement: string;
-  existPhysically: boolean;
+  dataset_version_column_id: number;
+  dataset_version_id: number;
+  column_order: number;
+  code: string;
+  label: string;
+  description: string;
+  role: string;
+  dimension_type: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+  is_report_snapshot_field: boolean;
 }
 
 interface MetadataTableProps {
-  metadata: MetadataItem[];
+  metadata: MetadataItem[] | null;
   tableData: Record<string, string>[];
   isLoading: boolean;
   onSave: (updatedData: Record<string, string>[]) => void;
@@ -72,9 +77,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   };
 
   const handleAddRow = () => {
+    if (!metadata) return;
     const newRow: Record<string, string> = {};
     metadata.forEach((column) => {
-      newRow[column.columnName] = "";
+      newRow[column.code] = "";
     });
     setLocalTableData([...localTableData, newRow]);
     setIsDataModified(true);
@@ -93,16 +99,19 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(false);
   };
 
-  const filteredMetadata = useMemo(
-    () =>
-      metadata.filter((item) =>
-        item.columnLabel.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [metadata, searchTerm]
-  );
+  const filteredMetadata = useMemo(() => {
+    if (!metadata || !Array.isArray(metadata)) return [];
+    return metadata.filter((item) =>
+      item.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [metadata, searchTerm]);
 
   if (isLoading) {
     return <Skeleton className="w-full h-[400px]" />;
+  }
+
+  if (!metadata || !Array.isArray(metadata) || metadata.length === 0) {
+    return <div>No metadata available</div>;
   }
 
   return (
@@ -134,15 +143,15 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="w-[50px]"></TableHead>
-                {filteredMetadata?.map((item) => (
+                {filteredMetadata.map((item) => (
                   <TableHead
-                    key={item.columnId}
+                    key={item.dataset_version_column_id}
                     className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
                   >
                     <div className="flex items-center space-x-1">
-                      <span>{item.columnLabel}</span>
+                      <span>{item.label}</span>
                       <TooltipProvider>
-                        {item.isKey && (
+                        {item.is_key && (
                           <Tooltip>
                             <TooltipTrigger>
                               <Key className="h-3 w-3 text-yellow-500" />
@@ -150,7 +159,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
                             <TooltipContent>Key Column</TooltipContent>
                           </Tooltip>
                         )}
-                        {item.isMandatory && (
+                        {item.is_mandatory && (
                           <Tooltip>
                             <TooltipTrigger>
                               <Circle className="h-3 w-3 fill-current text-red-500" />
@@ -167,34 +176,33 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
                               <PopoverContent className="w-64 p-4">
                                 <div className="space-y-2 text-sm">
                                   <p>
-                                    <strong>Name:</strong> {item.columnName}
+                                    <strong>Code:</strong> {item.code}
                                   </p>
                                   <p>
-                                    <strong>Label:</strong> {item.columnLabel}
+                                    <strong>Label:</strong> {item.label}
                                   </p>
                                   <p>
-                                    <strong>Type:</strong>{" "}
-                                    {item.columnDataType || "N/A"}
+                                    <strong>Description:</strong>{" "}
+                                    {item.description}
+                                  </p>
+                                  <p>
+                                    <strong>Data Type:</strong> {item.datatype}
                                   </p>
                                   <p>
                                     <strong>Is Key:</strong>{" "}
-                                    {item.isKey ? "Yes" : "No"}
+                                    {item.is_key ? "Yes" : "No"}
                                   </p>
                                   <p>
                                     <strong>Is Mandatory:</strong>{" "}
-                                    {item.isMandatory ? "Yes" : "No"}
+                                    {item.is_mandatory ? "Yes" : "No"}
                                   </p>
                                   <p>
                                     <strong>Is Filter:</strong>{" "}
-                                    {item.isFilter ? "Yes" : "No"}
+                                    {item.is_filter ? "Yes" : "No"}
                                   </p>
                                   <p>
-                                    <strong>Filter Statement:</strong>{" "}
-                                    {item.filterStatement || "N/A"}
-                                  </p>
-                                  <p>
-                                    <strong>Exists Physically:</strong>{" "}
-                                    {item.existPhysically ? "Yes" : "No"}
+                                    <strong>Value Statement:</strong>{" "}
+                                    {item.value_statement || "N/A"}
                                   </p>
                                 </div>
                               </PopoverContent>
@@ -209,40 +217,51 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {localTableData?.map((row, rowIndex) => (
-                <TableRow
-                  key={rowIndex}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteRow(rowIndex)}
-                    >
-                      <Trash className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </TableCell>
-                  {filteredMetadata?.map((item) => (
-                    <TableCell
-                      key={`${rowIndex}-${item.columnId}`}
-                      className="px-4 py-2 text-sm"
-                    >
-                      <Input
-                        value={row[item.columnName] || ""}
-                        onChange={(e) =>
-                          handleCellChange(
-                            rowIndex,
-                            item.columnName,
-                            e.target.value
-                          )
-                        }
-                        className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
-                      />
+              {localTableData.length > 0 ? (
+                localTableData.map((row, rowIndex) => (
+                  <TableRow
+                    key={rowIndex}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRow(rowIndex)}
+                      >
+                        <Trash className="h-4 w-4 text-red-500" />
+                      </Button>
                     </TableCell>
-                  ))}
+                    {filteredMetadata.map((item) => (
+                      <TableCell
+                        key={`${rowIndex}-${item.dataset_version_column_id}`}
+                        className="px-4 py-2 text-sm"
+                      >
+                        <Input
+                          value={row[item.code] || ""}
+                          onChange={(e) =>
+                            handleCellChange(
+                              rowIndex,
+                              item.code,
+                              e.target.value
+                            )
+                          }
+                          className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={filteredMetadata.length + 1}
+                    className="text-center py-4"
+                  >
+                    No data available. Click 'Add Row' to add new data.
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

@@ -375,7 +375,11 @@ const DatabaseDiagram: React.FC = () => {
             setSelectedEdge(null);
           }}
           onSelect={(sourceColumn, targetColumn) =>
-            handleColumnSelection(sourceColumn, targetColumn, selectedEdge)
+            handleColumnSelection(
+              sourceColumn,
+              targetColumn,
+              selectedEdge || undefined
+            )
           }
           initialSourceColumn={selectedEdge?.data?.sourceKey}
           initialTargetColumn={selectedEdge?.data?.targetKey}

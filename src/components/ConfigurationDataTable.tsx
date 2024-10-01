@@ -85,11 +85,11 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => <div>{row.getValue("name")}</div>,
+      cell: ({ row }) => <div>{row.getValue("label")}</div>,
     },
     {
       accessorKey: "description",
-      header: "Label",
+      header: "Description",
       cell: ({ row }) => <div>{row.getValue("description")}</div>,
     },
     {
