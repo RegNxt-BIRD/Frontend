@@ -1,5 +1,3 @@
-"use client";
-
 import { addDays, format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import * as React from "react";
@@ -14,9 +12,9 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-export default function DateRangePicker({
-  className,
-}: React.HTMLAttributes<HTMLDivElement>) {
+type DateRangePickerProps = React.HTMLAttributes<HTMLDivElement>
+
+const DateRangePicker: React.FC<DateRangePickerProps> = ({ className }) => {
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: new Date(),
     to: addDays(new Date(), 7),
@@ -62,4 +60,6 @@ export default function DateRangePicker({
       </Popover>
     </div>
   );
-}
+};
+
+export default DateRangePicker;

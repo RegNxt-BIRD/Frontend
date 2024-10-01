@@ -17,7 +17,7 @@ import {
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
+  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -40,8 +40,9 @@ export function SharedDataTable<T>({
   onRowClick,
   showPagination = true,
 }: SharedDataTableProps<T>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
     data,
@@ -50,29 +51,50 @@ export function SharedDataTable<T>({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
     state: {
-      sorting,
       columnFilters,
+      columnVisibility,
+      globalFilter,
     },
   });
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-gray-100">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                  <TableHead
+                    key={header.id}
+                    className="font-bold text-lg py-0 px-4"
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div
+                        className={`flex items-center space-x-2 ${
+                          header.column.id === "name" ||
+                          header.column.id === "code"
+                            ? "cursor-pointer select-none"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          if (header.column.id === "code") {
+                            header.column.toggleSorting();
+                          }
+                        }}
+                      >
+                        <span>
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -85,10 +107,10 @@ export function SharedDataTable<T>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick(row.original)}
-                  className="cursor-pointer hover:bg-gray-100"
+                  className="cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-3 px-4 text-base">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -110,6 +132,7 @@ export function SharedDataTable<T>({
           </TableBody>
         </Table>
       </div>
+
       {showPagination && (
         <div className="flex items-center justify-between">
           <div className="flex-1 text-sm text-muted-foreground">

@@ -72,7 +72,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
               <div className="flex items-center justify-between w-full">
                 <span className="font-medium text-base">{framework}</span>
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-md text-gray-600 mx-auto">
                     {items.length} item{items.length !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -83,7 +83,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
                 data={items}
                 columns={columns}
                 onRowClick={onTableClick}
-                showPagination={false}
+                showPagination={true}
               />
             </AccordionContent>
           </AccordionItem>

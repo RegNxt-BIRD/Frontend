@@ -171,7 +171,7 @@ const DatabaseDiagram: React.FC = () => {
             label: `${sourceColumn} -> ${targetColumn}`,
           },
         };
-        setEdges((eds) => addEdge(newEdge, eds));
+        setEdges((eds) => addEdge(newEdge, eds as any));
       }
       setIsModalOpen(false);
       setPendingConnection(null);

@@ -45,6 +45,7 @@ export default function Login() {
         (location.state as { from?: { pathname: string } })?.from?.pathname ||
         "/configuration";
       navigate(from, { replace: true });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_) {
       toast({
         title: "Login failed",
