@@ -5,14 +5,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -35,24 +27,18 @@ import {
 import React, { useMemo, useState } from "react";
 
 interface DataItem {
-  dataSetId: number;
-  category: string;
-  businessId: string;
+  dataset_id: number;
   code: string;
-  name: string;
+  label: string;
   description: string;
-  maintenanceAgency: string;
   framework: string;
-  version: string;
-  entityType: string;
+  type: string;
 }
 
 interface DataAccordionProps {
   data: DataItem[];
   onTableClick: (item: DataItem) => void;
 }
-
-const ALL_FRAMEWORKS = "ALL";
 
 const columns: ColumnDef<DataItem>[] = [
   {
@@ -61,29 +47,19 @@ const columns: ColumnDef<DataItem>[] = [
     cell: ({ row }) => <div>{row.getValue("code")}</div>,
   },
   {
-    accessorKey: "name",
+    accessorKey: "label",
     header: "Name",
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    cell: ({ row }) => <div>{row.getValue("label")}</div>,
   },
   {
-    accessorKey: "entityType",
+    accessorKey: "type",
     header: "Entity Type",
-    cell: ({ row }) => <div>{row.getValue("entityType")}</div>,
+    cell: ({ row }) => <div>{row.getValue("type")}</div>,
   },
   {
     accessorKey: "description",
     header: "Description",
     cell: ({ row }) => <div>{row.getValue("description")}</div>,
-  },
-  {
-    accessorKey: "maintenanceAgency",
-    header: "Maintenance Agency",
-    cell: ({ row }) => <div>{row.getValue("maintenanceAgency")}</div>,
-  },
-  {
-    accessorKey: "version",
-    header: "Version",
-    cell: ({ row }) => <div>{row.getValue("version")}</div>,
   },
 ];
 
@@ -91,61 +67,18 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
   data,
   onTableClick,
 }) => {
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [frameworkFilter, setFrameworkFilter] = useState(ALL_FRAMEWORKS);
-
-  const frameworks = useMemo(() => {
-    return Array.from(new Set(data.map((item) => item.framework)));
-  }, [data]);
-
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      const matchesGlobal = Object.values(item).some(
-        (val) =>
-          val &&
-          val.toString().toLowerCase().includes(globalFilter.toLowerCase())
-      );
-      const matchesFramework =
-        frameworkFilter === ALL_FRAMEWORKS ||
-        item.framework === frameworkFilter;
-      return matchesGlobal && matchesFramework;
-    });
-  }, [data, globalFilter, frameworkFilter]);
-
   const groupedData = useMemo(() => {
-    return filteredData.reduce((acc, item) => {
+    return data.reduce((acc, item) => {
       if (!acc[item.framework]) {
         acc[item.framework] = [];
       }
       acc[item.framework].push(item);
       return acc;
     }, {} as Record<string, DataItem[]>);
-  }, [filteredData]);
+  }, [data]);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <Input
-          placeholder="Search all fields..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={frameworkFilter} onValueChange={setFrameworkFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select Framework" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_FRAMEWORKS}>All Frameworks</SelectItem>
-            {frameworks.map((framework) => (
-              <SelectItem key={framework} value={framework}>
-                {framework}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       <Accordion type="single" collapsible className="w-full space-y-2">
         {Object.entries(groupedData).map(([framework, items]) => (
           <AccordionItem value={framework} key={framework}>
@@ -211,20 +144,6 @@ function DataTable({
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                    {header.column.getCanFilter() ? (
-                      <div>
-                        <Input
-                          value={
-                            (header.column.getFilterValue() ?? "") as string
-                          }
-                          onChange={(event) =>
-                            header.column.setFilterValue(event.target.value)
-                          }
-                          placeholder={`Filter ${header.column.id}`}
-                          className="max-w-sm mt-2"
-                        />
-                      </div>
-                    ) : null}
                   </TableHead>
                 ))}
               </TableRow>

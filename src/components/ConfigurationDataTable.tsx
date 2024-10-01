@@ -29,33 +29,20 @@ import {
 } from "@tanstack/react-table";
 import React, { useState } from "react";
 
-/**
- * Represents a data item in the configuration table.
- */
 interface DataItem {
-  dataSetId: number;
-  category: string;
-  businessId: string;
+  dataset_id: number;
   code: string;
-  name: string;
+  label: string;
   description: string;
-  maintenanceAgency: string;
-  frameworkCode: string;
-  version: string;
-  entityType: string;
+  framework: string;
+  type: string;
 }
 
-/**
- * Props for the ConfigurationDataTable component.
- */
 interface ConfigurationDataTableProps {
   data: DataItem[];
   onRowClick: (row: DataItem) => void;
 }
 
-/**
- * A component that displays a table of configuration data with sorting, filtering, and pagination.
- */
 export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
   data,
   onRowClick,
@@ -68,14 +55,14 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
 
   const columns: ColumnDef<DataItem>[] = [
     {
-      accessorKey: "frameworkCode",
+      accessorKey: "framework",
       header: "Framework",
-      cell: ({ row }) => <div>{row.getValue("frameworkCode")}</div>,
+      cell: ({ row }) => <div>{row.getValue("framework")}</div>,
     },
     {
-      accessorKey: "entityType",
+      accessorKey: "type",
       header: "Layer/Type",
-      cell: ({ row }) => <div>{row.getValue("entityType")}</div>,
+      cell: ({ row }) => <div>{row.getValue("type")}</div>,
     },
     {
       accessorKey: "code",
@@ -83,7 +70,7 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
       cell: ({ row }) => <div>{row.getValue("code")}</div>,
     },
     {
-      accessorKey: "name",
+      accessorKey: "label",
       header: "Name",
       cell: ({ row }) => <div>{row.getValue("label")}</div>,
     },
@@ -91,16 +78,6 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
       accessorKey: "description",
       header: "Description",
       cell: ({ row }) => <div>{row.getValue("description")}</div>,
-    },
-    {
-      accessorKey: "maintenanceAgency",
-      header: "Maintenance Agency",
-      cell: ({ row }) => <div>{row.getValue("maintenanceAgency")}</div>,
-    },
-    {
-      accessorKey: "version",
-      header: "Version",
-      cell: ({ row }) => <div>{row.getValue("version")}</div>,
     },
   ];
 
@@ -146,22 +123,6 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                    {header.column.getCanFilter() ? (
-                      <div>
-                        <Input
-                          value={
-                            (header.column.getFilterValue() ?? "") as string
-                          }
-                          onChange={(event) =>
-                            header.column.setFilterValue(event.target.value)
-                          }
-                          placeholder={`Filter ${String(
-                            header.column.columnDef.header
-                          )}`}
-                          className="max-w-sm mt-2"
-                        />
-                      </div>
-                    ) : null}
                   </TableHead>
                 ))}
               </TableRow>

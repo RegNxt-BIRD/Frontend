@@ -2,6 +2,7 @@ import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
 import DateRangePicker from "@/components/DateRangePicker";
 import { MetadataTable } from "@/components/MetadataTable";
+import { SharedColumnFilters } from "@/components/SharedFilters";
 import DataSkeleton from "@/components/skeletons/DataSkeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -136,6 +137,16 @@ const Data: React.FC = () => {
   const isLoading = !layers || !frameworks || !Array.isArray(dataTableJson);
   const error = layersError || frameworksError || dataError;
 
+  const [columnFilters, setColumnFilters] = useState({
+    code: "",
+    label: "",
+    type: "",
+    description: "",
+  });
+  const setFilter = (key: string, value: string) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
   useEffect(() => {
     if (error) {
       toast({
@@ -178,7 +189,7 @@ const Data: React.FC = () => {
             title: "Warning",
             description:
               "Metadata format is unexpected. Some features may not work correctly.",
-            variant: "warning",
+            variant: "destructive",
           });
         }
       } catch (error) {
@@ -256,10 +267,17 @@ const Data: React.FC = () => {
         selectedFramework === NO_FILTER || item.framework === selectedFramework;
       const layerMatch =
         selectedLayer === NO_FILTER || item.type === selectedLayer;
-      return frameworkMatch && layerMatch;
+      const columnFilterMatch = Object.entries(columnFilters).every(
+        ([key, value]) =>
+          value === "" ||
+          item[key as keyof TableData]
+            .toString()
+            .toLowerCase()
+            .includes(value.toLowerCase())
+      );
+      return frameworkMatch && layerMatch && columnFilterMatch;
     });
-  }, [dataTableJson, selectedFramework, selectedLayer]);
-
+  }, [dataTableJson, selectedFramework, selectedLayer, columnFilters]);
   const layersWithNoFilter = useMemo(
     () => [{ name: "No Layer Selected", code: NO_FILTER }, ...(layers || [])],
     [layers]
@@ -313,8 +331,9 @@ const Data: React.FC = () => {
           selectedFramework={selectedFramework}
           selectedLayer={selectedLayer}
         />
+        <SharedColumnFilters filters={columnFilters} setFilter={setFilter} />
         {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
-          <DataAccordion data={dataTableJson} onTableClick={handleTableClick} />
+          <DataAccordion data={filteredData} onTableClick={handleTableClick} />
         ) : (
           <ConfigurationDataTable
             data={filteredData}
