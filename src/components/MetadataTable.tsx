@@ -1,3 +1,7 @@
+import { format } from "date-fns";
+import { Circle, Info, Key, Plus, Save, Search, Trash } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -22,9 +26,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Circle, Info, Key, Plus, Save, Search, Trash } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
 
 interface MetadataItem {
   dataset_version_column_id: number;
@@ -41,9 +42,11 @@ interface MetadataItem {
 
 interface MetadataTableProps {
   metadata: MetadataItem[] | null;
-  tableData: Record<string, string>[];
+  tableData: Record<string, string | null>[];
   isLoading: boolean;
-  onSave: (updatedData: Record<string, string>[]) => void;
+  onSave: (updatedData: Record<string, string | null>[]) => void;
+  selectedTable: any;
+  datasetVersion: any;
 }
 
 const getInputType = (datatype: string): string => {
@@ -55,9 +58,8 @@ const getInputType = (datatype: string): string => {
     case "integer(6)":
       return "number";
     case "gregorianday":
+    case "date":
       return "date";
-    case "???":
-    case "string":
     default:
       return "text";
   }
@@ -68,54 +70,56 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   tableData,
   isLoading,
   onSave,
+  selectedTable,
+  datasetVersion,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [localTableData, setLocalTableData] = useState<
-    Record<string, string>[]
+    Record<string, string | null>[]
   >([]);
   const [isDataModified, setIsDataModified] = useState(false);
 
   useEffect(() => {
-    setLocalTableData(tableData);
-    setIsDataModified(false);
+    if (tableData && tableData.length > 0) {
+      setLocalTableData(tableData);
+    }
   }, [tableData]);
 
-  const handleCellChange = (
-    rowIndex: number,
-    columnName: string,
-    value: string | boolean
-  ) => {
-    setLocalTableData((prevData) => {
-      const newData = [...prevData];
-      newData[rowIndex] = {
-        ...newData[rowIndex],
-        [columnName]: value.toString(),
-      };
-      return newData;
-    });
-    setIsDataModified(true);
-  };
+  const handleCellChange = useCallback(
+    (rowIndex: number, columnName: string, value: string | null) => {
+      setLocalTableData((prevData) => {
+        const newData = [...prevData];
+        newData[rowIndex] = {
+          ...newData[rowIndex],
+          [columnName]: value === "" ? null : value,
+        };
+        return newData;
+      });
+      setIsDataModified(true);
+    },
+    []
+  );
 
-  const handleAddRow = () => {
+  const handleAddRow = useCallback(() => {
     if (!metadata) return;
     const newRow = Object.fromEntries(
-      metadata.map((column) => [column.code, ""])
+      metadata.map((column) => [column.code, null])
     );
     setLocalTableData((prevData) => [...prevData, newRow]);
     setIsDataModified(true);
-  };
+  }, [metadata]);
 
-  const handleDeleteRow = (rowIndex: number) => {
+  const handleDeleteRow = useCallback((rowIndex: number) => {
     setLocalTableData((prevData) =>
       prevData.filter((_, index) => index !== rowIndex)
     );
     setIsDataModified(true);
-  };
+  }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onSave(localTableData);
     setIsDataModified(false);
-  };
+  }, [localTableData, onSave]);
 
   const filteredMetadata = useMemo(() => {
     return (
@@ -125,27 +129,27 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     );
   }, [metadata, searchTerm]);
 
-  const renderInputField = (
-    item: MetadataItem,
-    row: Record<string, string>,
-    rowIndex: number
-  ) => {
-    const inputType = getInputType(item.datatype);
+  const renderInputField = useCallback(
+    (
+      item: MetadataItem,
+      row: Record<string, string | null>,
+      rowIndex: number
+    ) => {
+      const inputType = getInputType(item.datatype);
 
-    switch (inputType) {
-      case "date":
+      if (inputType === "date") {
         return (
           <Popover>
             <PopoverTrigger asChild>
               <Button
-                variant={"outline"}
+                variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
                   !row[item.code] && "text-muted-foreground"
                 )}
               >
                 {row[item.code] ? (
-                  format(new Date(row[item.code]), "yyyy-MM")
+                  format(new Date(row[item.code] || ""), "yyyy-MM-dd")
                 ) : (
                   <span>Pick a date</span>
                 )}
@@ -154,12 +158,14 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={row[item.code] ? new Date(row[item.code]) : undefined}
+                selected={
+                  row[item.code] ? new Date(row[item.code] || "") : undefined
+                }
                 onSelect={(date) =>
                   handleCellChange(
                     rowIndex,
                     item.code,
-                    date ? format(date, "yyyy-MM-dd") : ""
+                    date ? format(date, "yyyy-MM-dd") : null
                   )
                 }
                 initialFocus
@@ -167,22 +173,37 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             </PopoverContent>
           </Popover>
         );
-      default:
-        return (
-          <Input
-            type={inputType}
-            value={row[item.code] || ""}
-            onChange={(e) =>
-              handleCellChange(rowIndex, item.code, e.target.value)
-            }
-            className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
-          />
-        );
-    }
-  };
+      }
+
+      return (
+        <Input
+          type={inputType}
+          value={row[item.code] || ""}
+          onChange={(e) =>
+            handleCellChange(rowIndex, item.code, e.target.value || null)
+          }
+          className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
+        />
+      );
+    },
+    [handleCellChange]
+  );
 
   if (isLoading) {
-    return <Skeleton className="w-full h-[400px]" />;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-3/4" />
+        <div className="flex justify-between">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-10 w-1/4" />
+        </div>
+        <div className="space-y-2">
+          {[...Array(5)].map((_, index) => (
+            <Skeleton key={index} className="h-12 w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!metadata || metadata.length === 0) {
@@ -191,6 +212,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
   return (
     <div className="space-y-4">
+      <h3 className="text-xl font-semibold">
+        Data for table {selectedTable.code} | {selectedTable.label}{" "}
+        {datasetVersion && `| Version ${datasetVersion.version_nr}`}
+      </h3>
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <Search className="w-5 h-5 text-gray-500 mr-2" />

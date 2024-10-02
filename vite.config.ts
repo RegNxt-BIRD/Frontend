@@ -29,6 +29,7 @@ export default defineConfig({
             "@radix-ui/react-tooltip",
           ],
           table: ["@tanstack/react-table", "@xyflow/react"],
+          style: ["framer-motion", "tailwindcss-animate", "react-day-picker"],
         },
       },
     },

@@ -1,10 +1,15 @@
+import { format } from "date-fns";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
 import DatePicker from "@/components/DatePicker";
 import { MetadataTable } from "@/components/MetadataTable";
+import { SelectionDisplay } from "@/components/SelectionDisplay";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import DataSkeleton from "@/components/skeletons/DataSkeleton";
-import { Badge } from "@/components/ui/badge";
+import { TableInfoHeader } from "@/components/TableInfoHeader";
 import {
   Select,
   SelectContent,
@@ -14,281 +19,149 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
-import { format } from "date-fns";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
+import { Frameworks, Layer } from "@/types/databaseTypes";
 
 const NO_FILTER = "NO_FILTER";
-
-interface Layer {
-  name: string;
-  code: string;
-}
-
-interface Framework {
-  code: string;
-  formatted_name: string;
-}
-
-interface TableData {
-  dataset_id: number;
-  code: string;
-  label: string;
-  description: string;
-  framework: string;
-  type: string;
-}
-
-interface DatasetInfo {
-  dataset_id: number;
-  code: string;
-  label: string;
-  description: string;
-  framework: string;
-  type: string;
-}
-
-interface MetadataItem {
-  dataset_version_column_id: number;
-  dataset_version_id: number;
-  column_order: number;
-  code: string;
-  label: string;
-  description: string;
-  role: string;
-  dimension_type: string;
-  datatype: string;
-  datatype_format: string;
-  is_mandatory: boolean;
-  is_key: boolean;
-  value_statement: string;
-  is_filter: boolean;
-  is_report_snapshot_field: boolean;
-}
-
-const SelectionDisplay: React.FC<{
-  filteredDataLength: number;
-  selectedFramework: string;
-  selectedLayer: string;
-}> = ({ filteredDataLength, selectedFramework, selectedLayer }) => {
-  const isFrameworkSelected = selectedFramework !== NO_FILTER;
-  const isLayerSelected = selectedLayer !== NO_FILTER;
-
-  return (
-    <div className="text-lg mb-4 flex flex-wrap items-center gap-2">
-      <span>{filteredDataLength} tables</span>
-      {isFrameworkSelected || isLayerSelected ? (
-        <>
-          <span>for</span>
-          {isFrameworkSelected ? (
-            <Badge variant="secondary">Framework: {selectedFramework}</Badge>
-          ) : (
-            <Badge variant="outline">Framework: Any</Badge>
-          )}
-          {isLayerSelected ? (
-            <Badge variant="secondary">Layer: {selectedLayer}</Badge>
-          ) : (
-            <Badge variant="outline">Layer: Any</Badge>
-          )}
-        </>
-      ) : (
-        <span className="text-gray-500 italic">
-          (Select a framework or layer to filter)
-        </span>
-      )}
-    </div>
-  );
-};
 
 const Data: React.FC = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
-  const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null);
-  const [metadata, setMetadata] = useState<MetadataItem[] | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [metadata, setMetadata] = useState<any[] | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
   const [metadataTableData, setMetadataTableData] = useState<
     Record<string, string>[]
   >([]);
   const [isMetadataLoading, setIsMetadataLoading] = useState(false);
-  const { toast } = useToast();
-
-  const { data: layers, error: layersError } = useSWR<Layer[]>("/BIRD/layer");
-
-  const { data: dataTableJson, error: dataError } = useSWR<TableData[]>(
-    "/api/v1/datasets/",
-    async (url: string) => {
-      const response = await fastApiInstance.get(url);
-      if (Array.isArray(response.data)) {
-        return response.data;
-      } else {
-        console.error("Unexpected data format received:", response.data);
-        return [];
-      }
-    }
-  );
-
-  const handleDateChange = useCallback((newDate: Date | undefined) => {
-    setSelectedDate(newDate);
-    setDatasetVersion(null);
-  }, []);
-
-  useEffect(() => {
-    if (selectedTable && selectedTable.dataset_id && selectedDate) {
-      const fetchDatasetVersion = async () => {
-        try {
-          const response = await fastApiInstance.get(
-            `/api/v1/datasets/${selectedTable.dataset_id}/versions/`,
-            {
-              params: {
-                date: format(selectedDate, "yyyy-MM-dd"),
-              },
-            }
-          );
-          setDatasetVersion(response.data);
-        } catch (error) {
-          console.error("Error fetching dataset version:", error);
-          toast({
-            title: "Error",
-            description: "Failed to fetch dataset version. Please try again.",
-            variant: "destructive",
-          });
-        }
-      };
-      fetchDatasetVersion();
-    }
-  }, [selectedTable, selectedDate, toast]);
-
-  useEffect(() => {
-    if (selectedTable && selectedTable.dataset_id) {
-      const fetchTableData = async () => {
-        try {
-          const response = await fastApiInstance.get(
-            `/api/v1/datasets/${selectedTable.dataset_id}/get_data/`
-          );
-          setMetadataTableData(response.data);
-        } catch (error) {
-          console.error("Error fetching table data:", error);
-          toast({
-            title: "Error",
-            description: "Failed to fetch table data. Please try again.",
-            variant: "destructive",
-          });
-        }
-      };
-
-      fetchTableData();
-    }
-  }, [selectedTable, toast]);
-  const { data: frameworks, error: frameworksError } = useSWR<Framework[]>(
-    "/api/v1/frameworks/",
-    async (url: string) => {
-      const response = await fastApiInstance.get(url);
-      return response.data;
-    }
-  );
-
-  const isLoading = !layers || !frameworks || !Array.isArray(dataTableJson);
-  const error = layersError || frameworksError || dataError;
-
   const [columnFilters, setColumnFilters] = useState({
     code: "",
     label: "",
     type: "",
     description: "",
   });
-  const setFilter = (key: string, value: string) => {
-    setColumnFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  const { toast } = useToast();
+
+  const { data: layers, error: layersError } = useSWR<Layer[]>("/BIRD/layer");
+  const { data: frameworks, error: frameworksError } = useSWR<Frameworks>(
+    "/api/v1/frameworks/",
+    fastApiInstance
+  );
+  const { data: dataTableJson, error: dataError } = useSWR<any>(
+    "/api/v1/datasets/",
+    fastApiInstance
+  );
+
+  const isLoading = !layers || !frameworks || !dataTableJson;
+  const error = layersError || frameworksError || dataError;
 
   useEffect(() => {
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch configuration data. Please try again.",
+        description: "Failed to fetch data. Please try again.",
         variant: "destructive",
       });
     }
   }, [error, toast]);
 
-  const fetchMetadata = useCallback(
-    async (dataSetId: number, versionId: number) => {
-      setIsMetadataLoading(true);
-      try {
-        console.log(
-          "Fetching metadata for dataSetId:",
-          dataSetId,
-          "versionId:",
-          versionId
-        );
-        const metadataResponse = await fastApiInstance.get(
-          `/api/v1/datasets/${dataSetId}/`
-        );
+  const handleDateChange = useCallback((newDate: Date | undefined) => {
+    if (newDate instanceof Date) {
+      setSelectedDate(newDate);
+      setDatasetVersion(null);
+    }
+  }, []);
 
-        if (
-          typeof metadataResponse.data === "object" &&
-          !Array.isArray(metadataResponse.data)
-        ) {
-          setDatasetInfo(metadataResponse.data);
-          const columnsResponse = await fastApiInstance.get(
-            `/api/v1/datasets/version-columns/${versionId}/`
-          );
-          if (Array.isArray(columnsResponse.data)) {
-            setMetadata(columnsResponse.data);
-          } else {
-            console.error("Unexpected columns format:", columnsResponse.data);
-            setMetadata(null);
-          }
-        } else {
-          console.error("Unexpected metadata format:", metadataResponse.data);
-          setDatasetInfo(null);
-          setMetadata(null);
-          toast({
-            title: "Warning",
-            description:
-              "Metadata format is unexpected. Some features may not work correctly.",
-            variant: "destructive",
-          });
+  const fetchDatasetVersion = useCallback(async () => {
+    if (!selectedTable) return;
+    try {
+      const response = await fastApiInstance.get(
+        `/api/v1/datasets/${selectedTable.dataset_id}/versions/`,
+        {
+          params: { date: format(selectedDate, "yyyy-MM-dd") },
         }
-      } catch (error) {
-        console.error("Error fetching metadata:", error);
-        setDatasetInfo(null);
-        setMetadata(null);
-        setMetadataTableData([]);
+      );
+      setDatasetVersion(
+        response.data && Object.keys(response.data).length > 0
+          ? response.data
+          : null
+      );
+      if (!response.data || Object.keys(response.data).length === 0) {
         toast({
-          title: "Error",
-          description: "Failed to fetch metadata. Please try again.",
+          title: "No Version Available",
+          description: `No version history exists for the selected table on ${format(
+            selectedDate,
+            "yyyy-MM-dd"
+          )}.`,
           variant: "destructive",
         });
-      } finally {
-        setIsMetadataLoading(false);
       }
-    },
-    [toast]
-  );
+    } catch (error) {
+      console.error("Error fetching dataset version:", error);
+      setDatasetVersion(null);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dataset version. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selectedTable, selectedDate, toast]);
 
   useEffect(() => {
-    if (selectedTable && selectedTable.dataset_id && datasetVersion) {
-      console.log(
-        "Fetching metadata for:",
-        selectedTable,
-        "version:",
-        datasetVersion
+    fetchDatasetVersion();
+  }, [fetchDatasetVersion]);
+
+  const fetchTableData = useCallback(async () => {
+    if (!selectedTable || !datasetVersion) return;
+    try {
+      const response = await fastApiInstance.get(
+        `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion?.dataset_version_id}`
       );
-      fetchMetadata(
-        selectedTable.dataset_id,
-        datasetVersion.dataset_version_id
-      );
-    } else {
-      console.log(
-        "Selected table, dataset_id, or datasetVersion is undefined:",
-        selectedTable,
-        datasetVersion
-      );
+      setMetadataTableData(response.data);
+    } catch (error) {
+      console.error("Error fetching table data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch table data. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, [selectedTable, datasetVersion, fetchMetadata]);
+  }, [selectedTable, datasetVersion, toast]);
+
+  useEffect(() => {
+    fetchTableData();
+  }, [fetchTableData]);
+
+  const fetchMetadata = useCallback(async () => {
+    if (!selectedTable || !datasetVersion) return;
+    setIsMetadataLoading(true);
+    try {
+      // const metadataResponse = await fastApiInstance.get(
+      //   `/api/v1/datasets/${selectedTable.dataset_id}/`
+      // );
+      const columnsResponse = await fastApiInstance.get(
+        `/api/v1/datasets/version-columns/${datasetVersion.dataset_version_id}/`
+      );
+      setMetadata(
+        Array.isArray(columnsResponse.data) ? columnsResponse.data : null
+      );
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+      setMetadata(null);
+      setMetadataTableData([]);
+      toast({
+        title: "Error",
+        description: "Failed to fetch metadata. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMetadataLoading(false);
+    }
+  }, [selectedTable, datasetVersion, toast]);
+
+  useEffect(() => {
+    fetchMetadata();
+  }, [fetchMetadata]);
 
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
@@ -300,30 +173,20 @@ const Data: React.FC = () => {
     setSelectedTable(null);
   }, []);
 
-  const handleTableClick = useCallback((table: TableData) => {
+  const handleTableClick = useCallback((table: any) => {
     setSelectedTable(table);
   }, []);
 
   const handleSaveMetadata = useCallback(
-    async (updatedData: Record<string, string>[]) => {
-      if (!selectedTable) {
-        console.error("No table selected for saving metadata");
-        return;
-      }
+    async (updatedData: Record<string, string | null>[]) => {
+      if (!selectedTable) return;
       try {
         await fastApiInstance.post(
           `/api/v1/datasets/${selectedTable.dataset_id}/save_data/`,
           updatedData
         );
-        toast({
-          title: "Success",
-          description: "Data saved successfully.",
-        });
-        // Fetch the updated data
-        const response = await fastApiInstance.get(
-          `/api/v1/datasets/${selectedTable.dataset_id}/get_data/`
-        );
-        setMetadataTableData(response.data);
+        toast({ title: "Success", description: "Data saved successfully." });
+        fetchTableData();
       } catch (error) {
         console.error("Error saving data:", error);
         toast({
@@ -333,12 +196,12 @@ const Data: React.FC = () => {
         });
       }
     },
-    [selectedTable, toast]
+    [selectedTable, toast, fetchTableData]
   );
 
   const filteredData = useMemo(() => {
-    if (!Array.isArray(dataTableJson)) return [];
-    return dataTableJson.filter((item: TableData) => {
+    if (!Array.isArray(dataTableJson?.data)) return [];
+    return dataTableJson?.data?.filter((item: any) => {
       const frameworkMatch =
         selectedFramework === NO_FILTER || item.framework === selectedFramework;
       const layerMatch =
@@ -346,7 +209,7 @@ const Data: React.FC = () => {
       const columnFilterMatch = Object.entries(columnFilters).every(
         ([key, value]) =>
           value === "" ||
-          item[key as keyof TableData]
+          item[key as keyof any]
             .toString()
             .toLowerCase()
             .includes(value.toLowerCase())
@@ -359,18 +222,15 @@ const Data: React.FC = () => {
     () => [{ name: "No Layer Selected", code: NO_FILTER }, ...(layers || [])],
     [layers]
   );
-
-  const frameworksWithNoFilter = useMemo(() => {
-    if (!frameworks) return [];
-    return [
+  const frameworksWithNoFilter = useMemo(
+    () => [
       { code: NO_FILTER, formatted_name: "No Framework Selected" },
-      ...frameworks,
-    ];
-  }, [frameworks]);
+      ...(frameworks?.data || []),
+    ],
+    [frameworks]
+  );
 
-  if (isLoading) {
-    return <DataSkeleton />;
-  }
+  if (isLoading) return <DataSkeleton />;
 
   return (
     <div className="container mx-auto py-10">
@@ -400,46 +260,60 @@ const Data: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
-<DatePicker
-  onSelect={handleDateChange as React.ComponentProps<typeof DatePicker>['onSelect']}
-  initialDate={selectedDate || undefined}
-/>
-      </div>
-      <div>
-        <SelectionDisplay
-          filteredDataLength={filteredData.length}
-          selectedFramework={selectedFramework}
-          selectedLayer={selectedLayer}
+        <DatePicker
+          onSelect={
+            handleDateChange as React.ComponentProps<
+              typeof DatePicker
+            >["onSelect"]
+          }
+          initialDate={selectedDate}
         />
-        <SharedColumnFilters filters={columnFilters} setFilter={setFilter} />
-        {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
-          <DataAccordion data={filteredData} onTableClick={handleTableClick} />
-        ) : (
-          <ConfigurationDataTable
-            data={filteredData}
-            onRowClick={handleTableClick}
-          />
-        )}
       </div>
-      {selectedTable && datasetVersion && (
+      <SelectionDisplay
+        filteredDataLength={filteredData.length}
+        selectedFramework={selectedFramework}
+        selectedLayer={selectedLayer}
+      />
+      <SharedColumnFilters
+        filters={columnFilters}
+        setFilter={(key, value) =>
+          setColumnFilters((prev) => ({ ...prev, [key]: value }))
+        }
+      />
+      {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
+        <DataAccordion data={filteredData} onTableClick={handleTableClick} />
+      ) : (
+        <ConfigurationDataTable
+          data={filteredData}
+          onRowClick={handleTableClick}
+        />
+      )}
+      {selectedTable && (
         <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">
-            {datasetVersion.dataset_label || selectedTable.label} Metadata
-          </h2>
-          <p className="mb-4">
-            Version: {datasetVersion.version_nr} (ID:{" "}
-            {datasetVersion.dataset_version_id})
-          </p>
-          <p className="mb-4">
-            Valid from: {datasetVersion.valid_from} to{" "}
-            {datasetVersion.valid_to || "Present"}
-          </p>
-          <MetadataTable
-            metadata={metadata}
-            tableData={metadataTableData}
-            isLoading={isMetadataLoading}
-            onSave={handleSaveMetadata}
+          <TableInfoHeader
+            selectedTable={selectedTable}
+            datasetVersion={datasetVersion}
           />
+          {datasetVersion ? (
+            <>
+              <p className="mb-4">
+                Valid from: {datasetVersion.valid_from} to{" "}
+                {datasetVersion.valid_to || "Present"}
+              </p>
+              <MetadataTable
+                metadata={metadata}
+                tableData={metadataTableData}
+                isLoading={isMetadataLoading}
+                onSave={handleSaveMetadata}
+                selectedTable={selectedTable}
+                datasetVersion={datasetVersion}
+              />
+            </>
+          ) : (
+            <p className="text-gray-500 italic">
+              No version history available for the selected date.
+            </p>
+          )}
         </div>
       )}
     </div>
