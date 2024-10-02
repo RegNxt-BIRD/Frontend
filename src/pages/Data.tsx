@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -23,6 +23,14 @@ import { Frameworks, Layer } from "@/types/databaseTypes";
 
 const NO_FILTER = "NO_FILTER";
 
+interface ValidationResult {
+  dataset_version_column_id: number;
+  row_id: number;
+  severity_level: string;
+  validation_msg: string;
+  column_name: string;
+}
+
 const Data: React.FC = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
@@ -40,6 +48,9 @@ const Data: React.FC = () => {
     type: "",
     description: "",
   });
+  const [validationResults, setValidationResults] = useState<
+    ValidationResult[]
+  >([]);
   const { toast } = useToast();
 
   const { data: layers, error: layersError } = useSWR<Layer[]>("/BIRD/layer");
@@ -136,9 +147,6 @@ const Data: React.FC = () => {
     if (!selectedTable || !datasetVersion) return;
     setIsMetadataLoading(true);
     try {
-      // const metadataResponse = await fastApiInstance.get(
-      //   `/api/v1/datasets/${selectedTable.dataset_id}/`
-      // );
       const columnsResponse = await fastApiInstance.get(
         `/api/v1/datasets/version-columns/${datasetVersion.dataset_version_id}/`
       );
@@ -199,6 +207,51 @@ const Data: React.FC = () => {
     [selectedTable, toast, fetchTableData]
   );
 
+  const handleValidate = useCallback(async () => {
+    if (!selectedTable || !datasetVersion) return;
+
+    const formattedDate = format(selectedDate, "yyyy-MM-dd");
+    if (!isValid(new Date(formattedDate))) {
+      toast({
+        title: "Invalid Date",
+        description:
+          "The selected date is not valid. Please choose a valid date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fastApiInstance.get<ValidationResult[]>(
+        `/api/v1/datasets/${selectedTable.dataset_id}/validate/`,
+        {
+          params: {
+            dataset_version_id: datasetVersion.dataset_version_id,
+            version_code: datasetVersion.version_code,
+          },
+        }
+      );
+
+      setValidationResults(response.data);
+      toast({
+        title: "Validation Complete",
+        description: `Found ${response.data.length} validation issue(s).`,
+        variant: response.data.length > 0 ? "destructive" : "default",
+      });
+    } catch (error: any) {
+      console.error("Validation error:", error);
+      let errorMessage =
+        "Failed to fetch validation results. Please try again.";
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      toast({
+        title: "Validation Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }, [selectedTable, datasetVersion, selectedDate, toast]);
   const filteredData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return [];
     return dataTableJson?.data?.filter((item: any) => {
@@ -305,9 +358,32 @@ const Data: React.FC = () => {
                 tableData={metadataTableData}
                 isLoading={isMetadataLoading}
                 onSave={handleSaveMetadata}
+                onValidate={handleValidate}
                 selectedTable={selectedTable}
                 datasetVersion={datasetVersion}
               />
+              {validationResults.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-lg font-semibold mb-2">
+                    Validation Results:
+                  </h4>
+                  <ul className="list-disc pl-5">
+                    {validationResults.map((result, index) => (
+                      <li
+                        key={index}
+                        className={`text-${
+                          result.severity_level.toLowerCase() === "error"
+                            ? "red"
+                            : "yellow"
+                        }-500`}
+                      >
+                        {result.validation_msg} (Row ID: {result.row_id},
+                        Column: {result.column_name})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-gray-500 italic">

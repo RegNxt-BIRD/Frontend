@@ -1,5 +1,14 @@
 import { format } from "date-fns";
-import { Circle, Info, Key, Plus, Save, Search, Trash } from "lucide-react";
+import {
+  CheckCircle,
+  Circle,
+  Info,
+  Key,
+  Plus,
+  Save,
+  Search,
+  Trash,
+} from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +54,7 @@ interface MetadataTableProps {
   tableData: Record<string, string | null>[];
   isLoading: boolean;
   onSave: (updatedData: Record<string, string | null>[]) => void;
+  onValidate: () => void;
   selectedTable: any;
   datasetVersion: any;
 }
@@ -70,6 +80,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   tableData,
   isLoading,
   onSave,
+  onValidate,
   selectedTable,
   datasetVersion,
 }) => {
@@ -234,6 +245,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
           <Button onClick={handleSave} disabled={!isDataModified}>
             <Save className="w-4 h-4 mr-2" />
             Save Changes
+          </Button>
+          <Button onClick={onValidate} variant="secondary">
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Validate
           </Button>
         </div>
       </div>
