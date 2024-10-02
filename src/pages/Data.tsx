@@ -25,7 +25,7 @@ const NO_FILTER = "NO_FILTER";
 
 interface ValidationResult {
   dataset_version_column_id: number;
-  row_id: number;
+  row_id: number | string;
   severity_level: string;
   validation_msg: string;
   column_name: string;
@@ -148,7 +148,10 @@ const Data: React.FC = () => {
     setIsMetadataLoading(true);
     try {
       const columnsResponse = await fastApiInstance.get(
-        `/api/v1/datasets/version-columns/${datasetVersion.dataset_version_id}/`
+        `/api/v1/datasets/${selectedTable.dataset_id}/columns/`,
+        {
+          params: { version_id: datasetVersion.dataset_version_id },
+        }
       );
       setMetadata(
         Array.isArray(columnsResponse.data) ? columnsResponse.data : null
@@ -252,6 +255,7 @@ const Data: React.FC = () => {
       });
     }
   }, [selectedTable, datasetVersion, selectedDate, toast]);
+
   const filteredData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return [];
     return dataTableJson?.data?.filter((item: any) => {
@@ -361,29 +365,8 @@ const Data: React.FC = () => {
                 onValidate={handleValidate}
                 selectedTable={selectedTable}
                 datasetVersion={datasetVersion}
+                validationResults={validationResults}
               />
-              {validationResults.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-lg font-semibold mb-2">
-                    Validation Results:
-                  </h4>
-                  <ul className="list-disc pl-5">
-                    {validationResults.map((result, index) => (
-                      <li
-                        key={index}
-                        className={`text-${
-                          result.severity_level.toLowerCase() === "error"
-                            ? "red"
-                            : "yellow"
-                        }-500`}
-                      >
-                        {result.validation_msg} (Row ID: {result.row_id},
-                        Column: {result.column_name})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </>
           ) : (
             <p className="text-gray-500 italic">

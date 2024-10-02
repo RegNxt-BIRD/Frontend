@@ -1,16 +1,3 @@
-import { format } from "date-fns";
-import {
-  CheckCircle,
-  Circle,
-  Info,
-  Key,
-  Plus,
-  Save,
-  Search,
-  Trash,
-} from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -35,6 +22,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Circle,
+  Info,
+  Key,
+  Plus,
+  Save,
+  Search,
+  Trash,
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 interface MetadataItem {
   dataset_version_column_id: number;
@@ -49,6 +49,14 @@ interface MetadataItem {
   is_filter: boolean;
 }
 
+interface ValidationResult {
+  dataset_version_column_id: number;
+  row_id: number | string;
+  severity_level: string;
+  validation_msg: string;
+  column_name: string;
+}
+
 interface MetadataTableProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
@@ -57,6 +65,7 @@ interface MetadataTableProps {
   onValidate: () => void;
   selectedTable: any;
   datasetVersion: any;
+  validationResults: ValidationResult[];
 }
 
 const getInputType = (datatype: string): string => {
@@ -83,6 +92,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   onValidate,
   selectedTable,
   datasetVersion,
+  validationResults,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [localTableData, setLocalTableData] = useState<
@@ -140,6 +150,23 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     );
   }, [metadata, searchTerm]);
 
+  const getValidationErrors = useCallback(
+    (rowIndex: number, columnName: string) => {
+      const errors = validationResults.filter((result) => {
+        const rowIdMatch =
+          result.row_id === "N/A" ||
+          result.row_id === (rowIndex + 1).toString() ||
+          (typeof result.row_id === "number" && result.row_id === rowIndex + 1);
+        const columnMatch =
+          result.column_name.toLowerCase() === columnName.toLowerCase();
+        return rowIdMatch && columnMatch;
+      });
+
+      return errors;
+    },
+    [validationResults]
+  );
+
   const renderInputField = useCallback(
     (
       item: MetadataItem,
@@ -147,16 +174,31 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
       rowIndex: number
     ) => {
       const inputType = getInputType(item.datatype);
+      const validationErrors = getValidationErrors(rowIndex, item.code);
+      const hasError =
+        validationErrors.length > 0 ||
+        validationResults.some(
+          (result) =>
+            result.column_name.toLowerCase() === item.code.toLowerCase()
+        );
 
-      if (inputType === "date") {
-        return (
+      const commonInputProps = {
+        className: cn(
+          "w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm",
+          hasError && "border-red-500"
+        ),
+      };
+
+      const inputComponent =
+        inputType === "date" ? (
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !row[item.code] && "text-muted-foreground"
+                  !row[item.code] && "text-muted-foreground",
+                  hasError && "border-red-500"
                 )}
               >
                 {row[item.code] ? (
@@ -183,23 +225,50 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
               />
             </PopoverContent>
           </Popover>
+        ) : (
+          <Input
+            type={inputType}
+            value={row[item.code] || ""}
+            onChange={(e) =>
+              handleCellChange(rowIndex, item.code, e.target.value || null)
+            }
+            {...commonInputProps}
+          />
         );
-      }
 
       return (
-        <Input
-          type={inputType}
-          value={row[item.code] || ""}
-          onChange={(e) =>
-            handleCellChange(rowIndex, item.code, e.target.value || null)
-          }
-          className="w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm"
-        />
+        <div className="relative w-full">
+          {inputComponent}
+          {hasError && (
+            <AlertTriangle className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2" />
+          )}
+          {hasError && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full h-full absolute top-0 left-0" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {validationErrors.length > 0 ? (
+                    validationErrors.map((error, index) => (
+                      <p key={index} className="text-red-500">
+                        {error.validation_msg}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-red-500">
+                      This column has validation errors.
+                    </p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       );
     },
-    [handleCellChange]
+    [handleCellChange, getValidationErrors, validationResults]
   );
-
   if (isLoading) {
     return (
       <div className="space-y-4">
