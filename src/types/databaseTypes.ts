@@ -70,3 +70,24 @@ export interface Layer {
   name: string;
   code: string;
 }
+
+export interface MetadataItem {
+  dataset_version_column_id: number;
+  code: string;
+  label: string;
+  description: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+}
+
+export interface ValidationResult {
+  dataset_version_column_id: number;
+  row_id: number | string;
+  severity_level: string;
+  validation_msg: string;
+  column_name: string;
+}

@@ -57,7 +57,7 @@ interface ValidationResult {
   column_name: string;
 }
 
-interface MetadataTableProps {
+interface OldMetaDataProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
   isLoading: boolean;
@@ -84,7 +84,7 @@ const getInputType = (datatype: string): string => {
   }
 };
 
-export const MetadataTable: React.FC<MetadataTableProps> = ({
+export const OldMetaData: React.FC<OldMetaDataProps> = ({
   metadata,
   tableData,
   isLoading,
@@ -436,4 +436,4 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   );
 };
 
-export default MetadataTable;
+export default OldMetaData;

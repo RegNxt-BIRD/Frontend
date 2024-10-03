@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
 import DatePicker from "@/components/DatePicker";
-import { MetadataTable } from "@/components/MetadataTable";
+import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import DataSkeleton from "@/components/skeletons/DataSkeleton";
