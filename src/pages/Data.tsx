@@ -281,7 +281,7 @@ const Data: React.FC = () => {
   );
   const frameworksWithNoFilter = useMemo(
     () => [
-      { code: NO_FILTER, formatted_name: "No Framework Selected" },
+      { CODE: NO_FILTER, NAME: "No Framework Selected" },
       ...(frameworks?.data || []),
     ],
     [frameworks]
@@ -299,8 +299,8 @@ const Data: React.FC = () => {
           </SelectTrigger>
           <SelectContent>
             {frameworksWithNoFilter.map((framework) => (
-              <SelectItem key={framework.code} value={framework.code}>
-                {framework.formatted_name}
+              <SelectItem key={framework.CODE} value={framework.CODE}>
+                {framework.NAME}
               </SelectItem>
             ))}
           </SelectContent>

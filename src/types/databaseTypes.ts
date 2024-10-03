@@ -58,8 +58,8 @@ export interface DatabaseConfig {
 }
 
 export interface Framework {
-  code: string;
-  formatted_name: string;
+  CODE: string;
+  NAME: string;
 }
 
 export interface Frameworks {
