@@ -58,8 +58,8 @@ export interface DatabaseConfig {
 }
 
 export interface Framework {
-  CODE: string;
-  NAME: string;
+  code: string;
+  name: string;
 }
 
 export interface Frameworks {
@@ -69,6 +69,9 @@ export interface Frameworks {
 export interface Layer {
   name: string;
   code: string;
+}
+export interface Layers {
+  data: Layer[];
 }
 
 export interface MetadataItem {

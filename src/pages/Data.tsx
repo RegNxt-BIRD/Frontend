@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
-import { Frameworks, Layer } from "@/types/databaseTypes";
+import { Frameworks, Layers } from "@/types/databaseTypes";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -53,7 +53,10 @@ const Data: React.FC = () => {
   >([]);
   const { toast } = useToast();
 
-  const { data: layers, error: layersError } = useSWR<Layer[]>("/BIRD/layer");
+  const { data: layers, error: layersError } = useSWR<Layers>(
+    "/api/v1/layers/",
+    fastApiInstance
+  );
   const { data: frameworks, error: frameworksError } = useSWR<Frameworks>(
     "/api/v1/frameworks/",
     fastApiInstance
@@ -276,14 +279,18 @@ const Data: React.FC = () => {
       return frameworkMatch && layerMatch && columnFilterMatch;
     });
   }, [dataTableJson, selectedFramework, selectedLayer, columnFilters]);
+  console.log({ layers });
 
   const layersWithNoFilter = useMemo(
-    () => [{ name: "No Layer Selected", code: NO_FILTER }, ...(layers || [])],
+    () => [
+      { code: NO_FILTER, name: "No Layer Selected" },
+      ...(layers?.data || []),
+    ],
     [layers]
   );
   const frameworksWithNoFilter = useMemo(
     () => [
-      { CODE: NO_FILTER, NAME: "No Framework Selected" },
+      { code: NO_FILTER, name: "No Framework Selected" },
       ...(frameworks?.data || []),
     ],
     [frameworks]
@@ -301,8 +308,8 @@ const Data: React.FC = () => {
           </SelectTrigger>
           <SelectContent>
             {frameworksWithNoFilter.map((framework) => (
-              <SelectItem key={framework.CODE} value={framework.CODE}>
-                {framework.NAME}
+              <SelectItem key={framework.code} value={framework.code}>
+                {framework.name}
               </SelectItem>
             ))}
           </SelectContent>
