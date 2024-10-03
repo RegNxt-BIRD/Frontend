@@ -186,6 +186,8 @@ const Data: React.FC = () => {
 
   const handleTableClick = useCallback((table: any) => {
     setSelectedTable(table);
+    setMetadata(null);
+    setMetadataTableData([]);
   }, []);
 
   const handleSaveMetadata = useCallback(

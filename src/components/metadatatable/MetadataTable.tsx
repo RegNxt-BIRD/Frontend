@@ -35,7 +35,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   useEffect(() => {
     if (tableData && tableData.length > 0) {
       setLocalTableData(tableData);
+    } else {
+      setLocalTableData([]);
     }
+    setIsDataModified(false);
   }, [tableData]);
 
   const handleCellChange = useCallback(
