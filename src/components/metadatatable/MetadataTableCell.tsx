@@ -79,14 +79,12 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
   );
   const hasError =
     validationErrors.length > 0 ||
-    validationResults.some(
-      (result) => result.column_name.toLowerCase() === item.code.toLowerCase()
-    );
+    validationResults.some((result) => result.column_name === item.code);
 
   const commonInputProps = {
     className: cn(
       "w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm",
-      hasError && "border-red-500"
+      hasError && "border-red-500 pr-8" // Added padding-right for the error icon
     ),
   };
 
@@ -100,7 +98,7 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
               className={cn(
                 "w-full justify-start text-left font-normal",
                 !row[item.code] && "text-muted-foreground",
-                hasError && "border-red-500"
+                hasError && "border-red-500 pr-8"
               )}
             >
               {row[item.code] ? (
@@ -147,29 +145,28 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
       <div className="relative w-full">
         {renderInput()}
         {hasError && (
-          <>
-            <AlertTriangle className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2" />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="w-full h-full absolute top-0 left-0" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {validationErrors.length > 0 ? (
-                    validationErrors.map((error, index) => (
-                      <p key={index} className="text-red-500">
-                        {error.validation_msg}
-                      </p>
-                    ))
-                  ) : (
-                    <p className="text-red-500">
-                      This column has validation errors.
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertTriangle className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" />
+              </TooltipTrigger>
+              <TooltipContent>
+                {validationErrors.length > 0 ? (
+                  validationErrors.map((error, index) => (
+                    <p key={index} className="text-red-500">
+                      {error.validation_msg}
                     </p>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </>
+                  ))
+                ) : (
+                  <p className="text-red-500">
+                    {validationResults.find(
+                      (result) => result.column_name === item.code
+                    )?.validation_msg || "Validation error"}
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
     </TableCell>
