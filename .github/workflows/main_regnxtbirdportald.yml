@@ -19,6 +19,9 @@ jobs:
           node-version: "20.x"
 
       - name: npm install, build, and test
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_FAST_API_BACKEND: ${{ secrets.VITE_FAST_API_BACKEND }}
         run: |
           npm install
           npm run build --if-present
