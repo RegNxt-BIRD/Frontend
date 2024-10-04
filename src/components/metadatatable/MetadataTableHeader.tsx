@@ -1,7 +1,7 @@
 // MetadataTableHeader.tsx
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, Plus, Save, Search } from "lucide-react";
+import { CheckCircle, Loader, Plus, Save, Search } from "lucide-react";
 import React from "react";
 
 interface MetadataTableHeaderProps {
@@ -11,6 +11,8 @@ interface MetadataTableHeaderProps {
   handleSave: () => void;
   onValidate: () => void;
   isDataModified: boolean;
+  isSaving: boolean;
+  isValidating: boolean;
 }
 
 export const MetadataTableHeader: React.FC<MetadataTableHeaderProps> = ({
@@ -18,6 +20,8 @@ export const MetadataTableHeader: React.FC<MetadataTableHeaderProps> = ({
   setSearchTerm,
   handleAddRow,
   handleSave,
+  isSaving,
+  isValidating,
   onValidate,
   isDataModified,
 }) => (
@@ -36,13 +40,21 @@ export const MetadataTableHeader: React.FC<MetadataTableHeaderProps> = ({
         <Plus className="w-4 h-4 mr-2" />
         Add Row
       </Button>
-      <Button onClick={handleSave} disabled={!isDataModified}>
-        <Save className="w-4 h-4 mr-2" />
-        Save Changes
+      <Button onClick={handleSave} disabled={!isDataModified || isSaving}>
+        {isSaving ? (
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Save className="w-4 h-4 mr-2" />
+        )}
+        {isSaving ? "Saving..." : "Save Changes"}
       </Button>
-      <Button onClick={onValidate} variant="secondary">
-        <CheckCircle className="w-4 h-4 mr-2" />
-        Validate
+      <Button onClick={onValidate} variant="secondary" disabled={isValidating}>
+        {isValidating ? (
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <CheckCircle className="w-4 h-4 mr-2" />
+        )}
+        {isValidating ? "Validating..." : "Validate"}
       </Button>
     </div>
   </div>

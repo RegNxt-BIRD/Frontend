@@ -26,6 +26,8 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   validationResults,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [localTableData, setLocalTableData] = useState<
     Record<string, string | null>[]
   >([]);
@@ -71,13 +73,23 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(true);
   }, []);
 
-  const handleSave = useCallback(() => {
-    onSave(localTableData);
-    setIsDataModified(false);
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      await onSave(localTableData);
+      setIsDataModified(false);
+    } finally {
+      setIsSaving(false);
+    }
   }, [localTableData, onSave]);
 
-  const handleValidate = useCallback(() => {
-    onValidate(localTableData);
+  const handleValidate = useCallback(async () => {
+    setIsValidating(true);
+    try {
+      await onValidate(localTableData);
+    } finally {
+      setIsValidating(false);
+    }
   }, [onValidate, localTableData]);
 
   const filteredMetadata = useMemo(() => {
@@ -107,6 +119,8 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
+        isSaving={isSaving}
+        isValidating={isValidating}
         onValidate={handleValidate}
         isDataModified={isDataModified}
       />

@@ -230,7 +230,7 @@ const Data: React.FC = () => {
           {
             dataset_version_id: datasetVersion.dataset_version_id,
             version_code: datasetVersion.version_code,
-            table_data: tableData, // This should include both saved and unsaved rows
+            table_data: tableData,
             columns: metadata,
           }
         );
@@ -257,7 +257,6 @@ const Data: React.FC = () => {
     },
     [selectedTable, datasetVersion, selectedDate, metadata, toast]
   );
-
   const filteredData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return [];
     return dataTableJson?.data?.filter((item: any) => {
