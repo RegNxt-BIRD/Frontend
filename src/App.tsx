@@ -94,7 +94,6 @@ const swrConfig = {
 } satisfies ComponentProps<typeof SWRConfig>["value"];
 
 const App: React.FC = () => {
-  console.log("api url: ", import.meta.env.VITE_API_BASE_URL);
   return (
     <ErrorBoundary>
       <AuthProvider>
