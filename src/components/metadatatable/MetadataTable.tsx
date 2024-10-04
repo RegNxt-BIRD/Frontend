@@ -105,7 +105,11 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   }
 
   if (!metadata || metadata.length === 0) {
-    return <div>No metadata available</div>;
+    return (
+      <p className="text-gray-500 italic">
+        No data available for the selected table.
+      </p>
+    );
   }
 
   return (

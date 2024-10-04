@@ -19,7 +19,12 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: "18.x"
+
+      - name: Create .env file
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+          echo "VITE_FAST_API_BACKEND=${{ secrets.VITE_FAST_API_BACKEND }}" >> .env
 
       - name: npm install, build, and test
         run: |
@@ -40,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: 'Production'
+      name: "Production"
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
       id-token: write #This is required for requesting the JWT
@@ -53,7 +58,7 @@ jobs:
 
       - name: Unzip artifact for deployment
         run: unzip release.zip
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -61,11 +66,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_292D92A9B52246B1B4D4A97BFA110129 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F203A333E2F646A58E77844B66E299EF }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'RegNxtBIRDPortalD'
-          slot-name: 'Production'
+          app-name: "RegNxtBIRDPortalD"
+          slot-name: "Production"
           package: .
-          
