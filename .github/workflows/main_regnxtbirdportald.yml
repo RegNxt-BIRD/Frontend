@@ -21,10 +21,10 @@ jobs:
         with:
           node-version: "18.x"
 
-      - name: Print env variables (USE WITH CAUTION)
+      - name: Create .env file
         run: |
-          echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}"
-          echo "VITE_FAST_API_BACKEND=${VITE_FAST_API_BACKEND}"
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+          echo "VITE_FAST_API_BACKEND=${{ secrets.VITE_FAST_API_BACKEND }}" >> .env
 
       - name: Check .env file
         run: |
