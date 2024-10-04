@@ -230,7 +230,7 @@ const Data: React.FC = () => {
           {
             dataset_version_id: datasetVersion.dataset_version_id,
             version_code: datasetVersion.version_code,
-            table_data: tableData,
+            table_data: tableData, // This should include both saved and unsaved rows
             columns: metadata,
           }
         );

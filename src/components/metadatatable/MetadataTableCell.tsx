@@ -53,7 +53,9 @@ const getValidationErrors = (
   validationResults: ValidationResult[]
 ): ValidationResult[] => {
   return validationResults.filter((result) => {
-    const rowIdMatch = result.row_id === row.id;
+    const rowIdMatch = row.id
+      ? result.row_id === row.id
+      : result.row_id === "unsaved";
     const columnMatch =
       result.column_name.toLowerCase() === columnName.toLowerCase();
     return rowIdMatch && columnMatch;
