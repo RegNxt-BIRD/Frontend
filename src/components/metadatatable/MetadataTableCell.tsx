@@ -1,4 +1,3 @@
-// MetadataTableCell.tsx
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -49,15 +48,12 @@ const getInputType = (datatype: string): string => {
 };
 
 const getValidationErrors = (
-  rowIndex: number,
+  row: Record<string, string | null>,
   columnName: string,
   validationResults: ValidationResult[]
 ): ValidationResult[] => {
   return validationResults.filter((result) => {
-    const rowIdMatch =
-      result.row_id === "N/A" ||
-      result.row_id === (rowIndex + 1).toString() ||
-      (typeof result.row_id === "number" && result.row_id === rowIndex + 1);
+    const rowIdMatch = result.row_id === row.id;
     const columnMatch =
       result.column_name.toLowerCase() === columnName.toLowerCase();
     return rowIdMatch && columnMatch;
@@ -73,18 +69,16 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
 }) => {
   const inputType = getInputType(item.datatype);
   const validationErrors = getValidationErrors(
-    rowIndex,
+    row,
     item.code,
     validationResults
   );
-  const hasError =
-    validationErrors.length > 0 ||
-    validationResults.some((result) => result.column_name === item.code);
+  const hasError = validationErrors.length > 0;
 
   const commonInputProps = {
     className: cn(
       "w-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md shadow-sm",
-      hasError && "border-red-500 pr-8" // Added padding-right for the error icon
+      hasError && "border-red-500 pr-8"
     ),
   };
 
@@ -151,19 +145,11 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
                 <AlertTriangle className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" />
               </TooltipTrigger>
               <TooltipContent>
-                {validationErrors.length > 0 ? (
-                  validationErrors.map((error, index) => (
-                    <p key={index} className="text-red-500">
-                      {error.validation_msg}
-                    </p>
-                  ))
-                ) : (
-                  <p className="text-red-500">
-                    {validationResults.find(
-                      (result) => result.column_name === item.code
-                    )?.validation_msg || "Validation error"}
+                {validationErrors.map((error, index) => (
+                  <p key={index} className="text-red-500">
+                    {error.validation_msg}
                   </p>
-                )}
+                ))}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

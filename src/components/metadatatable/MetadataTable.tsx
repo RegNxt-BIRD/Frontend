@@ -1,4 +1,3 @@
-// MetadataTable.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,7 +9,7 @@ interface MetadataTableProps {
   tableData: Record<string, string | null>[];
   isLoading: boolean;
   onSave: (updatedData: Record<string, string | null>[]) => void;
-  onValidate: () => void;
+  onValidate: (tableData: Record<string, string | null>[]) => void;
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
   validationResults: ValidationResult[];
@@ -34,7 +33,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
   useEffect(() => {
     if (tableData && tableData.length > 0) {
-      setLocalTableData(tableData);
+      setLocalTableData(tableData.map((row) => ({ ...row, id: row.id })));
     } else {
       setLocalTableData([]);
     }
@@ -77,6 +76,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(false);
   }, [localTableData, onSave]);
 
+  const handleValidate = useCallback(() => {
+    onValidate(localTableData);
+  }, [onValidate, localTableData]);
+
   const filteredMetadata = useMemo(() => {
     return (
       metadata?.filter((item) =>
@@ -104,7 +107,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
-        onValidate={onValidate}
+        onValidate={handleValidate}
         isDataModified={isDataModified}
       />
       <MetadataTableBody

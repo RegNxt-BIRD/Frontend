@@ -1,3 +1,4 @@
+// Data.tsx
 import { format, isValid } from "date-fns";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
@@ -19,17 +20,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
-import { Frameworks, Layers } from "@/types/databaseTypes";
+import { Frameworks, Layers, ValidationResult } from "@/types/databaseTypes";
 
 const NO_FILTER = "NO_FILTER";
-
-interface ValidationResult {
-  dataset_version_column_id: number;
-  row_id: number | string;
-  severity_level: string;
-  validation_msg: string;
-  column_name: string;
-}
 
 const Data: React.FC = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
@@ -38,6 +31,7 @@ const Data: React.FC = () => {
   const [metadata, setMetadata] = useState<any[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
+
   const [metadataTableData, setMetadataTableData] = useState<
     Record<string, string>[]
   >([]);
@@ -215,51 +209,54 @@ const Data: React.FC = () => {
     [selectedTable, toast, fetchTableData]
   );
 
-  const handleValidate = useCallback(async () => {
-    if (!selectedTable || !datasetVersion) return;
+  const handleValidate = useCallback(
+    async (tableData: Record<string, string | null>[]) => {
+      if (!selectedTable || !datasetVersion) return;
 
-    const formattedDate = format(selectedDate, "yyyy-MM-dd");
-    if (!isValid(new Date(formattedDate))) {
-      toast({
-        title: "Invalid Date",
-        description:
-          "The selected date is not valid. Please choose a valid date.",
-        variant: "destructive",
-      });
-      return;
-    }
+      const formattedDate = format(selectedDate, "yyyy-MM-dd");
+      if (!isValid(new Date(formattedDate))) {
+        toast({
+          title: "Invalid Date",
+          description:
+            "The selected date is not valid. Please choose a valid date.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    try {
-      const response = await fastApiInstance.get<ValidationResult[]>(
-        `/api/v1/datasets/${selectedTable.dataset_id}/validate/`,
-        {
-          params: {
+      try {
+        const response = await fastApiInstance.post<ValidationResult[]>(
+          `/api/v1/datasets/${selectedTable.dataset_id}/validate/`,
+          {
             dataset_version_id: datasetVersion.dataset_version_id,
             version_code: datasetVersion.version_code,
-          },
-        }
-      );
+            table_data: tableData,
+            columns: metadata,
+          }
+        );
 
-      setValidationResults(response.data);
-      toast({
-        title: "Validation Complete",
-        description: `Found ${response.data.length} validation issue(s).`,
-        variant: response.data.length > 0 ? "destructive" : "default",
-      });
-    } catch (error: any) {
-      console.error("Validation error:", error);
-      let errorMessage =
-        "Failed to fetch validation results. Please try again.";
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+        setValidationResults(response.data);
+        toast({
+          title: "Validation Complete",
+          description: `Found ${response.data.length} validation issue(s).`,
+          variant: response.data.length > 0 ? "destructive" : "default",
+        });
+      } catch (error: any) {
+        console.error("Validation error:", error);
+        let errorMessage =
+          "Failed to fetch validation results. Please try again.";
+        if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+        toast({
+          title: "Validation Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
-      toast({
-        title: "Validation Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  }, [selectedTable, datasetVersion, selectedDate, toast]);
+    },
+    [selectedTable, datasetVersion, selectedDate, metadata, toast]
+  );
 
   const filteredData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return [];
@@ -279,7 +276,6 @@ const Data: React.FC = () => {
       return frameworkMatch && layerMatch && columnFilterMatch;
     });
   }, [dataTableJson, selectedFramework, selectedLayer, columnFilters]);
-  console.log({ layers });
 
   const layersWithNoFilter = useMemo(
     () => [
@@ -339,6 +335,7 @@ const Data: React.FC = () => {
         filteredDataLength={filteredData.length}
         selectedFramework={selectedFramework}
         selectedLayer={selectedLayer}
+        selectedDate={selectedDate}
       />
       <SharedColumnFilters
         filters={columnFilters}
