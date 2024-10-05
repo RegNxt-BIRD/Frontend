@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TableCell } from "@/components/ui/table";
 import {
   Tooltip,
@@ -18,6 +18,7 @@ import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import { format } from "date-fns";
 import { AlertTriangle } from "lucide-react";
 import React from "react";
+import { DatePicker } from "../GDate";
 
 interface MetadataTableCellProps {
   item: MetadataItem;
@@ -83,44 +84,53 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
       hasError && "border-red-500 pr-8"
     ),
   };
+  const isValidDate = (dateString: string, pattern: string): boolean => {
+    const regex = new RegExp(`^${pattern}$`);
+    return regex.test(dateString);
+  };
 
   const renderInput = () => {
-    if (inputType === "date") {
+    if (item.value_options && Array.isArray(item.value_options)) {
+      const currentValue = row[item.code]?.toString() || "";
       return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !row[item.code] && "text-muted-foreground",
-                hasError && "border-red-500 pr-8"
-              )}
-            >
-              {row[item.code] ? (
-                format(new Date(row[item.code] || ""), "yyyy-MM-dd")
-              ) : (
-                <span>Pick a date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={
-                row[item.code] ? new Date(row[item.code] || "") : undefined
-              }
-              onSelect={(date) =>
-                handleCellChange(
-                  rowIndex,
-                  item.code,
-                  date ? format(date, "yyyy-MM-dd") : null
-                )
-              }
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <Select
+          value={currentValue}
+          onValueChange={(value) =>
+            handleCellChange(rowIndex, item.code, value)
+          }
+        >
+          <SelectTrigger className={cn(commonInputProps.className, "h-10")}>
+            <SelectValue placeholder="Select an option" />
+          </SelectTrigger>
+          <SelectContent>
+            {item.value_options.map((option) => (
+              <SelectItem
+                key={option.item_code}
+                value={option.item_code.toString()}
+              >
+                {option.item_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    if (inputType === "date" && item.datatype === "GregorianDay") {
+      const dateValue = row[item.code];
+      const datePattern =
+        item.datatype_format?.split("#!#")[1].split("=")[1] || "";
+
+      return (
+        <DatePicker
+          value={dateValue}
+          onChange={(newValue) =>
+            handleCellChange(rowIndex, item.code, newValue)
+          }
+          isValidDate={(date) =>
+            isValidDate(format(date, "yyyy-MM-dd"), datePattern)
+          }
+          className={commonInputProps.className}
+        />
       );
     }
 

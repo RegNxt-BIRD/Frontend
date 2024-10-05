@@ -85,6 +85,10 @@ export interface MetadataItem {
   is_key: boolean;
   value_statement: string;
   is_filter: boolean;
+  value_options?: {
+    item_code: string;
+    item_name: string;
+  }[];
 }
 
 export interface ValidationResult {
