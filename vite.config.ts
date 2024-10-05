@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: "dist", // Add this line
+      outDir: "dist",
       rollupOptions: {
         output: {
           manualChunks: {
