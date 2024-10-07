@@ -1,39 +1,27 @@
-import React from 'react';
+import React from "react";
 
 const LogoSpinner: React.FC = () => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
       <div className="relative w-32 h-32 animate-spin">
-        <svg width="100%" height="100%" viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg">
-          {/* Atomic symbol */}
-          <g transform="translate(150, 150) scale(1.2)" stroke="white" fill="none">
-            {/* Outer circles */}
-            <ellipse rx="100" ry="50" strokeWidth="3" />
-            <ellipse rx="100" ry="50" transform="rotate(60)" strokeWidth="3" />
-            <ellipse rx="100" ry="50" transform="rotate(-60)" strokeWidth="3" />
-            
-            {/* Inner dotted circle */}
-            <circle r="30" strokeWidth="1" strokeDasharray="2,4" />
-            
-            {/* Outer dots */}
-            <circle cx="0" cy="-50" r="5" fill="white" />
-            <circle cx="43.3" cy="25" r="5" fill="white" />
-            <circle cx="-43.3" cy="25" r="5" fill="white" />
-            <circle cx="0" cy="50" r="5" fill="white" />
-            <circle cx="43.3" cy="-25" r="5" fill="white" />
-            <circle cx="-43.3" cy="-25" r="5" fill="white" />
-            
-            {/* Inner dots */}
-            <circle cx="0" cy="-30" r="3" fill="white" />
-            <circle cx="26" cy="15" r="3" fill="white" />
-            <circle cx="-26" cy="15" r="3" fill="white" />
-            
-            {/* Center dot */}
-            <circle r="5" fill="white" />
-          </g>
+        <svg
+          width="159"
+          height="156"
+          viewBox="0 0 159 156"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            d="M0 10H81.9764C109.591 10 131.976 32.3858 131.976 60C131.976 76.7093 123.78 91.5043 111.188 100.584L0 10ZM146 150L62.5 79H16V156L44.6232 106.65L89.5 150H146Z"
+            fill="#6120EB"
+          />
         </svg>
       </div>
-      <div className="absolute mt-32 text-white text-xl font-bold">Loading...</div>
+      <div className="absolute mt-64  text-xl font-bold text-black">
+        Loading...
+      </div>
     </div>
   );
 };

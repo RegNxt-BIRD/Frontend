@@ -58,7 +58,7 @@ export default function Login() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to continue using the BIRD"
-      imageSrc="/logo.svg"
+      imageSrc="/white-logo.svg"
       imageAlt="BIRD"
       description="It provides a user interface for managing and visualizing datasets without predefined models or classes"
     >
@@ -103,7 +103,7 @@ export default function Login() {
       <div className="mt-6 text-center text-sm">
         <a
           className="text-muted-foreground hover:text-primary underline underline-offset-4"
-          href="/forgot-password"
+          href="/auth/forgot-password"
         >
           Forgot password?
         </a>
@@ -115,7 +115,7 @@ export default function Login() {
         </span>
         <a
           className="font-semibold hover:text-primary underline underline-offset-4"
-          href="/register"
+          href="/auth/register"
         >
           Sign up
         </a>

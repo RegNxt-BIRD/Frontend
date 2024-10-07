@@ -47,44 +47,6 @@ interface NavigationItem {
   current: boolean;
 }
 
-/**
- * Logo component for the sidebar
- */
-const Logo: React.FC<LogoProps> = ({ size }) => (
-  <div className="relative">
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 300 300"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <g
-        transform={`translate(150, 150) scale(${size / 300})`}
-        stroke="currentColor"
-        fill="none"
-      >
-        <ellipse rx="100" ry="50" strokeWidth="3" />
-        <ellipse rx="100" ry="50" transform="rotate(60)" strokeWidth="3" />
-        <ellipse rx="100" ry="50" transform="rotate(-60)" strokeWidth="3" />
-        <circle r="30" strokeWidth="1" strokeDasharray="2,4" />
-        <circle cx="0" cy="-50" r="5" fill="currentColor" />
-        <circle cx="43.3" cy="25" r="5" fill="currentColor" />
-        <circle cx="-43.3" cy="25" r="5" fill="currentColor" />
-        <circle cx="0" cy="50" r="5" fill="currentColor" />
-        <circle cx="43.3" cy="-25" r="5" fill="currentColor" />
-        <circle cx="-43.3" cy="-25" r="5" fill="currentColor" />
-        <circle cx="0" cy="-30" r="3" fill="currentColor" />
-        <circle cx="26" cy="15" r="3" fill="currentColor" />
-        <circle cx="-26" cy="15" r="3" fill="currentColor" />
-        <circle r="5" fill="currentColor" />
-      </g>
-    </svg>
-  </div>
-);
-
-/**
- * CollapsibleSidebar component
- */
 const CollapsibleSidebar: React.FC<SidebarProps> = ({
   isExpanded,
   setIsExpanded,
@@ -174,7 +136,7 @@ const CollapsibleSidebar: React.FC<SidebarProps> = ({
     <>
       <motion.div
         ref={sidebarRef}
-        className="fixed left-0 top-0 z-40 h-screen bg-background border-r shadow-lg flex flex-col"
+        className="fixed left-0 top-0 z-40 h-screen bg-custom-primary-light dark:bg-custom-primary-dark border-r shadow-lg flex flex-col"
         initial={false}
         animate={{ width: isExpanded || isDropdownOpen ? 280 : 80 }}
         transition={{ duration: 0.3 }}
@@ -187,9 +149,12 @@ const CollapsibleSidebar: React.FC<SidebarProps> = ({
               animate={{ width: isExpanded || isDropdownOpen ? 160 : 140 }}
               transition={{ duration: 0.3 }}
             >
-              <Logo
-                size={isExpanded || isDropdownOpen ? 160 : 140}
-                expanded={isExpanded || isDropdownOpen}
+              <img
+                src={isExpanded || isDropdownOpen ? "/logo.svg" : "/vite.svg"}
+                alt="logo"
+                width={isExpanded || isDropdownOpen ? 200 : 50}
+                height={400}
+                className="mx-auto my-8"
               />
             </motion.div>
           </div>
@@ -201,8 +166,8 @@ const CollapsibleSidebar: React.FC<SidebarProps> = ({
                     to={item.href}
                     className={classNames(
                       item.current
-                        ? "bg-gray-200 text-black"
-                        : "text-black hover:bg-gray-200 hover:text-black",
+                        ? "bg-custom-primary text-white"
+                        : "text-custom-text-light dark:text-custom-text-dark hover:bg-custom-primary hover:text-white",
                       "group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6"
                     )}
                   >
