@@ -5,8 +5,6 @@ import useSWR from "swr";
 
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
-import NotFoundMessage from "@/components/NotFound";
-
 import DatePicker from "@/components/DatePicker";
 import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
@@ -344,17 +342,13 @@ const Data: React.FC = () => {
           setColumnFilters((prev) => ({ ...prev, [key]: value }))
         }
       />
-      {filteredData.length > 0 ? (
-        selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
-          <DataAccordion data={filteredData} onTableClick={handleTableClick} />
-        ) : (
-          <ConfigurationDataTable
-            data={filteredData}
-            onRowClick={handleTableClick}
-          />
-        )
+      {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
+        <DataAccordion data={filteredData} onTableClick={handleTableClick} />
       ) : (
-        <NotFoundMessage />
+        <ConfigurationDataTable
+          data={filteredData}
+          onRowClick={handleTableClick}
+        />
       )}
       {selectedTable && (
         <div className="mt-8">
