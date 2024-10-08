@@ -23,7 +23,7 @@ const Configuration = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Database className="mr-2" />
-              Create Dataset
+              Configure Datasets
             </CardTitle>
             <CardDescription>Define a new dataset structure</CardDescription>
           </CardHeader>
