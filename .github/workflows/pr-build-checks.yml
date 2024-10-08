@@ -1,0 +1,38 @@
+name: PR Build Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_FAST_API_BACKEND: ${{ secrets.VITE_FAST_API_BACKEND }}
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Check for build artifacts
+        run: |
+          if [ -d "dist" ]; then
+            echo "Build successful. Dist folder exists."
+          else
+            echo "Build failed. Dist folder not found."
+            exit 1
+          fi
