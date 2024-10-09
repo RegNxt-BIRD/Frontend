@@ -7,6 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { Frameworks, Layers } from "@/types/databaseTypes";
@@ -226,7 +233,7 @@ export const ConfigureDatasets: React.FC = () => {
     if (datasetToDelete?.is_system_generated) return;
     setIsProcessing(true);
     try {
-      await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}`);
+      await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}/`);
       setDatasets(datasets.filter((d) => d.dataset_id !== deletingDatasetId));
       toast({ title: "Success", description: "Dataset deleted successfully." });
       setIsDeleteDialogOpen(false);
@@ -326,13 +333,47 @@ export const ConfigureDatasets: React.FC = () => {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Configure Datasets</h2>
-      {/* ... (framework and layer selects) */}
+
+      <div className="flex space-x-4 mb-4">
+        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Select a Framework" />
+          </SelectTrigger>
+          <SelectContent>
+            {frameworksWithNoFilter.map((framework) => (
+              <SelectItem key={framework.code} value={framework.code}>
+                {framework.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select onValueChange={handleLayerChange} value={selectedLayer}>
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Select a Layer" />
+          </SelectTrigger>
+          <SelectContent>
+            {layersWithNoFilter.map((layer) => (
+              <SelectItem key={layer.code} value={layer.code}>
+                {layer.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <SharedColumnFilters
         filters={columnFilters}
         setFilter={(key, value) =>
           setColumnFilters((prev) => ({ ...prev, [key]: value }))
         }
       />
+
+      <div className="mt-4">
+        <Button onClick={() => setIsDatasetModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create New Dataset
+        </Button>
+      </div>
+
       {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
         <FrameworkAccordion
           groupedDatasets={groupedDatasets}
@@ -364,13 +405,6 @@ export const ConfigureDatasets: React.FC = () => {
           }}
         />
       )}
-
-      <div className="mt-4">
-        <Button onClick={() => setIsDatasetModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Dataset
-        </Button>
-      </div>
 
       <DatasetFormModal
         isOpen={isDatasetModalOpen}

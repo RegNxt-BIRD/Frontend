@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface SharedDataTableProps<T> {
   data: T[];
@@ -61,8 +62,23 @@ export function SharedDataTable<T>({
     },
   });
 
+  const handleSearch = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setGlobalFilter(event.target.value);
+    },
+    []
+  );
+
+  const memoizedRows = useMemo(() => table.getRowModel().rows, [table]);
+
   return (
     <div className="space-y-4">
+      <Input
+        placeholder="Search..."
+        value={globalFilter ?? ""}
+        onChange={handleSearch}
+        className="max-w-sm"
+      />
       <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
@@ -101,8 +117,8 @@ export function SharedDataTable<T>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows?.map((row) => (
+            {memoizedRows.length ? (
+              memoizedRows.map((row) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
