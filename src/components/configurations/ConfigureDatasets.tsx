@@ -1,4 +1,8 @@
-// ConfigureDatasets.tsx
+import { ColumnDef } from "@tanstack/react-table";
+import { Edit, Plus, Trash } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+
 import { SharedDataTable } from "@/components/SharedDataTable";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import { Button } from "@/components/ui/button";
@@ -12,11 +16,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { Frameworks, Layers } from "@/types/databaseTypes";
-import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Plus, Trash } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
+import { DatasetAccordion } from "./DatasetAccordion";
+import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -36,6 +38,7 @@ interface DatasetVersion {
   version_nr: string;
   valid_from: string;
   valid_to: string | null;
+  is_system_generated: boolean;
 }
 
 interface DatasetVersionColumn {
@@ -76,6 +79,7 @@ export const ConfigureDatasets: React.FC = () => {
     description: "",
   });
   const { toast } = useToast();
+
   const { data: layers, error: layersError } = useSWR<Layers>(
     "/api/v1/layers/",
     fastApiInstance
@@ -156,27 +160,6 @@ export const ConfigureDatasets: React.FC = () => {
     { accessorKey: "version_nr", header: "Version" },
     { accessorKey: "valid_from", header: "Valid From" },
     { accessorKey: "valid_to", header: "Valid To" },
-  ];
-
-  const columnColumns: ColumnDef<DatasetVersionColumn>[] = [
-    { accessorKey: "code", header: "Code" },
-    { accessorKey: "label", header: "Label" },
-    { accessorKey: "datatype", header: "Data Type" },
-    {
-      accessorKey: "is_mandatory",
-      header: "Mandatory",
-      cell: ({ row }) => (row.getValue("is_mandatory") ? "Yes" : "No"),
-    },
-    {
-      accessorKey: "is_key",
-      header: "Key",
-      cell: ({ row }) => (row.getValue("is_key") ? "Yes" : "No"),
-    },
-    {
-      accessorKey: "is_system_generated",
-      header: "System Generated",
-      cell: ({ row }) => (row.getValue("is_system_generated") ? "Yes" : "No"),
-    },
     {
       id: "actions",
       cell: ({ row }) => (
@@ -186,7 +169,7 @@ export const ConfigureDatasets: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleEditColumn(row.original)}
+                onClick={() => handleEditVersion(row.original)}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -194,7 +177,7 @@ export const ConfigureDatasets: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  handleDeleteColumn(row.original.dataset_version_column_id)
+                  handleDeleteVersion(row.original.dataset_version_id)
                 }
               >
                 <Trash className="h-4 w-4" />
@@ -224,6 +207,16 @@ export const ConfigureDatasets: React.FC = () => {
       return frameworkMatch && layerMatch && columnFilterMatch;
     });
   }, [datasets, selectedFramework, selectedLayer, columnFilters]);
+
+  const groupedDatasets = useMemo(() => {
+    return filteredDatasets.reduce((acc, dataset) => {
+      if (!acc[dataset.framework]) {
+        acc[dataset.framework] = [];
+      }
+      acc[dataset.framework].push(dataset);
+      return acc;
+    }, {} as Record<string, Dataset[]>);
+  }, [filteredDatasets]);
 
   const layersWithNoFilter = useMemo(
     () => [
@@ -325,66 +318,61 @@ export const ConfigureDatasets: React.FC = () => {
     [datasetVersions, toast]
   );
 
-  const handleAddColumn = useCallback(async () => {
-    if (!selectedVersion) return;
-    try {
-      const response = await fastApiInstance.post(
-        `/api/v1/datasets/${selectedDataset?.dataset_id}/columns/`,
-        {
-          dataset_version_id: selectedVersion.dataset_version_id,
-          code: `COL_${columns.length + 1}`,
-          label: `New Column ${columns.length + 1}`,
-          description: "New column description",
-          datatype: "VARCHAR",
-          is_mandatory: false,
-          is_key: false,
-          is_system_generated: false,
-        }
-      );
-      setColumns([...columns, response.data]);
-      toast({ title: "Success", description: "Column added successfully." });
-    } catch (error) {
-      console.error("Error adding column:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add column. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [selectedVersion, selectedDataset, columns, toast]);
-
-  const handleEditColumn = useCallback(async (column: DatasetVersionColumn) => {
-    // Implement edit column functionality
-    console.log("Edit column:", column);
+  const handleEditVersion = useCallback(async (version: DatasetVersion) => {
+    // Implement edit version functionality
+    console.log("Edit version:", version);
   }, []);
 
-  const handleDeleteColumn = useCallback(
-    async (columnId: number) => {
+  const handleDeleteVersion = useCallback(
+    async (versionId: number) => {
       try {
         await fastApiInstance.delete(
-          `/api/v1/datasets/${selectedDataset?.dataset_id}/columns/${columnId}`
+          `/api/v1/datasets/${selectedDataset?.dataset_id}/versions/${versionId}`
         );
-        setColumns(
-          columns.filter((c) => c.dataset_version_column_id !== columnId)
+        setDatasetVersions(
+          datasetVersions.filter((v) => v.dataset_version_id !== versionId)
         );
         toast({
           title: "Success",
-          description: "Column deleted successfully.",
+          description: "Version deleted successfully.",
         });
       } catch (error) {
-        console.error("Error deleting column:", error);
+        console.error("Error deleting version:", error);
         toast({
           title: "Error",
-          description: "Failed to delete column. Please try again.",
+          description: "Failed to delete version. Please try again.",
           variant: "destructive",
         });
       }
     },
-    [selectedDataset, columns, toast]
+    [selectedDataset, datasetVersions, toast]
   );
+
+  const handleDatasetClick = useCallback(
+    async (dataset: Dataset) => {
+      setSelectedDataset(dataset);
+      try {
+        const response = await fastApiInstance.get(
+          `/api/v1/datasets/${dataset.dataset_id}/versions_all/`
+        );
+        setDatasetVersions(response.data);
+      } catch (error) {
+        console.error("Error fetching dataset versions:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch dataset versions. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
+
   if (isLoading) return <DataSkeleton />;
+
   return (
     <div className="space-y-4">
+      <h2 className="text-2xl font-bold">Configure Datasets</h2>
       <div className="flex space-x-4 mb-4">
         <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
           <SelectTrigger className="w-[250px]">
@@ -417,50 +405,44 @@ export const ConfigureDatasets: React.FC = () => {
           setColumnFilters((prev) => ({ ...prev, [key]: value }))
         }
       />
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Datasets</h3>
-        <SharedDataTable
-          data={filteredDatasets}
-          columns={datasetColumns}
-          onRowClick={(dataset) => {
-            setSelectedDataset(dataset);
-            setSelectedVersion(null);
-          }}
+      {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
+        <FrameworkAccordion
+          groupedDatasets={groupedDatasets}
+          handleDatasetClick={handleDatasetClick}
         />
-        <div className="mt-2">
-          <Button onClick={handleCreateDataset}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Dataset
-          </Button>
-        </div>
-      </div>
+      ) : (
+        <DatasetAccordion
+          datasets={filteredDatasets}
+          handleDatasetClick={handleDatasetClick}
+        />
+      )}
       {selectedDataset && (
-        <div>
-          <h3 className="text-lg font-semibold mb-2">
+        <div className="mt-4">
+          <h3 className="text-xl font-semibold mb-2">
             Versions for {selectedDataset.label}
           </h3>
           <SharedDataTable
-            data={datasetVersions.filter(
-              (v) => v.dataset_id === selectedDataset.dataset_id
-            )}
+            data={datasetVersions}
             columns={versionColumns}
-            onRowClick={(version) => {
-              setSelectedVersion(version);
-            }}
+            onRowClick={(version) =>
+              setSelectedVersion(version as DatasetVersion)
+            }
+            showPagination={true}
           />
           {!selectedDataset.is_system_generated && (
-            <div className="mt-2">
-              <Button onClick={() => handleCreateVersion(selectedDataset)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Version
-              </Button>
-            </div>
+            <Button
+              className="mt-2"
+              onClick={() => handleCreateVersion(selectedDataset)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create New Version
+            </Button>
           )}
         </div>
       )}
       {selectedVersion && (
-        <div>
-          <h3 className="text-lg font-semibold mb-2">
+        <div className="mt-4">
+          <h3 className="text-xl font-semibold mb-2">
             Columns for Version {selectedVersion.version_nr}
           </h3>
           <SharedDataTable
@@ -469,15 +451,22 @@ export const ConfigureDatasets: React.FC = () => {
             )}
             columns={columnColumns}
             onRowClick={() => {}}
+            showPagination={true}
           />
-          <div className="mt-2">
-            <Button onClick={handleAddColumn}>
+          {!selectedVersion.is_system_generated && (
+            <Button className="mt-2" onClick={handleAddColumn}>
               <Plus className="h-4 w-4 mr-2" />
               Add New Column
             </Button>
-          </div>
+          )}
         </div>
       )}
+      <div className="mt-4">
+        <Button onClick={handleCreateDataset}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create New Dataset
+        </Button>
+      </div>
     </div>
   );
 };
