@@ -1,10 +1,12 @@
-import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Plus, Trash } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
-
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -15,8 +17,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { Frameworks, Layers } from "@/types/databaseTypes";
+import { Plus } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
 import { DatasetAccordion } from "./DatasetAccordion";
+import { DatasetFormModal } from "./DatasetFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
@@ -35,27 +41,9 @@ interface DatasetVersion {
   dataset_version_id: number;
   dataset_id: number;
   version_nr: string;
+  version_code: string;
   valid_from: string;
   valid_to: string | null;
-  is_system_generated: boolean;
-}
-
-interface DatasetVersionColumn {
-  dataset_version_column_id: number;
-  dataset_version_id: number;
-  column_order: number;
-  code: string;
-  label: string;
-  description: string;
-  role: string;
-  dimension_type: string;
-  datatype: string;
-  datatype_format: string;
-  is_mandatory: boolean;
-  is_key: boolean;
-  value_statement: string;
-  is_filter: boolean;
-  is_report_snapshot_field: boolean;
   is_system_generated: boolean;
 }
 
@@ -63,10 +51,12 @@ export const ConfigureDatasets: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [datasetVersions, setDatasetVersions] = useState<DatasetVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<DatasetVersion | null>(
+  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
+  const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
     null
   );
-  const [columns, setColumns] = useState<DatasetVersionColumn[]>([]);
 
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
@@ -110,84 +100,6 @@ export const ConfigureDatasets: React.FC = () => {
       setDatasets(dataTableJson.data);
     }
   }, [dataTableJson]);
-
-  const datasetColumns: ColumnDef<Dataset>[] = [
-    { accessorKey: "code", header: "Code" },
-    { accessorKey: "label", header: "Label" },
-    { accessorKey: "framework", header: "Framework" },
-    { accessorKey: "type", header: "Type" },
-    {
-      accessorKey: "is_system_generated",
-      header: "System Generated",
-      cell: ({ row }) => (row.getValue("is_system_generated") ? "Yes" : "No"),
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          {!row.original.is_system_generated && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEditDataset(row.original)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDeleteDataset(row.original.dataset_id)}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleCreateVersion(row.original)}
-          >
-            <Plus className="h-4 w-4" /> Version
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  const versionColumns: ColumnDef<DatasetVersion>[] = [
-    { accessorKey: "version_nr", header: "Version" },
-    { accessorKey: "version_code", header: "Version Code" },
-    { accessorKey: "valid_from", header: "Valid From" },
-    { accessorKey: "valid_to", header: "Valid To" },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex space-x-2">
-          {!row.original.is_system_generated && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEditVersion(row.original)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  handleDeleteVersion(row.original.dataset_version_id)
-                }
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   const filteredDatasets = useMemo(() => {
     return datasets.filter((dataset) => {
@@ -243,53 +155,81 @@ export const ConfigureDatasets: React.FC = () => {
     setSelectedDataset(null);
   }, []);
 
-  const handleCreateDataset = useCallback(async () => {
-    try {
-      const response = await fastApiInstance.post("/api/v1/datasets/", {
-        code: `DS00${datasets.length + 1}`,
-        label: `New Dataset ${datasets.length + 1}`,
-        description: "New dataset description",
-        framework: selectedFramework === NO_FILTER ? "" : selectedFramework,
-        type: selectedLayer === NO_FILTER ? "" : selectedLayer,
-        is_system_generated: false,
-      });
-      setDatasets([...datasets, response.data]);
-      toast({ title: "Success", description: "Dataset created successfully." });
-    } catch (error) {
-      console.error("Error creating dataset:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create dataset. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [datasets, selectedFramework, selectedLayer, toast]);
-
-  const handleEditDataset = useCallback(async (dataset: Dataset) => {
-    // Implement edit dataset functionality
-    console.log("Edit dataset:", dataset);
-  }, []);
-
-  const handleDeleteDataset = useCallback(
-    async (datasetId: number) => {
+  const handleCreateDataset = useCallback(
+    async (newDataset: Partial<Dataset>) => {
       try {
-        await fastApiInstance.delete(`/api/v1/datasets/${datasetId}`);
-        setDatasets(datasets.filter((d) => d.dataset_id !== datasetId));
+        const response = await fastApiInstance.post("/api/v1/datasets/", {
+          ...newDataset,
+          is_system_generated: false, // Explicitly set is_system_generated to false
+        });
+        setDatasets([...datasets, response.data]);
         toast({
           title: "Success",
-          description: "Dataset deleted successfully.",
+          description: "Dataset created successfully.",
         });
+        setIsDatasetModalOpen(false); // Only close the modal on success
       } catch (error) {
-        console.error("Error deleting dataset:", error);
+        console.error("Error creating dataset:", error);
         toast({
           title: "Error",
-          description: "Failed to delete dataset. Please try again.",
+          description: "Failed to create dataset. Please try again.",
           variant: "destructive",
         });
+        // Do not close the modal on error
       }
     },
     [datasets, toast]
   );
+
+  const handleUpdateDataset = useCallback(
+    async (updatedDataset: Dataset) => {
+      try {
+        const response = await fastApiInstance.put(
+          `/api/v1/datasets/${updatedDataset.dataset_id}/`,
+          updatedDataset
+        );
+        setDatasets(
+          datasets.map((d) =>
+            d.dataset_id === updatedDataset.dataset_id ? response.data : d
+          )
+        );
+        toast({
+          title: "Success",
+          description: "Dataset updated successfully.",
+        });
+        setIsDatasetModalOpen(false); // Only close the modal on success
+        setEditingDataset(null);
+      } catch (error) {
+        console.error("Error updating dataset:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update dataset. Please try again.",
+          variant: "destructive",
+        });
+        // Do not close the modal on error
+      }
+    },
+    [datasets, toast]
+  );
+
+  const handleDeleteDataset = useCallback(async () => {
+    if (!deletingDatasetId) return;
+    try {
+      await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}`);
+      setDatasets(datasets.filter((d) => d.dataset_id !== deletingDatasetId));
+      toast({ title: "Success", description: "Dataset deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting dataset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete dataset. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingDatasetId(null);
+    }
+  }, [deletingDatasetId, datasets, toast]);
 
   const handleCreateVersion = useCallback(
     async (dataset: Dataset) => {
@@ -428,11 +368,54 @@ export const ConfigureDatasets: React.FC = () => {
       )}
 
       <div className="mt-4">
-        <Button onClick={handleCreateDataset}>
+        <Button onClick={() => setIsDatasetModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create New Dataset
         </Button>
       </div>
+
+      <DatasetFormModal
+        isOpen={isDatasetModalOpen}
+        onClose={() => {
+          // Only allow closing the modal manually if we're not in the middle of an operation
+          if (!editingDataset) {
+            setIsDatasetModalOpen(false);
+          }
+        }}
+        onSubmit={(dataset) => {
+          if (editingDataset) {
+            handleUpdateDataset({ ...editingDataset, ...dataset } as Dataset);
+          } else {
+            handleCreateDataset(dataset);
+          }
+        }}
+        initialData={editingDataset || undefined}
+        frameworks={frameworksWithNoFilter}
+        layers={layersWithNoFilter}
+      />
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <p>
+            Are you sure you want to delete this dataset? This action cannot be
+            undone.
+          </p>
+          <DialogFooter>
+            <Button
+              onClick={() => setIsDeleteDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteDataset} variant="destructive">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
