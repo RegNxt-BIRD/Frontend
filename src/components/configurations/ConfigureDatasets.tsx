@@ -3,7 +3,6 @@ import { Edit, Plus, Trash } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
-import { SharedDataTable } from "@/components/SharedDataTable";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import { Button } from "@/components/ui/button";
 import {
@@ -158,6 +157,7 @@ export const ConfigureDatasets: React.FC = () => {
 
   const versionColumns: ColumnDef<DatasetVersion>[] = [
     { accessorKey: "version_nr", header: "Version" },
+    { accessorKey: "version_code", header: "Version Code" },
     { accessorKey: "valid_from", header: "Valid From" },
     { accessorKey: "valid_to", header: "Valid To" },
     {
@@ -352,7 +352,7 @@ export const ConfigureDatasets: React.FC = () => {
     async (dataset: Dataset) => {
       setSelectedDataset(dataset);
       try {
-        const response = await fastApiInstance.get(
+        const response = await fastApiInstance.get<DatasetVersion[]>(
           `/api/v1/datasets/${dataset.dataset_id}/versions_all/`
         );
         setDatasetVersions(response.data);
@@ -409,58 +409,24 @@ export const ConfigureDatasets: React.FC = () => {
         <FrameworkAccordion
           groupedDatasets={groupedDatasets}
           handleDatasetClick={handleDatasetClick}
+          datasetVersions={datasetVersions}
+          selectedDataset={selectedDataset}
+          handleCreateVersion={handleCreateVersion}
+          handleEditVersion={handleEditVersion}
+          handleDeleteVersion={handleDeleteVersion}
         />
       ) : (
         <DatasetAccordion
           datasets={filteredDatasets}
           handleDatasetClick={handleDatasetClick}
+          datasetVersions={datasetVersions}
+          selectedDataset={selectedDataset}
+          handleCreateVersion={handleCreateVersion}
+          handleEditVersion={handleEditVersion}
+          handleDeleteVersion={handleDeleteVersion}
         />
       )}
-      {selectedDataset && (
-        <div className="mt-4">
-          <h3 className="text-xl font-semibold mb-2">
-            Versions for {selectedDataset.label}
-          </h3>
-          <SharedDataTable
-            data={datasetVersions}
-            columns={versionColumns}
-            onRowClick={(version) =>
-              setSelectedVersion(version as DatasetVersion)
-            }
-            showPagination={true}
-          />
-          {!selectedDataset.is_system_generated && (
-            <Button
-              className="mt-2"
-              onClick={() => handleCreateVersion(selectedDataset)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Version
-            </Button>
-          )}
-        </div>
-      )}
-      {selectedVersion && (
-        <div className="mt-4">
-          <h3 className="text-xl font-semibold mb-2">
-            Columns for Version {selectedVersion.version_nr}
-          </h3>
-          <SharedDataTable
-            data={columns.filter(
-              (c) => c.dataset_version_id === selectedVersion.dataset_version_id
-            )}
-            columns={columnColumns}
-            onRowClick={() => {}}
-            showPagination={true}
-          />
-          {!selectedVersion.is_system_generated && (
-            <Button className="mt-2" onClick={handleAddColumn}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Column
-            </Button>
-          )}
-        </div>
-      )}
+
       <div className="mt-4">
         <Button onClick={handleCreateDataset}>
           <Plus className="h-4 w-4 mr-2" />
