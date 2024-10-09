@@ -6,6 +6,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Plus, Trash } from "lucide-react";
 import React from "react";
@@ -25,13 +31,9 @@ interface DatasetVersion {
   dataset_id: number;
   version_nr: string;
   version_code: string;
-  code: string;
-  label: string;
-  description: string;
   valid_from: string;
   valid_to: string | null;
-  dataset_code: string;
-  dataset_label: string;
+  is_system_generated: boolean;
 }
 
 export const DatasetAccordion: React.FC<{
@@ -42,6 +44,8 @@ export const DatasetAccordion: React.FC<{
   handleCreateVersion: (dataset: Dataset) => void;
   handleEditVersion: (version: DatasetVersion) => void;
   handleDeleteVersion: (versionId: number) => void;
+  handleEditDataset: (dataset: Dataset) => void;
+  handleDeleteDataset: (datasetId: number) => void;
 }> = ({
   datasets,
   handleDatasetClick,
@@ -50,6 +54,8 @@ export const DatasetAccordion: React.FC<{
   handleCreateVersion,
   handleEditVersion,
   handleDeleteVersion,
+  handleEditDataset,
+  handleDeleteDataset,
 }) => {
   const versionColumns: ColumnDef<DatasetVersion>[] = [
     { accessorKey: "version_nr", header: "Version" },
@@ -90,11 +96,57 @@ export const DatasetAccordion: React.FC<{
             className="text-left"
             onClick={() => handleDatasetClick(dataset)}
           >
-            <div className="flex justify-between w-full">
+            <div className="flex justify-between w-full items-center">
               <span>{dataset.label}</span>
-              <span className="text-sm text-gray-500">
-                {dataset.framework} - {dataset.type}
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">
+                  {dataset.framework} - {dataset.type}
+                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditDataset(dataset);
+                        }}
+                        disabled={dataset.is_system_generated}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    {dataset.is_system_generated && (
+                      <TooltipContent>
+                        <p>Cannot edit system-generated dataset</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDataset(dataset.dataset_id);
+                        }}
+                        disabled={dataset.is_system_generated}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    {dataset.is_system_generated && (
+                      <TooltipContent>
+                        <p>Cannot delete system-generated dataset</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -105,18 +157,22 @@ export const DatasetAccordion: React.FC<{
                     Versions for {selectedDataset.label}
                   </h3>
                   <SharedDataTable
-                    data={datasetVersions}
+                    data={datasetVersions.filter(
+                      (v) => v.dataset_id === dataset.dataset_id
+                    )}
                     columns={versionColumns}
                     onRowClick={() => {}}
                     showPagination={true}
                   />
-                  <Button
-                    className="mt-2"
-                    onClick={() => handleCreateVersion(selectedDataset)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Version
-                  </Button>
+                  {!dataset.is_system_generated && (
+                    <Button
+                      className="mt-2"
+                      onClick={() => handleCreateVersion(dataset)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Version
+                    </Button>
+                  )}
                 </div>
               )}
           </AccordionContent>

@@ -21,6 +21,7 @@ interface DatasetVersion {
   dataset_version_id: number;
   dataset_id: number;
   version_nr: string;
+  version_code: string;
   valid_from: string;
   valid_to: string | null;
   is_system_generated: boolean;
@@ -34,6 +35,8 @@ export const FrameworkAccordion: React.FC<{
   handleCreateVersion: (dataset: Dataset) => void;
   handleEditVersion: (version: DatasetVersion) => void;
   handleDeleteVersion: (versionId: number) => void;
+  handleEditDataset: (dataset: Dataset) => void;
+  handleDeleteDataset: (datasetId: number) => void;
 }> = ({
   groupedDatasets,
   handleDatasetClick,
@@ -42,6 +45,8 @@ export const FrameworkAccordion: React.FC<{
   handleCreateVersion,
   handleEditVersion,
   handleDeleteVersion,
+  handleEditDataset,
+  handleDeleteDataset,
 }) => {
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -64,6 +69,8 @@ export const FrameworkAccordion: React.FC<{
               handleCreateVersion={handleCreateVersion}
               handleEditVersion={handleEditVersion}
               handleDeleteVersion={handleDeleteVersion}
+              handleEditDataset={handleEditDataset}
+              handleDeleteDataset={handleDeleteDataset}
             />
           </AccordionContent>
         </AccordionItem>

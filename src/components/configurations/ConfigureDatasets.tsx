@@ -7,13 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { Frameworks, Layers } from "@/types/databaseTypes";
@@ -57,6 +50,7 @@ export const ConfigureDatasets: React.FC = () => {
   const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
     null
   );
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
@@ -155,19 +149,27 @@ export const ConfigureDatasets: React.FC = () => {
     setSelectedDataset(null);
   }, []);
 
+  const handleEditDataset = useCallback((dataset: Dataset) => {
+    if (!dataset.is_system_generated) {
+      setEditingDataset(dataset);
+      setIsDatasetModalOpen(true);
+    }
+  }, []);
+
   const handleCreateDataset = useCallback(
     async (newDataset: Partial<Dataset>) => {
+      setIsProcessing(true);
       try {
         const response = await fastApiInstance.post("/api/v1/datasets/", {
           ...newDataset,
-          is_system_generated: false, // Explicitly set is_system_generated to false
+          is_system_generated: false,
         });
         setDatasets([...datasets, response.data]);
         toast({
           title: "Success",
           description: "Dataset created successfully.",
         });
-        setIsDatasetModalOpen(false); // Only close the modal on success
+        setIsDatasetModalOpen(false);
       } catch (error) {
         console.error("Error creating dataset:", error);
         toast({
@@ -175,7 +177,8 @@ export const ConfigureDatasets: React.FC = () => {
           description: "Failed to create dataset. Please try again.",
           variant: "destructive",
         });
-        // Do not close the modal on error
+      } finally {
+        setIsProcessing(false);
       }
     },
     [datasets, toast]
@@ -183,6 +186,8 @@ export const ConfigureDatasets: React.FC = () => {
 
   const handleUpdateDataset = useCallback(
     async (updatedDataset: Dataset) => {
+      if (updatedDataset.is_system_generated) return;
+      setIsProcessing(true);
       try {
         const response = await fastApiInstance.put(
           `/api/v1/datasets/${updatedDataset.dataset_id}/`,
@@ -197,7 +202,7 @@ export const ConfigureDatasets: React.FC = () => {
           title: "Success",
           description: "Dataset updated successfully.",
         });
-        setIsDatasetModalOpen(false); // Only close the modal on success
+        setIsDatasetModalOpen(false);
         setEditingDataset(null);
       } catch (error) {
         console.error("Error updating dataset:", error);
@@ -206,7 +211,8 @@ export const ConfigureDatasets: React.FC = () => {
           description: "Failed to update dataset. Please try again.",
           variant: "destructive",
         });
-        // Do not close the modal on error
+      } finally {
+        setIsProcessing(false);
       }
     },
     [datasets, toast]
@@ -214,10 +220,16 @@ export const ConfigureDatasets: React.FC = () => {
 
   const handleDeleteDataset = useCallback(async () => {
     if (!deletingDatasetId) return;
+    const datasetToDelete = datasets.find(
+      (d) => d.dataset_id === deletingDatasetId
+    );
+    if (datasetToDelete?.is_system_generated) return;
+    setIsProcessing(true);
     try {
       await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}`);
       setDatasets(datasets.filter((d) => d.dataset_id !== deletingDatasetId));
       toast({ title: "Success", description: "Dataset deleted successfully." });
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting dataset:", error);
       toast({
@@ -226,13 +238,14 @@ export const ConfigureDatasets: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setIsDeleteDialogOpen(false);
+      setIsProcessing(false);
       setDeletingDatasetId(null);
     }
   }, [deletingDatasetId, datasets, toast]);
 
   const handleCreateVersion = useCallback(
     async (dataset: Dataset) => {
+      if (dataset.is_system_generated) return;
       try {
         const response = await fastApiInstance.post(
           `/api/v1/datasets/${dataset.dataset_id}/versions/`,
@@ -313,32 +326,7 @@ export const ConfigureDatasets: React.FC = () => {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Configure Datasets</h2>
-      <div className="flex space-x-4 mb-4">
-        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select a Framework" />
-          </SelectTrigger>
-          <SelectContent>
-            {frameworksWithNoFilter.map((framework) => (
-              <SelectItem key={framework.code} value={framework.code}>
-                {framework.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select onValueChange={handleLayerChange} value={selectedLayer}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select a Layer" />
-          </SelectTrigger>
-          <SelectContent>
-            {layersWithNoFilter.map((layer) => (
-              <SelectItem key={layer.code} value={layer.code}>
-                {layer.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* ... (framework and layer selects) */}
       <SharedColumnFilters
         filters={columnFilters}
         setFilter={(key, value) =>
@@ -354,6 +342,11 @@ export const ConfigureDatasets: React.FC = () => {
           handleCreateVersion={handleCreateVersion}
           handleEditVersion={handleEditVersion}
           handleDeleteVersion={handleDeleteVersion}
+          handleEditDataset={handleEditDataset}
+          handleDeleteDataset={(datasetId) => {
+            setDeletingDatasetId(datasetId);
+            setIsDeleteDialogOpen(true);
+          }}
         />
       ) : (
         <DatasetAccordion
@@ -364,6 +357,11 @@ export const ConfigureDatasets: React.FC = () => {
           handleCreateVersion={handleCreateVersion}
           handleEditVersion={handleEditVersion}
           handleDeleteVersion={handleDeleteVersion}
+          handleEditDataset={handleEditDataset}
+          handleDeleteDataset={(datasetId) => {
+            setDeletingDatasetId(datasetId);
+            setIsDeleteDialogOpen(true);
+          }}
         />
       )}
 
@@ -377,9 +375,9 @@ export const ConfigureDatasets: React.FC = () => {
       <DatasetFormModal
         isOpen={isDatasetModalOpen}
         onClose={() => {
-          // Only allow closing the modal manually if we're not in the middle of an operation
-          if (!editingDataset) {
+          if (!isProcessing) {
             setIsDatasetModalOpen(false);
+            setEditingDataset(null);
           }
         }}
         onSubmit={(dataset) => {
@@ -392,6 +390,7 @@ export const ConfigureDatasets: React.FC = () => {
         initialData={editingDataset || undefined}
         frameworks={frameworksWithNoFilter}
         layers={layersWithNoFilter}
+        isProcessing={isProcessing}
       />
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -407,10 +406,15 @@ export const ConfigureDatasets: React.FC = () => {
             <Button
               onClick={() => setIsDeleteDialogOpen(false)}
               variant="outline"
+              disabled={isProcessing}
             >
               Cancel
             </Button>
-            <Button onClick={handleDeleteDataset} variant="destructive">
+            <Button
+              onClick={handleDeleteDataset}
+              variant="destructive"
+              disabled={isProcessing}
+            >
               Delete
             </Button>
           </DialogFooter>
