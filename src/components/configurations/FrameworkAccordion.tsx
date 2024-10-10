@@ -42,6 +42,8 @@ export const FrameworkAccordion: React.FC<{
   handleDatasetClick,
   datasetVersions,
   selectedDataset,
+  isLoadingVersions,
+  handleUpdateVersion,
   handleCreateVersion,
   handleEditVersion,
   handleDeleteVersion,
@@ -65,9 +67,10 @@ export const FrameworkAccordion: React.FC<{
               datasets={datasets}
               handleDatasetClick={handleDatasetClick}
               datasetVersions={datasetVersions}
+              isLoadingVersions={isLoadingVersions}
               selectedDataset={selectedDataset}
+              handleUpdateVersion={handleUpdateVersion}
               handleCreateVersion={handleCreateVersion}
-              handleEditVersion={handleEditVersion}
               handleDeleteVersion={handleDeleteVersion}
               handleEditDataset={handleEditDataset}
               handleDeleteDataset={handleDeleteDataset}

@@ -16,9 +16,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
-import { Frameworks, Layers } from "@/types/databaseTypes";
+import {
+  Dataset,
+  DatasetVersion,
+  Framework,
+  Layer,
+} from "@/types/databaseTypes";
 import { Plus } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
 import { DatasetAccordion } from "./DatasetAccordion";
@@ -27,38 +32,8 @@ import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
 
-interface Dataset {
-  dataset_id: number;
-  code: string;
-  label: string;
-  description: string;
-  framework: string;
-  type: string;
-  is_system_generated: boolean;
-}
-
-interface DatasetVersion {
-  dataset_version_id: number;
-  dataset_id: number;
-  version_nr: string;
-  version_code: string;
-  valid_from: string;
-  valid_to: string | null;
-  is_system_generated: boolean;
-}
-
 export const ConfigureDatasets: React.FC = () => {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
-  const [datasetVersions, setDatasetVersions] = useState<DatasetVersion[]>([]);
-  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
-  const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
-    null
-  );
-  const [isProcessing, setIsProcessing] = useState(false);
-
+  const { toast } = useToast();
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
   const [columnFilters, setColumnFilters] = useState({
@@ -68,57 +43,67 @@ export const ConfigureDatasets: React.FC = () => {
     type: "",
     description: "",
   });
-  const { toast } = useToast();
 
-  const { data: layers, error: layersError } = useSWR<Layers>(
+  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
+  const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
+    null
+  );
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+
+  const { data: layers, error: layersError } = useSWR<Layer[]>(
     "/api/v1/layers/",
     fastApiInstance
   );
-  const { data: frameworks, error: frameworksError } = useSWR<Frameworks>(
+  const { data: frameworks, error: frameworksError } = useSWR<Framework[]>(
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson, error: dataError } = useSWR<any>(
-    "/api/v1/datasets/",
+  const {
+    data: datasets,
+    error: datasetsError,
+    mutate: mutateDatasets,
+  } = useSWR<Dataset[]>("/api/v1/datasets/", fastApiInstance);
+
+  const {
+    data: datasetVersions,
+    error: versionsError,
+    mutate: mutateVersions,
+    isValidating: isLoadingVersions,
+  } = useSWR<DatasetVersion[]>(
+    selectedDataset
+      ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions_all/`
+      : null,
     fastApiInstance
   );
 
-  const isLoading = !layers || !frameworks || !dataTableJson;
-  const error = layersError || frameworksError || dataError;
+  const isLoading = !layers || !frameworks || !datasets;
+  const error =
+    layersError || frameworksError || datasetsError || versionsError;
 
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch data. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
-
-  useEffect(() => {
-    if (dataTableJson?.data) {
-      setDatasets(dataTableJson.data);
-    }
-  }, [dataTableJson]);
-
+  // Filtered and grouped datasets
   const filteredDatasets = useMemo(() => {
-    return datasets.filter((dataset) => {
-      const frameworkMatch =
-        selectedFramework === NO_FILTER ||
-        dataset.framework === selectedFramework;
-      const layerMatch =
-        selectedLayer === NO_FILTER || dataset.type === selectedLayer;
-      const columnFilterMatch = Object.entries(columnFilters).every(
-        ([key, value]) =>
-          value === "" ||
-          dataset[key as keyof Dataset]
-            .toString()
-            .toLowerCase()
-            .includes(value.toLowerCase())
-      );
-      return frameworkMatch && layerMatch && columnFilterMatch;
-    });
+    return (
+      (datasets &&
+        datasets?.data?.filter((dataset) => {
+          const frameworkMatch =
+            selectedFramework === NO_FILTER ||
+            dataset.framework === selectedFramework;
+          const layerMatch =
+            selectedLayer === NO_FILTER || dataset.type === selectedLayer;
+          const columnFilterMatch = Object.entries(columnFilters).every(
+            ([key, value]) =>
+              value === "" ||
+              dataset[key as keyof Dataset]
+                .toString()
+                .toLowerCase()
+                .includes(value.toLowerCase())
+          );
+          return frameworkMatch && layerMatch && columnFilterMatch;
+        })) ||
+      []
+    );
   }, [datasets, selectedFramework, selectedLayer, columnFilters]);
 
   const groupedDatasets = useMemo(() => {
@@ -131,110 +116,52 @@ export const ConfigureDatasets: React.FC = () => {
     }, {} as Record<string, Dataset[]>);
   }, [filteredDatasets]);
 
-  const layersWithNoFilter = useMemo(
-    () => [
-      { code: NO_FILTER, name: "No Layer Selected" },
-      ...(layers?.data || []),
-    ],
-    [layers]
-  );
-  const frameworksWithNoFilter = useMemo(
-    () => [
-      { code: NO_FILTER, name: "No Framework Selected" },
-      ...(frameworks?.data || []),
-    ],
-    [frameworks]
-  );
-
-  const handleFrameworkChange = useCallback((value: string) => {
-    setSelectedFramework(value);
-    setSelectedDataset(null);
-  }, []);
-
-  const handleLayerChange = useCallback((value: string) => {
-    setSelectedLayer(value);
-    setSelectedDataset(null);
-  }, []);
-
-  const handleEditDataset = useCallback((dataset: Dataset) => {
-    if (!dataset.is_system_generated) {
-      setEditingDataset(dataset);
-      setIsDatasetModalOpen(true);
+  // Handlers
+  const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
+    try {
+      await fastApiInstance.post("/api/v1/datasets/", {
+        ...newDataset,
+        is_system_generated: false,
+      });
+      await mutateDatasets();
+      toast({ title: "Success", description: "Dataset created successfully." });
+      setIsDatasetModalOpen(false);
+    } catch (error) {
+      console.error("Error creating dataset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create dataset. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, []);
+  };
 
-  const handleCreateDataset = useCallback(
-    async (newDataset: Partial<Dataset>) => {
-      setIsProcessing(true);
-      try {
-        const response = await fastApiInstance.post("/api/v1/datasets/", {
-          ...newDataset,
-          is_system_generated: false,
-        });
-        setDatasets([...datasets, response.data]);
-        toast({
-          title: "Success",
-          description: "Dataset created successfully.",
-        });
-        setIsDatasetModalOpen(false);
-      } catch (error) {
-        console.error("Error creating dataset:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create dataset. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [datasets, toast]
-  );
+  const handleUpdateDataset = async (updatedDataset: Dataset) => {
+    if (updatedDataset.is_system_generated) return;
+    try {
+      await fastApiInstance.put(
+        `/api/v1/datasets/${updatedDataset.dataset_id}/`,
+        updatedDataset
+      );
+      await mutateDatasets();
+      toast({ title: "Success", description: "Dataset updated successfully." });
+      setIsDatasetModalOpen(false);
+      setEditingDataset(null);
+    } catch (error) {
+      console.error("Error updating dataset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update dataset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleUpdateDataset = useCallback(
-    async (updatedDataset: Dataset) => {
-      if (updatedDataset.is_system_generated) return;
-      setIsProcessing(true);
-      try {
-        const response = await fastApiInstance.put(
-          `/api/v1/datasets/${updatedDataset.dataset_id}/`,
-          updatedDataset
-        );
-        setDatasets(
-          datasets.map((d) =>
-            d.dataset_id === updatedDataset.dataset_id ? response.data : d
-          )
-        );
-        toast({
-          title: "Success",
-          description: "Dataset updated successfully.",
-        });
-        setIsDatasetModalOpen(false);
-        setEditingDataset(null);
-      } catch (error) {
-        console.error("Error updating dataset:", error);
-        toast({
-          title: "Error",
-          description: "Failed to update dataset. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [datasets, toast]
-  );
-
-  const handleDeleteDataset = useCallback(async () => {
+  const handleDeleteDataset = async () => {
     if (!deletingDatasetId) return;
-    const datasetToDelete = datasets.find(
-      (d) => d.dataset_id === deletingDatasetId
-    );
-    if (datasetToDelete?.is_system_generated) return;
-    setIsProcessing(true);
     try {
       await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}/`);
-      setDatasets(datasets.filter((d) => d.dataset_id !== deletingDatasetId));
+      await mutateDatasets();
       toast({ title: "Success", description: "Dataset deleted successfully." });
       setIsDeleteDialogOpen(false);
     } catch (error) {
@@ -245,88 +172,75 @@ export const ConfigureDatasets: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
       setDeletingDatasetId(null);
     }
-  }, [deletingDatasetId, datasets, toast]);
+  };
 
-  const handleCreateVersion = useCallback(
-    async (dataset: Dataset) => {
-      if (dataset.is_system_generated) return;
-      try {
-        const response = await fastApiInstance.post(
-          `/api/v1/datasets/${dataset.dataset_id}/versions/`,
-          {
-            version_nr: `${datasetVersions.length + 1}.0`,
-            valid_from: new Date().toISOString().split("T")[0],
-          }
-        );
-        setDatasetVersions([...datasetVersions, response.data]);
-        toast({
-          title: "Success",
-          description: "Version created successfully.",
-        });
-      } catch (error) {
-        console.error("Error creating version:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create version. Please try again.",
-          variant: "destructive",
-        });
-      }
-    },
-    [datasetVersions, toast]
-  );
+  const handleCreateVersion = async (dataset: Dataset) => {
+    if (dataset.is_system_generated) return;
+    try {
+      await fastApiInstance.post(
+        `/api/v1/datasets/${dataset.dataset_id}/create_version/`,
+        {
+          version_nr: dataset.version_nr,
+          version_code: dataset.version_code,
+          code: dataset.code,
+          label: dataset.label,
+          description: dataset.description,
+          valid_to: dataset.valid_to,
+          valid_from: dataset.valid_from,
+        }
+      );
+      await mutateVersions();
+      toast({ title: "Success", description: "Version created successfully." });
+    } catch (error) {
+      console.error("Error creating version:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create version. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleEditVersion = useCallback(async (version: DatasetVersion) => {
-    // Implement edit version functionality
-    console.log("Edit version:", version);
-  }, []);
+  const handleUpdateVersion = async (version: DatasetVersion) => {
+    try {
+      await fastApiInstance.put(
+        `/api/v1/datasets/${version.dataset_id}/update_version/?version_id=${version.dataset_version_id}`,
+        version
+      );
+      await mutateVersions();
+      toast({ title: "Success", description: "Version updated successfully." });
+    } catch (error) {
+      console.error("Error updating version:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update version. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleDeleteVersion = useCallback(
-    async (versionId: number) => {
-      try {
-        await fastApiInstance.delete(
-          `/api/v1/datasets/${selectedDataset?.dataset_id}/versions/${versionId}`
-        );
-        setDatasetVersions(
-          datasetVersions.filter((v) => v.dataset_version_id !== versionId)
-        );
-        toast({
-          title: "Success",
-          description: "Version deleted successfully.",
-        });
-      } catch (error) {
-        console.error("Error deleting version:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete version. Please try again.",
-          variant: "destructive",
-        });
-      }
-    },
-    [selectedDataset, datasetVersions, toast]
-  );
-
-  const handleDatasetClick = useCallback(
-    async (dataset: Dataset) => {
-      setSelectedDataset(dataset);
-      try {
-        const response = await fastApiInstance.get<DatasetVersion[]>(
-          `/api/v1/datasets/${dataset.dataset_id}/versions_all/`
-        );
-        setDatasetVersions(response.data);
-      } catch (error) {
-        console.error("Error fetching dataset versions:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch dataset versions. Please try again.",
-          variant: "destructive",
-        });
-      }
-    },
-    [toast]
-  );
+  const handleDeleteVersion = async (datasetId: number, versionId: number) => {
+    try {
+      await fastApiInstance.delete(
+        `/api/v1/datasets/${datasetId}/delete_version/?version_id=${versionId}`
+      );
+      await mutateVersions();
+      toast({ title: "Success", description: "Version deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting version:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete version. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  const handleEditDataset = (dataset: Dataset) => {
+    setEditingDataset(dataset);
+    setIsDatasetModalOpen(true);
+  };
 
   if (isLoading) return <DataSkeleton />;
 
@@ -335,24 +249,26 @@ export const ConfigureDatasets: React.FC = () => {
       <h2 className="text-2xl font-bold">Configure Datasets</h2>
 
       <div className="flex space-x-4 mb-4">
-        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
+        <Select onValueChange={setSelectedFramework} value={selectedFramework}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="Select a Framework" />
           </SelectTrigger>
           <SelectContent>
-            {frameworksWithNoFilter.map((framework) => (
+            <SelectItem value={NO_FILTER}>No Framework Selected</SelectItem>
+            {frameworks?.data?.map((framework) => (
               <SelectItem key={framework.code} value={framework.code}>
                 {framework.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select onValueChange={handleLayerChange} value={selectedLayer}>
+        <Select onValueChange={setSelectedLayer} value={selectedLayer}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="Select a Layer" />
           </SelectTrigger>
           <SelectContent>
-            {layersWithNoFilter.map((layer) => (
+            <SelectItem value={NO_FILTER}>No Layer Selected</SelectItem>
+            {layers?.data?.map((layer) => (
               <SelectItem key={layer.code} value={layer.code}>
                 {layer.name}
               </SelectItem>
@@ -360,6 +276,7 @@ export const ConfigureDatasets: React.FC = () => {
           </SelectContent>
         </Select>
       </div>
+
       <SharedColumnFilters
         filters={columnFilters}
         setFilter={(key, value) =>
@@ -377,13 +294,14 @@ export const ConfigureDatasets: React.FC = () => {
       {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
         <FrameworkAccordion
           groupedDatasets={groupedDatasets}
-          handleDatasetClick={handleDatasetClick}
-          datasetVersions={datasetVersions}
+          handleDatasetClick={setSelectedDataset}
+          datasetVersions={datasetVersions || []}
           selectedDataset={selectedDataset}
-          handleCreateVersion={handleCreateVersion}
-          handleEditVersion={handleEditVersion}
-          handleDeleteVersion={handleDeleteVersion}
           handleEditDataset={handleEditDataset}
+          handleUpdateVersion={handleUpdateVersion}
+          isLoadingVersions={isLoadingVersions}
+          handleCreateVersion={handleCreateVersion}
+          handleDeleteVersion={handleDeleteVersion}
           handleDeleteDataset={(datasetId) => {
             setDeletingDatasetId(datasetId);
             setIsDeleteDialogOpen(true);
@@ -392,13 +310,14 @@ export const ConfigureDatasets: React.FC = () => {
       ) : (
         <DatasetAccordion
           datasets={filteredDatasets}
-          handleDatasetClick={handleDatasetClick}
-          datasetVersions={datasetVersions}
+          handleDatasetClick={setSelectedDataset}
+          datasetVersions={datasetVersions || []}
+          handleEditDataset={handleEditDataset}
+          isLoadingVersions={isLoadingVersions}
           selectedDataset={selectedDataset}
           handleCreateVersion={handleCreateVersion}
-          handleEditVersion={handleEditVersion}
+          handleUpdateVersion={handleUpdateVersion}
           handleDeleteVersion={handleDeleteVersion}
-          handleEditDataset={handleEditDataset}
           handleDeleteDataset={(datasetId) => {
             setDeletingDatasetId(datasetId);
             setIsDeleteDialogOpen(true);
@@ -409,10 +328,8 @@ export const ConfigureDatasets: React.FC = () => {
       <DatasetFormModal
         isOpen={isDatasetModalOpen}
         onClose={() => {
-          if (!isProcessing) {
-            setIsDatasetModalOpen(false);
-            setEditingDataset(null);
-          }
+          setIsDatasetModalOpen(false);
+          setEditingDataset(null);
         }}
         onSubmit={(dataset) => {
           if (editingDataset) {
@@ -422,9 +339,8 @@ export const ConfigureDatasets: React.FC = () => {
           }
         }}
         initialData={editingDataset || undefined}
-        frameworks={frameworksWithNoFilter}
-        layers={layersWithNoFilter}
-        isProcessing={isProcessing}
+        frameworks={frameworks?.data || []}
+        layers={layers?.data || []}
       />
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -440,15 +356,10 @@ export const ConfigureDatasets: React.FC = () => {
             <Button
               onClick={() => setIsDeleteDialogOpen(false)}
               variant="outline"
-              disabled={isProcessing}
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleDeleteDataset}
-              variant="destructive"
-              disabled={isProcessing}
-            >
+            <Button onClick={handleDeleteDataset} variant="destructive">
               Delete
             </Button>
           </DialogFooter>

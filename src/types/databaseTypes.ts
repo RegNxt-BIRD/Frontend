@@ -9,6 +9,16 @@ export interface TableColumn {
   handleType?: "source" | "target";
 }
 
+export interface Dataset {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
+  is_system_generated: boolean;
+}
+
 export interface DatabaseTableData {
   label: string;
   columns: TableColumn[];
@@ -18,6 +28,19 @@ export interface DatabaseTableData {
 
 export interface CustomNodeProps extends Node<DatabaseTableData> {
   zIndex?: number;
+}
+
+export interface DatasetVersion {
+  dataset_version_id: number;
+  dataset_id: number;
+  version_nr: string;
+  version_code: string;
+  code: string;
+  label: string;
+  description: string;
+  valid_from: string;
+  valid_to: string | null;
+  is_system_generated: boolean;
 }
 
 export interface EdgeData {

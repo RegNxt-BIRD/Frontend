@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/tooltip";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Plus, Trash } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
+import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 
 interface Dataset {
   dataset_id: number;
@@ -36,27 +37,36 @@ interface DatasetVersion {
   is_system_generated: boolean;
 }
 
-export const DatasetAccordion: React.FC<{
+interface DatasetAccordionProps {
   datasets: Dataset[];
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions: DatasetVersion[];
   selectedDataset: Dataset | null;
   handleCreateVersion: (dataset: Dataset) => void;
-  handleEditVersion: (version: DatasetVersion) => void;
-  handleDeleteVersion: (versionId: number) => void;
+  handleUpdateVersion: (version: DatasetVersion) => void;
+  handleDeleteVersion: (datasetId: number, versionId: number) => void;
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
-}> = ({
+  isLoadingVersions: boolean;
+}
+
+export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   datasets,
   handleDatasetClick,
   datasetVersions,
   selectedDataset,
   handleCreateVersion,
-  handleEditVersion,
+  handleUpdateVersion,
   handleDeleteVersion,
   handleEditDataset,
   handleDeleteDataset,
+  isLoadingVersions,
 }) => {
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [editingVersion, setEditingVersion] = useState<DatasetVersion | null>(
+    null
+  );
+
   const versionColumns: ColumnDef<DatasetVersion>[] = [
     { accessorKey: "version_nr", header: "Version" },
     { accessorKey: "version_code", header: "Version Code" },
@@ -69,14 +79,22 @@ export const DatasetAccordion: React.FC<{
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleEditVersion(row.original)}
+            onClick={() => {
+              setEditingVersion(row.original);
+              setIsVersionModalOpen(true);
+            }}
           >
             <Edit className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleDeleteVersion(row.original.dataset_version_id)}
+            onClick={() =>
+              handleDeleteVersion(
+                row.original.dataset_id,
+                row.original.dataset_version_id
+              )
+            }
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -156,18 +174,28 @@ export const DatasetAccordion: React.FC<{
                   <h3 className="text-xl font-semibold mb-2">
                     Versions for {selectedDataset.label}
                   </h3>
-                  <SharedDataTable
-                    data={datasetVersions.filter(
-                      (v) => v.dataset_id === dataset.dataset_id
-                    )}
-                    columns={versionColumns}
-                    onRowClick={() => {}}
-                    showPagination={true}
-                  />
+                  {isLoadingVersions ? (
+                    <p>Loading versions...</p>
+                  ) : datasetVersions && datasetVersions?.data?.length > 0 ? (
+                    <SharedDataTable
+                      key={selectedDataset.dataset_id}
+                      data={datasetVersions?.data?.filter(
+                        (v) => v.dataset_id === dataset.dataset_id
+                      )}
+                      columns={versionColumns}
+                      onRowClick={() => {}}
+                      showPagination={true}
+                    />
+                  ) : (
+                    <p>No versions available for this dataset.</p>
+                  )}
                   {!dataset.is_system_generated && (
                     <Button
                       className="mt-2"
-                      onClick={() => handleCreateVersion(dataset)}
+                      onClick={() => {
+                        setEditingVersion(null);
+                        setIsVersionModalOpen(true);
+                      }}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Create New Version
@@ -178,6 +206,24 @@ export const DatasetAccordion: React.FC<{
           </AccordionContent>
         </AccordionItem>
       ))}
+      <DatasetVersionFormModal
+        isOpen={isVersionModalOpen}
+        onClose={() => {
+          setIsVersionModalOpen(false);
+          setEditingVersion(null);
+        }}
+        onSubmit={(version) => {
+          if (editingVersion) {
+            handleUpdateVersion({
+              ...editingVersion,
+              ...version,
+            } as DatasetVersion);
+          } else if (selectedDataset) {
+            handleCreateVersion({ ...selectedDataset, ...version } as Dataset);
+          }
+        }}
+        initialData={editingVersion || undefined}
+      />
     </Accordion>
   );
 };
