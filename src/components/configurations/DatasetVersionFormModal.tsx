@@ -179,6 +179,7 @@ export const DatasetVersionFormModal: React.FC<
                   <FormControl>
                     <DatePicker
                       value={field.value}
+                      className="w-full"
                       onChange={field.onChange}
                       placeholder="Valid To"
                     />
@@ -187,6 +188,7 @@ export const DatasetVersionFormModal: React.FC<
                 </FormItem>
               )}
             />
+
             <DialogFooter>
               <Button type="button" onClick={onClose} variant="outline">
                 Cancel

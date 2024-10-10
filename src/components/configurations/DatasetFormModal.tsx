@@ -6,6 +6,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,7 +23,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dataset } from "@/types/databaseTypes";
-import React, { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
+const formSchema = z.object({
+  code: z.string().min(1, "Code is required"),
+  label: z.string().min(1, "Label is required"),
+  description: z.string().optional(),
+  framework: z.string().min(1, "Framework is required"),
+  type: z.string().min(1, "Layer is required"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface DatasetFormModalProps {
   isOpen: boolean;
@@ -34,27 +55,21 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
   frameworks,
   layers,
 }) => {
-  const [formData, setFormData] = useState<Partial<Dataset>>(initialData || {});
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: initialData || {},
+  });
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      form.reset(initialData);
     } else {
-      setFormData({});
+      form.reset({});
     }
-  }, [initialData, isOpen]);
+  }, [initialData, form]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string) => (value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = () => {
-    onSubmit(formData);
+  const handleSubmit = (data: FormValues) => {
+    onSubmit(data);
     onClose();
   };
 
@@ -66,62 +81,112 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
             {initialData ? "Edit Dataset" : "Create Dataset"}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <Input
-            name="code"
-            placeholder="Code"
-            value={formData.code || ""}
-            onChange={handleChange}
-          />
-          <Input
-            name="label"
-            placeholder="Label"
-            value={formData.label || ""}
-            onChange={handleChange}
-          />
-          <Input
-            name="description"
-            placeholder="Description"
-            value={formData.description || ""}
-            onChange={handleChange}
-          />
-          <Select
-            onValueChange={handleSelectChange("framework")}
-            value={formData.framework}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Framework" />
-            </SelectTrigger>
-            <SelectContent>
-              {frameworks.map((framework) => (
-                <SelectItem key={framework.code} value={framework.code}>
-                  {framework.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            onValueChange={handleSelectChange("type")}
-            value={formData.type}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Layer" />
-            </SelectTrigger>
-            <SelectContent>
-              {layers.map((layer) => (
-                <SelectItem key={layer.code} value={layer.code}>
-                  {layer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit}>Save</Button>
-        </DialogFooter>
+            <FormField
+              control={form.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Code" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="label"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Label</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Label" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="framework"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Framework</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Framework" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {frameworks.map((framework) => (
+                        <SelectItem key={framework.code} value={framework.code}>
+                          {framework.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Layer</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Layer" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {layers.map((layer) => (
+                        <SelectItem key={layer.code} value={layer.code}>
+                          {layer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" onClick={onClose} variant="outline">
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
