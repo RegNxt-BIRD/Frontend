@@ -119,7 +119,6 @@ export const ConfigureDatasets: React.FC = () => {
   // Handlers
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
     try {
-      console.log("newDataset: ", newDataset);
       await fastApiInstance.post("/api/v1/datasets/", {
         ...newDataset,
         is_system_generated: false,
