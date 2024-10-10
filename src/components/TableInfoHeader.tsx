@@ -1,3 +1,4 @@
+// TableInfoHeader.tsx
 import { Badge } from "@/components/ui/badge";
 
 interface TableData {
@@ -9,9 +10,20 @@ interface TableData {
   type: string;
 }
 
+interface DatasetVersion {
+  dataset_version_id: number;
+  version_nr: string;
+  version_code: string;
+  group?: {
+    code: string;
+    label: string;
+    order: number;
+  };
+}
+
 interface TableInfoHeaderProps {
   selectedTable: TableData;
-  datasetVersion: any;
+  datasetVersion: DatasetVersion;
 }
 
 export const TableInfoHeader: React.FC<TableInfoHeaderProps> = ({
@@ -21,7 +33,7 @@ export const TableInfoHeader: React.FC<TableInfoHeaderProps> = ({
   return (
     <div className="bg-gray-100 p-4 rounded-lg mb-4">
       <h2 className="text-2xl font-bold mb-2">{selectedTable.label}</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 mb-2">
         <Badge variant="outline">Code: {selectedTable.code}</Badge>
         <Badge variant="outline">ID: {selectedTable.dataset_id}</Badge>
         <Badge variant="outline">Framework: {selectedTable.framework}</Badge>
@@ -37,6 +49,14 @@ export const TableInfoHeader: React.FC<TableInfoHeaderProps> = ({
           </>
         )}
       </div>
+      {datasetVersion && datasetVersion.group && (
+        <div className="mt-2">
+          <Badge className="bg-blue-500 text-white">
+            Group: {datasetVersion.group.label}
+            {datasetVersion.group.code}, Order: {datasetVersion.group.order})
+          </Badge>
+        </div>
+      )}
       <p className="mt-2 text-sm text-gray-600">{selectedTable.description}</p>
     </div>
   );
