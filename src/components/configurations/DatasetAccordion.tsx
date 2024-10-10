@@ -15,6 +15,8 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Plus, Trash } from "lucide-react";
 import React, { useState } from "react";
+import { DatasetVersionColumnFormModal } from "./DatasetVersionColumnFormModal";
+import { DatasetVersionColumns } from "./DatasetVersionColumns";
 import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 
 interface Dataset {
@@ -37,6 +39,25 @@ interface DatasetVersion {
   is_system_generated: boolean;
 }
 
+interface DatasetVersionColumn {
+  dataset_version_column_id: number;
+  dataset_version_id: number;
+  column_order: number;
+  code: string;
+  label: string;
+  description: string;
+  role: string;
+  dimension_type: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+  is_report_snapshot_field: boolean;
+  is_system_generated: boolean;
+}
+
 interface DatasetAccordionProps {
   datasets: Dataset[];
   handleDatasetClick: (dataset: Dataset) => void;
@@ -48,6 +69,9 @@ interface DatasetAccordionProps {
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
   isLoadingVersions: boolean;
+  handleCreateColumn: (column: Partial<DatasetVersionColumn>) => Promise<void>;
+  handleUpdateColumn: (column: DatasetVersionColumn) => Promise<void>;
+  handleDeleteColumn: (columnId: number) => Promise<void>;
 }
 
 export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
@@ -61,11 +85,20 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   handleEditDataset,
   handleDeleteDataset,
   isLoadingVersions,
+  handleCreateColumn,
+  handleUpdateColumn,
+  handleDeleteColumn,
 }) => {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [editingVersion, setEditingVersion] = useState<DatasetVersion | null>(
     null
   );
+  const [selectedVersion, setSelectedVersion] = useState<DatasetVersion | null>(
+    null
+  );
+  const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+  const [editingColumn, setEditingColumn] =
+    useState<DatasetVersionColumn | null>(null);
 
   const versionColumns: ColumnDef<DatasetVersion>[] = [
     { accessorKey: "version_nr", header: "Version" },
@@ -183,7 +216,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                         (v) => v.dataset_id === dataset.dataset_id
                       )}
                       columns={versionColumns}
-                      onRowClick={() => {}}
+                      onRowClick={(version) => setSelectedVersion(version)}
                       showPagination={true}
                     />
                   ) : (
@@ -200,6 +233,21 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                       <Plus className="h-4 w-4 mr-2" />
                       Create New Version
                     </Button>
+                  )}
+                  {selectedVersion && (
+                    <DatasetVersionColumns
+                      datasetId={dataset.dataset_id}
+                      versionId={selectedVersion.dataset_version_id}
+                      onCreateColumn={() => {
+                        setEditingColumn(null);
+                        setIsColumnModalOpen(true);
+                      }}
+                      onEditColumn={(column) => {
+                        setEditingColumn(column);
+                        setIsColumnModalOpen(true);
+                      }}
+                      onDeleteColumn={handleDeleteColumn}
+                    />
                   )}
                 </div>
               )}
@@ -223,6 +271,27 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
           }
         }}
         initialData={editingVersion || undefined}
+      />
+      <DatasetVersionColumnFormModal
+        isOpen={isColumnModalOpen}
+        onClose={() => {
+          setIsColumnModalOpen(false);
+          setEditingColumn(null);
+        }}
+        onSubmit={(column) => {
+          if (editingColumn) {
+            handleUpdateColumn({
+              ...editingColumn,
+              ...column,
+            } as DatasetVersionColumn);
+          } else if (selectedVersion) {
+            handleCreateColumn({
+              ...column,
+              dataset_version_id: selectedVersion.dataset_version_id,
+            });
+          }
+        }}
+        initialData={editingColumn || undefined}
       />
     </Accordion>
   );
