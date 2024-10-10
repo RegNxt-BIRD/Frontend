@@ -6,6 +6,7 @@ import { EditableColumnTable } from "./EditableColumnTable";
 
 interface Column {
   dataset_version_column_id?: number;
+  dataset_version_id: number;
   column_order: number;
   code: string;
   label: string;
@@ -64,14 +65,19 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
 
   const handleSave = async () => {
     try {
+      const columnsToSave = columns.map((column) => ({
+        ...column,
+        dataset_version_id: versionId,
+      }));
       await fastApiInstance.post(
         `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
-        { columns }
+        { columns: columnsToSave }
       );
       toast({
         title: "Success",
         description: "Columns updated successfully.",
       });
+      fetchColumns(); // Refresh the columns after saving
     } catch (error) {
       console.error("Error saving columns:", error);
       toast({
