@@ -118,7 +118,7 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
     if (inputType === "date" && item.datatype === "GregorianDay") {
       const dateValue = row[item.code];
       const datePattern =
-        item.datatype_format?.split("#!#")[1].split("=")[1] || "";
+        item.datatype_format?.split("#!#")[1]?.split("=")[1] || "";
 
       return (
         <DatePicker
