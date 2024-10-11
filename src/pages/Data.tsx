@@ -73,6 +73,25 @@ const Data: React.FC = () => {
     }
   }, [error, toast]);
 
+  const groupedData = useMemo(() => {
+    if (!Array.isArray(dataTableJson?.data)) return {};
+    console.log("dataTableJson: ", dataTableJson);
+    return dataTableJson?.data?.reduce((acc, item) => {
+      const framework = item.framework;
+      const group = item.groups.length > 0 ? item.groups[0].code : "Ungrouped";
+
+      if (!acc[framework]) {
+        acc[framework] = {};
+      }
+      if (!acc[framework][group]) {
+        acc[framework][group] = [];
+      }
+      acc[framework][group].push(item);
+
+      return acc;
+    }, {} as Record<string, Record<string, any[]>>);
+  }, [dataTableJson]);
+
   const handleDateChange = useCallback((newDate: Date | undefined) => {
     if (newDate instanceof Date) {
       setSelectedDate(newDate);
@@ -258,24 +277,52 @@ const Data: React.FC = () => {
     [selectedTable, datasetVersion, selectedDate, metadata, toast]
   );
   const filteredData = useMemo(() => {
-    if (!Array.isArray(dataTableJson?.data)) return [];
-    return dataTableJson?.data?.filter((item: any) => {
-      const frameworkMatch =
-        selectedFramework === NO_FILTER || item.framework === selectedFramework;
-      const layerMatch =
-        selectedLayer === NO_FILTER || item.type === selectedLayer;
-      const columnFilterMatch = Object.entries(columnFilters).every(
-        ([key, value]) =>
-          value === "" ||
-          item[key as keyof any]
-            .toString()
-            .toLowerCase()
-            .includes(value.toLowerCase())
-      );
-      return frameworkMatch && layerMatch && columnFilterMatch;
-    });
-  }, [dataTableJson, selectedFramework, selectedLayer, columnFilters]);
+    const filtered: Record<string, Record<string, any[]>> = {};
 
+    Object.entries(groupedData).forEach(([framework, groups]) => {
+      if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
+        return;
+      }
+
+      filtered[framework] = {};
+
+      Object.entries(groups).forEach(([group, items]) => {
+        const filteredItems = items.filter((item) => {
+          const layerMatch =
+            selectedLayer === NO_FILTER || item.type === selectedLayer;
+          const columnFilterMatch = Object.entries(columnFilters).every(
+            ([key, value]) =>
+              value === "" ||
+              (item[key as keyof typeof item] &&
+                item[key as keyof typeof item]
+                  .toString()
+                  .toLowerCase()
+                  .includes(value.toLowerCase()))
+          );
+          return layerMatch && columnFilterMatch;
+        });
+
+        if (filteredItems.length > 0) {
+          filtered[framework][group] = filteredItems;
+        }
+      });
+
+      if (Object.keys(filtered[framework]).length === 0) {
+        delete filtered[framework];
+      }
+    });
+
+    return filtered;
+  }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
+
+  const totalFilteredItems = useMemo(() => {
+    return Object.values(filteredData).reduce(
+      (total, groups) =>
+        total +
+        Object.values(groups).reduce((sum, items) => sum + items.length, 0),
+      0
+    );
+  }, [filteredData]);
   const layersWithNoFilter = useMemo(
     () => [
       { code: NO_FILTER, name: "No Layer Selected" },
@@ -331,7 +378,7 @@ const Data: React.FC = () => {
         />
       </div>
       <SelectionDisplay
-        filteredDataLength={filteredData.length}
+        filteredDataLength={totalFilteredItems}
         selectedFramework={selectedFramework}
         selectedLayer={selectedLayer}
         selectedDate={selectedDate}
@@ -342,8 +389,13 @@ const Data: React.FC = () => {
           setColumnFilters((prev) => ({ ...prev, [key]: value }))
         }
       />
-      {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
-        <DataAccordion data={filteredData} onTableClick={handleTableClick} />
+
+      {selectedLayer === NO_FILTER ? (
+        <DataAccordion
+          data={filteredData}
+          onTableClick={handleTableClick}
+          selectedFramework={selectedFramework}
+        />
       ) : (
         <ConfigurationDataTable
           data={filteredData}
