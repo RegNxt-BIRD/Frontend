@@ -61,7 +61,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   const { data: relationshipsData, error } = useSWR(
     selectedDatasetVersions.length > 0
       ? selectedDatasetVersions.map(
-          (v) => `/api/v1/datasets/${v.dataset_version_id}/relationships/`
+          (v) => `/api/v1/datasets/${v.dataset_id}/relationships/`
         )
       : null,
     (urls) => Promise.all(urls.map(fetcher))
@@ -76,11 +76,13 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
         const { central_dataset_version, inbound, outbound } = response;
 
         // Add central node
+        console.log("central_dataset_version: ", central_dataset_version);
         const centralNode = createNode(central_dataset_version, index * 300, 0);
         newNodes.push(centralNode);
 
         // Add inbound nodes and edges
         inbound.forEach((rel: any, i: number) => {
+          console.log("inbound: ", rel);
           const sourceNode = createNode(
             {
               dataset_version_id: rel.source_dataset_version_id,
@@ -118,12 +120,13 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   }, [relationshipsData, setNodes, setEdges]);
 
   const createNode = (dataset: any, x: number, y: number): Node => {
+    console.log("dataset: ", dataset);
     return {
       id: dataset.dataset_version_id.toString(),
       type: "databaseTable",
       position: { x, y },
       data: {
-        label: `${dataset.dataset_name} (v${dataset.version_nr})`,
+        label: `${dataset.code} (v${dataset.version_nr})`,
         columns: dataset.columns || [],
       },
       draggable: true,
