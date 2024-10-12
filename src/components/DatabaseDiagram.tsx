@@ -1,4 +1,3 @@
-// components/DatabaseDiagram.tsx
 import { fastApiInstance } from "@/lib/axios";
 import {
   addEdge,
@@ -78,14 +77,10 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
       relationshipsData.forEach((response, index) => {
         const { central_dataset_version, inbound, outbound } = response;
 
-        // Add central node
-        console.log("central_dataset_version: ", central_dataset_version);
         const centralNode = createNode(central_dataset_version, index * 300, 0);
         newNodes.push(centralNode);
 
-        // Add inbound nodes and edges
         inbound.forEach((rel: any, i: number) => {
-          console.log("inbound: ", rel);
           const sourceNode = createNode(
             {
               dataset_version_id: rel.source_dataset_version_id,
@@ -100,7 +95,6 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
           newEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
         });
 
-        // Add outbound nodes and edges
         outbound.forEach((rel: any, i: number) => {
           const targetNode = createNode(
             {
@@ -123,7 +117,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   }, [relationshipsData, setNodes, setEdges]);
 
   const createNode = (dataset: any, x: number, y: number): Node => {
-    console.log("dataset: ", dataset);
+    console.log("dataset_version_id: ", dataset);
     return {
       id: dataset.dataset_version_id.toString(),
       type: "databaseTable",
@@ -199,14 +193,25 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      onSelectionChange(
-        selectedDatasetVersions.filter(
-          (v) => v.dataset_version_id.toString() !== node.id
-        )
+      const updatedSelection = selectedDatasetVersions.filter(
+        (v) => v.dataset_version_id.toString() !== node.id
       );
+      onSelectionChange(updatedSelection);
     },
     [selectedDatasetVersions, onSelectionChange]
   );
+
+  useEffect(() => {
+    const selectedNodeIds = new Set(
+      selectedDatasetVersions.map((v) => v.dataset_id.toString())
+    );
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => ({
+        ...node,
+        selected: selectedNodeIds.has(node.id),
+      }))
+    );
+  }, [selectedDatasetVersions, setNodes]);
 
   if (error) {
     return <div>Error loading relationships: {error.message}</div>;
@@ -221,6 +226,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onEdgeClick={onEdgeClick}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

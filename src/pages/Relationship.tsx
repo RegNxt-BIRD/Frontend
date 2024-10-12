@@ -1,4 +1,3 @@
-// components/Relationship.tsx
 import DatabaseDiagram from "@/components/DatabaseDiagram";
 import DatePicker from "@/components/DatePicker";
 import SelectableAccordion from "@/components/SelectableAccordion";
@@ -83,6 +82,10 @@ export const Relationship: React.FC = () => {
     return filtered;
   }, [dataTableJson, selectedFramework, selectedLayer, searchTerm]);
 
+  const handleDiagramSelectionChange = useCallback((selectedNodes: any[]) => {
+    setSelectedDatasetVersions(selectedNodes);
+  }, []);
+
   return (
     <div className="flex h-screen">
       <div className="w-3/4 p-4">
@@ -121,7 +124,7 @@ export const Relationship: React.FC = () => {
         <ReactFlowProvider>
           <DatabaseDiagram
             selectedDatasetVersions={selectedDatasetVersions}
-            onSelectionChange={setSelectedDatasetVersions}
+            onSelectionChange={handleDiagramSelectionChange}
           />
         </ReactFlowProvider>
       </div>
