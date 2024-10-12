@@ -55,10 +55,12 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
   onTableClick,
   selectedFramework,
 }) => {
-  const [expandedFramework, setExpandedFramework] = useState<string | null>(
-    null
-  );
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [expandedFramework, setExpandedFramework] = useState<
+    string | string[] | undefined
+  >(undefined);
+  const [expandedGroup, setExpandedGroup] = useState<
+    string | string[] | undefined
+  >(undefined);
   const [frameworkPage, setFrameworkPage] = useState(1);
   const [groupPages, setGroupPages] = useState<Record<string, number>>({});
 

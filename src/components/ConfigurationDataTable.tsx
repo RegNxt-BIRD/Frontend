@@ -1,4 +1,5 @@
 import { SharedDataTable } from "@/components/SharedDataTable";
+import { DatasetItem } from "@/types/databaseTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
@@ -12,7 +13,7 @@ interface DataItem {
 }
 
 interface ConfigurationDataTableProps {
-  data: Record<string, Record<string, DataItem[]>>;
+  data: Record<string, Record<string, DatasetItem[]>>;
   onRowClick: (row: DataItem) => void;
 }
 

@@ -17,6 +17,7 @@ interface DatasetItem {
   description: string;
   framework: string;
   type: string;
+  [key: string]: any;
   groups: any[];
 }
 

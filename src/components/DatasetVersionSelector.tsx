@@ -13,6 +13,17 @@ interface DatasetVersionSelectorProps {
   selectedVersions: string[];
 }
 
+interface DatasetVersionResponse {
+  data: {
+    dataset_version_id: number;
+    version_code: string;
+    // Add other properties as needed
+  };
+}
+
+interface DataVersionColumnsResponse {
+  data: any[]; // Replace 'any' with a more specific type if possible
+}
 const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
   framework,
   layer,
@@ -22,14 +33,7 @@ const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
 }) => {
   const [selectedDataset, setSelectedDataset] = useState<any>(null);
 
-  const { data: datasets } = useSWR(
-    framework !== "NO_FILTER" && layer !== "NO_FILTER"
-      ? `/api/v1/datasets/?framework=${framework}&layer=${layer}`
-      : null,
-    fastApiInstance
-  );
-
-  const { data: datasetVersion } = useSWR(
+  const { data: datasetVersion } = useSWR<DatasetVersionResponse>(
     selectedDataset
       ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions/?date=${format(
           date,
@@ -39,13 +43,12 @@ const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
     fastApiInstance
   );
 
-  const { data: dataVersionColumns } = useSWR(
+  const { data: dataVersionColumns } = useSWR<DataVersionColumnsResponse>(
     datasetVersion?.data
       ? `/api/v1/datasets/${selectedDataset.dataset_id}/columns/?version_id=${datasetVersion.data.dataset_version_id}`
       : null,
     fastApiInstance
   );
-
   useEffect(() => {
     setSelectedDataset(null);
   }, [framework, layer]);

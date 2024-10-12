@@ -20,7 +20,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
-import { Frameworks, Layers, ValidationResult } from "@/types/databaseTypes";
+import {
+  DatasetItem,
+  Frameworks,
+  Layers,
+  ValidationResult,
+} from "@/types/databaseTypes";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -55,11 +60,9 @@ const Data: React.FC = () => {
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson, error: dataError } = useSWR<any>(
-    "/api/v1/datasets/",
-    fastApiInstance
-  );
-
+  const { data: dataTableJson, error: dataError } = useSWR<{
+    data: DatasetItem[];
+  }>("/api/v1/datasets/", fastApiInstance);
   const isLoading = !layers || !frameworks || !dataTableJson;
   const error = layersError || frameworksError || dataError;
 
@@ -75,59 +78,64 @@ const Data: React.FC = () => {
 
   const groupedData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return {};
-    return dataTableJson?.data?.reduce((acc, item) => {
-      const framework = item.framework;
-      const group =
-        item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
-  
-      if (!acc[framework]) {
-        acc[framework] = {};
-      }
-      if (!acc[framework][group]) {
-        acc[framework][group] = [];
-      }
-      acc[framework][group].push(item);
-  
-      return acc;
-    }, {} as Record<string, Record<string, any[]>>);
+    return dataTableJson?.data?.reduce(
+      (
+        acc: Record<string, Record<string, DatasetItem[]>>,
+        item: DatasetItem
+      ) => {
+        const framework = item.framework;
+        const group =
+          item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
+
+        if (!acc[framework]) {
+          acc[framework] = {};
+        }
+        if (!acc[framework][group]) {
+          acc[framework][group] = [];
+        }
+        acc[framework][group].push(item);
+
+        return acc;
+      },
+      {}
+    );
   }, [dataTableJson]);
-  
   const filteredData = useMemo(() => {
-    const filtered: Record<string, Record<string, any[]>> = {};
-  
+    const filtered: Record<string, Record<string, DatasetItem[]>> = {};
+
     Object.entries(groupedData).forEach(([framework, groups]) => {
       if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
         return;
       }
-  
+
       filtered[framework] = {};
-  
+
       Object.entries(groups).forEach(([group, items]) => {
-        const filteredItems = items.filter((item) => {
+        const filteredItems = items.filter((item: any) => {
           const layerMatch =
             selectedLayer === NO_FILTER || item.type === selectedLayer;
           const columnFilterMatch = Object.entries(columnFilters).every(
             ([key, value]) =>
               value === "" ||
-              (item[key as keyof typeof item] &&
-                item[key as keyof typeof item]
+              (item[key] &&
+                item[key]
                   .toString()
                   .toLowerCase()
                   .includes(value.toLowerCase()))
           );
           return layerMatch && columnFilterMatch;
         });
-  
+
         if (filteredItems.length > 0) {
           filtered[framework][group] = filteredItems;
         }
       });
-  
+
       if (Object.keys(filtered[framework]).length === 0) {
         delete filtered[framework];
       }
     });
-  
+
     return filtered;
   }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
