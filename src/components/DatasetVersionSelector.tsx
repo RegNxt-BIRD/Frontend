@@ -1,14 +1,7 @@
 import GenericComboBox from "@/components/ComboBox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { format } from "date-fns";
-
+import { Checkbox } from "@/components/ui/checkbox";
 import { fastApiInstance } from "@/lib/axios";
+import { format } from "date-fns";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 
@@ -17,6 +10,7 @@ interface DatasetVersionSelectorProps {
   layer: string;
   date: Date;
   onSelect: (datasetVersion: any) => void;
+  selectedVersions: string[];
 }
 
 const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
@@ -24,87 +18,73 @@ const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
   layer,
   date,
   onSelect,
+  selectedVersions,
 }) => {
-  const [selectedGroup, setSelectedGroup] = useState<string>("all");
-  const [selectedDataset, setSelectedDataset] = useState<string>("");
+  const [selectedDataset, setSelectedDataset] = useState<any>(null);
 
-  const { data: groups } = useSWR(
+  const { data: datasets } = useSWR(
     framework !== "NO_FILTER" && layer !== "NO_FILTER"
-      ? `/api/v1/datasets/groups/?framework=${framework}&layer=${layer}`
+      ? `/api/v1/datasets/?framework=${framework}&layer=${layer}`
       : null,
     fastApiInstance
   );
 
-  const { data: datasetVersions } = useSWR(
+  const { data: datasetVersion } = useSWR(
     selectedDataset
-      ? `/api/v1/datasets/${
-          selectedDataset?.dataset_id
-        }/versions/?date=${format(date, "yyyy-MM-dd")}`
+      ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions/?date=${format(
+          date,
+          "yyyy-MM-dd"
+        )}`
       : null,
     fastApiInstance
   );
-  console.log("datasetVersions::: ", datasetVersions?.data);
-  const { data: dataVersionsColumns } = useSWR(
-    datasetVersions
-      ? `/api/v1/datasets/${selectedDataset?.dataset_id}/columns/?version_id=${datasetVersions?.data?.dataset_version_id}`
+
+  const { data: dataVersionColumns } = useSWR(
+    datasetVersion?.data
+      ? `/api/v1/datasets/${selectedDataset.dataset_id}/columns/?version_id=${datasetVersion.data.dataset_version_id}`
       : null,
     fastApiInstance
   );
-  console.log({ dataVersionsColumns });
-  // const { data: datasetVersions } = useSWR(
-  //   selectedDataset
-  //     ? `/api/v1/datasets/${selectedDataset}/versions/?date=${format(
-  //         date,
-  //         "yyyy-MM-dd"
-  //       )}`
-  //     : null,
-  //   fastApiInstance
-  // );
-  // const columnsResponse = await fastApiInstance.get(
-  //   `/api/v1/datasets/${selectedTable.dataset_id}/columns/`,
-  //   {
-  //     params: { version_id: datasetVersion.dataset_version_id },
-  //   }
-  // );
 
   useEffect(() => {
-    setSelectedGroup("all");
-    setSelectedDataset("");
+    setSelectedDataset(null);
   }, [framework, layer]);
 
-  useEffect(() => {
-    setSelectedDataset("");
-  }, [selectedGroup]);
+  const handleDatasetSelect = (dataset: any) => {
+    setSelectedDataset(dataset);
+  };
 
-  const handleDatasetSelect = (datasetCode: string) => {
-    setSelectedDataset(datasetCode);
+  const handleVersionSelect = () => {
+    if (datasetVersion?.data && dataVersionColumns?.data) {
+      const versionWithColumns = {
+        ...datasetVersion.data,
+        columns: dataVersionColumns.data,
+      };
+      onSelect(versionWithColumns);
+    }
   };
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex flex-col space-y-2">
       <GenericComboBox
-        apiEndpoint={`/api/v1/datasets/${
-          selectedGroup === "all" ? "" : `by_group/?group=${selectedGroup}`
-        }`}
+        apiEndpoint="/api/v1/datasets/"
         placeholder="Select a Dataset"
         onSelect={handleDatasetSelect}
       />
-
-      <Select onValueChange={onSelect} disabled={!selectedDataset?.code}>
-        <SelectTrigger className="w-[250px]">
-          <SelectValue placeholder="Select a Dataset Version" />
-        </SelectTrigger>
-        <SelectContent>
-          {dataVersionsColumns?.data?.map((version: any) => (
-            <SelectItem
-              key={version.dataset_version_id}
-              value={version.dataset_version_id.toString()}
-            >
-              {version.version_code || "Unnamed Version"}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {datasetVersion?.data && (
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={`version-${datasetVersion.data.dataset_version_id}`}
+            checked={selectedVersions.includes(
+              datasetVersion.data.dataset_version_id.toString()
+            )}
+            onCheckedChange={handleVersionSelect}
+          />
+          <label htmlFor={`version-${datasetVersion.data.dataset_version_id}`}>
+            {datasetVersion.data.version_code || "Unnamed Version"}
+          </label>
+        </div>
+      )}
     </div>
   );
 };

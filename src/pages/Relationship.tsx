@@ -9,9 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fastApiInstance } from "@/lib/axios";
-import { Frameworks, Layers } from "@/types/databaseTypes";
 import { ReactFlowProvider } from "@xyflow/react";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import useSWR from "swr";
 
 const NO_FILTER = "NO_FILTER";
@@ -20,68 +19,50 @@ const Relationships = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedDatasetVersion, setSelectedDatasetVersion] =
-    useState<any>(null);
-
-  const { data: layers, error: layersError } = useSWR<Layers>(
-    "/api/v1/layers/",
-    fastApiInstance
-  );
-  const { data: frameworks, error: frameworksError } = useSWR<Frameworks>(
-    "/api/v1/frameworks/",
-    fastApiInstance
+  const [selectedDatasetVersions, setSelectedDatasetVersions] = useState<any[]>(
+    []
   );
 
-  const isLoading = !layers || !frameworks;
-  const error = layersError || frameworksError;
-
-  const layersWithNoFilter = useMemo(
-    () => [
-      { code: NO_FILTER, name: "No Layer Selected" },
-      ...(layers?.data || []),
-    ],
-    [layers]
-  );
-
-  const frameworksWithNoFilter = useMemo(
-    () => [
-      { code: NO_FILTER, name: "No Framework Selected" },
-      ...(frameworks?.data || []),
-    ],
-    [frameworks]
-  );
+  const { data: layers } = useSWR("/api/v1/layers/", fastApiInstance);
+  const { data: frameworks } = useSWR("/api/v1/frameworks/", fastApiInstance);
 
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
-    setSelectedDatasetVersion(null);
   }, []);
 
   const handleLayerChange = useCallback((value: string) => {
     setSelectedLayer(value);
-    setSelectedDatasetVersion(null);
   }, []);
 
   const handleDateChange = useCallback((newDate: Date | undefined) => {
     if (newDate instanceof Date) {
       setSelectedDate(newDate);
-      setSelectedDatasetVersion(null);
     }
   }, []);
 
   const handleDatasetVersionSelect = useCallback((datasetVersion: any) => {
-    setSelectedDatasetVersion(datasetVersion);
+    setSelectedDatasetVersions((prev) =>
+      prev.some(
+        (v) => v.dataset_version_id === datasetVersion.dataset_version_id
+      )
+        ? prev.filter(
+            (v) => v.dataset_version_id !== datasetVersion.dataset_version_id
+          )
+        : [...prev, datasetVersion]
+    );
   }, []);
 
   return (
-    <div className="container mx-auto py-10 h-[calc(100vh-100px)]">
-      <h1 className="text-2xl font-bold mb-5">Relationships</h1>
-      <div className="flex space-x-4 mb-5">
+    <div className="container mx-auto py-6 h-screen flex flex-col">
+      <h1 className="text-2xl font-bold mb-4">Relationships</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
-          <SelectTrigger className="w-[250px]">
+          <SelectTrigger>
             <SelectValue placeholder="Select a Framework" />
           </SelectTrigger>
           <SelectContent>
-            {frameworksWithNoFilter.map((framework) => (
+            <SelectItem value={NO_FILTER}>No Framework Selected</SelectItem>
+            {frameworks?.data?.map((framework: any) => (
               <SelectItem key={framework.code} value={framework.code}>
                 {framework.name}
               </SelectItem>
@@ -89,35 +70,32 @@ const Relationships = () => {
           </SelectContent>
         </Select>
         <Select onValueChange={handleLayerChange} value={selectedLayer}>
-          <SelectTrigger className="w-[250px]">
+          <SelectTrigger>
             <SelectValue placeholder="Select a Layer" />
           </SelectTrigger>
           <SelectContent>
-            {layersWithNoFilter.map((layer) => (
+            <SelectItem value={NO_FILTER}>No Layer Selected</SelectItem>
+            {layers?.data?.map((layer: any) => (
               <SelectItem key={layer.code} value={layer.code}>
                 {layer.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <DatePicker
-          onSelect={
-            handleDateChange as React.ComponentProps<
-              typeof DatePicker
-            >["onSelect"]
-          }
-          initialDate={selectedDate}
-        />
+        <DatePicker onSelect={handleDateChange} initialDate={selectedDate} />
         <DatasetVersionSelector
           framework={selectedFramework}
           layer={selectedLayer}
           date={selectedDate}
           onSelect={handleDatasetVersionSelect}
+          selectedVersions={selectedDatasetVersions.map((v) =>
+            v.dataset_version_id.toString()
+          )}
         />
       </div>
-      <div className="h-[calc(100%-2rem)] relative">
+      <div className="flex-grow relative">
         <ReactFlowProvider>
-          <DatabaseDiagram selectedDatasetVersion={selectedDatasetVersion} />
+          <DatabaseDiagram selectedDatasetVersions={selectedDatasetVersions} />
         </ReactFlowProvider>
       </div>
     </div>

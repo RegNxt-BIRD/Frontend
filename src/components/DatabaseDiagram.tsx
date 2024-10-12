@@ -1,10 +1,13 @@
 import { fastApiInstance } from "@/lib/axios";
-import {
+import ReactFlow, {
   addEdge,
+  Background,
   Connection,
+  Controls,
   Edge,
+  EdgeTypes,
   Node,
-  ReactFlow,
+  NodeTypes,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
@@ -14,39 +17,60 @@ import CustomEdgeComponent from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
 interface DatabaseDiagramProps {
-  selectedDatasetVersion: any;
+  selectedDatasetVersions: any[];
 }
 
+const nodeTypes: NodeTypes = {
+  databaseTable: DatabaseTableNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  custom: CustomEdgeComponent,
+};
+
 const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
-  selectedDatasetVersion,
+  selectedDatasetVersions,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const nodeTypes = {
-    databaseTable: DatabaseTableNode,
-  };
-
-  const edgeTypes = {
-    custom: CustomEdgeComponent,
-  };
-
   useEffect(() => {
-    if (selectedDatasetVersion) {
-      fetchRelationships(selectedDatasetVersion.dataset_version_id);
-    }
-  }, [selectedDatasetVersion]);
-
-  const fetchRelationships = async (datasetVersionId: string) => {
-    try {
-      const response = await fastApiInstance.get(
-        `/api/v1/relationships/${datasetVersionId}`
+    if (selectedDatasetVersions.length > 0) {
+      fetchRelationships(
+        selectedDatasetVersions.map((v) => v.dataset_version_id)
       );
-      const { nodes: apiNodes, edges: apiEdges } = response.data;
-      setNodes(apiNodes);
-      setEdges(apiEdges);
+    }
+  }, [selectedDatasetVersions]);
+
+  const fetchRelationships = async (datasetVersionIds: string[]) => {
+    try {
+      const promises = datasetVersionIds.map((id) =>
+        fastApiInstance.get(`/api/v1/relationships/${id}`)
+      );
+      const responses = await Promise.all(promises);
+
+      const allNodes: Node[] = [];
+      const allEdges: Edge[] = [];
+
+      responses.forEach((response, index) => {
+        const { nodes: apiNodes, edges: apiEdges } = response.data;
+        const offsetX = index * 300;
+        const offsetY = index * 100;
+        const offsetNodes = apiNodes.map((node: Node) => ({
+          ...node,
+          position: {
+            x: (node.position?.x || 0) + offsetX,
+            y: (node.position?.y || 0) + offsetY,
+          },
+        }));
+        allNodes.push(...offsetNodes);
+        allEdges.push(...apiEdges);
+      });
+
+      setNodes(allNodes);
+      setEdges(allEdges);
     } catch (error) {
       console.error("Error fetching relationships:", error);
     }
@@ -62,14 +86,6 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
     setIsModalOpen(true);
   }, []);
 
-  const onNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      event.preventDefault();
-      fetchRelationships(node.id);
-    },
-    []
-  );
-
   const handleColumnSelection = useCallback(
     (sourceColumn: string, targetColumn: string) => {
       if (selectedEdge) {
@@ -78,8 +94,8 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
             e.id === selectedEdge.id
               ? {
                   ...e,
-                  sourceHandle: `${e.source}.${sourceColumn}`,
-                  targetHandle: `${e.target}.${targetColumn}`,
+                  sourceHandle: `${e.source}.${sourceColumn}.right`,
+                  targetHandle: `${e.target}.${targetColumn}.left`,
                   data: {
                     ...e.data,
                     sourceKey: sourceColumn,
@@ -98,7 +114,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   );
 
   return (
-    <>
+    <div style={{ width: "100%", height: "100%" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -106,11 +122,13 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onEdgeClick={onEdgeClick}
-        onNodeContextMenu={onNodeContextMenu}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-      />
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
       {isModalOpen && selectedEdge && (
         <ColumnSelectionModal
           sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
@@ -121,7 +139,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
           initialTargetColumn={selectedEdge.data?.targetKey}
         />
       )}
-    </>
+    </div>
   );
 };
 
