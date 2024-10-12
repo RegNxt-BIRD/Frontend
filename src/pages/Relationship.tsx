@@ -48,8 +48,8 @@ export const Relationship: React.FC = () => {
 
   const handleDatasetVersionSelect = useCallback((item: any) => {
     setSelectedDatasetVersions((prev) =>
-      prev.some((v) => v.dataset_id === item.dataset_id)
-        ? prev.filter((v) => v.dataset_id !== item.dataset_id)
+      prev.some((v) => v.dataset_version_id === item.dataset_version_id)
+        ? prev.filter((v) => v.dataset_version_id !== item.dataset_version_id)
         : [...prev, item]
     );
   }, []);

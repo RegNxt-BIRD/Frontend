@@ -63,7 +63,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   const { data: relationshipsData, error } = useSWR(
     selectedDatasetVersions.length > 0
       ? selectedDatasetVersions.map(
-          (v) => `/api/v1/datasets/${v.dataset_id}/relationships/`
+          (v) => `/api/v1/datasets/${v.dataset_version_id}/relationships/`
         )
       : null,
     (urls) => Promise.all(urls.map(fetcher))
@@ -193,6 +193,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      console.log("check selected: ", selectedDatasetVersions);
       const updatedSelection = selectedDatasetVersions.filter(
         (v) => v.dataset_version_id.toString() !== node.id
       );
@@ -203,7 +204,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
 
   useEffect(() => {
     const selectedNodeIds = new Set(
-      selectedDatasetVersions.map((v) => v.dataset_id.toString())
+      selectedDatasetVersions.map((v) => v.dataset_version_id.toString())
     );
     setNodes((prevNodes) =>
       prevNodes.map((node) => ({
