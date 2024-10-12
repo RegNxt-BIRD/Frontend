@@ -60,7 +60,7 @@ export default function Login() {
       subtitle="Sign in to continue using the BIRD"
       imageSrc="/white-logo.svg"
       imageAlt="BIRD"
-      description="It provides a user interface for managing and visualizing datasets without predefined models or classes"
+      description="Intuitive user interface for visualizing, managing and extending the BIRD model"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
