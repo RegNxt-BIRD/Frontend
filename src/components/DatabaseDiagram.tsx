@@ -1,3 +1,4 @@
+// components/DatabaseDiagram.tsx
 import { fastApiInstance } from "@/lib/axios";
 import {
   addEdge,
@@ -24,6 +25,7 @@ import DatabaseTableNode from "./DatabaseTableNode";
 
 interface DatabaseDiagramProps {
   selectedDatasetVersions: any[];
+  onSelectionChange: (selectedVersions: any[]) => void;
 }
 
 const nodeTypes: NodeTypes = {
@@ -52,6 +54,7 @@ const fetcher = async (url: string) => {
 
 const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   selectedDatasetVersions,
+  onSelectionChange,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -192,6 +195,17 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
       setSelectedEdge(null);
     },
     [selectedEdge, setEdges]
+  );
+
+  const onNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      onSelectionChange(
+        selectedDatasetVersions.filter(
+          (v) => v.dataset_version_id.toString() !== node.id
+        )
+      );
+    },
+    [selectedDatasetVersions, onSelectionChange]
   );
 
   if (error) {
