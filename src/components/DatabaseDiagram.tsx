@@ -7,12 +7,15 @@ import {
   Edge,
   EdgeTypes,
   MarkerType,
+  MiniMap,
   Node,
   NodeTypes,
+  Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import React, { useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import ColumnSelectionModal from "./ColumnSelectionModal";
@@ -37,7 +40,6 @@ const fetcher = async (url: string) => {
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 301) {
-      // If we get a 301, follow the redirect
       const newUrl = error.response.headers.location;
       if (newUrl) {
         const redirectResponse = await fastApiInstance.get(newUrl);
@@ -67,18 +69,18 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
 
   useEffect(() => {
     if (relationshipsData) {
-      const allNodes: Node[] = [];
-      const allEdges: Edge[] = [];
+      const newNodes: Node[] = [];
+      const newEdges: Edge[] = [];
 
       relationshipsData.forEach((response, index) => {
         const { central_dataset_version, inbound, outbound } = response;
 
         // Add central node
-        const centralNode = createNode(central_dataset_version, index);
-        allNodes.push(centralNode);
+        const centralNode = createNode(central_dataset_version, index * 300, 0);
+        newNodes.push(centralNode);
 
         // Add inbound nodes and edges
-        inbound.forEach((rel: any) => {
+        inbound.forEach((rel: any, i: number) => {
           const sourceNode = createNode(
             {
               dataset_version_id: rel.source_dataset_version_id,
@@ -86,14 +88,15 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
               version_nr: rel.source_version_nr,
               columns: [],
             },
-            allNodes.length
+            index * 300 - 200,
+            (i + 1) * 150
           );
-          allNodes.push(sourceNode);
-          allEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
+          newNodes.push(sourceNode);
+          newEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
         });
 
         // Add outbound nodes and edges
-        outbound.forEach((rel: any) => {
+        outbound.forEach((rel: any, i: number) => {
           const targetNode = createNode(
             {
               dataset_version_id: rel.destination_dataset_version_id,
@@ -101,37 +104,29 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
               version_nr: rel.destination_version_nr,
               columns: [],
             },
-            allNodes.length
+            index * 300 + 200,
+            (i + 1) * 150
           );
-          allNodes.push(targetNode);
-          allEdges.push(createEdge(rel, centralNode.id, targetNode.id));
+          newNodes.push(targetNode);
+          newEdges.push(createEdge(rel, centralNode.id, targetNode.id));
         });
       });
 
-      setNodes(allNodes);
-      setEdges(allEdges);
+      setNodes(newNodes);
+      setEdges(newEdges);
     }
-  }, [relationshipsData]);
+  }, [relationshipsData, setNodes, setEdges]);
 
-  const createNode = (dataset: any, index: number): Node => {
-    const position = calculateNodePosition(index, 300);
+  const createNode = (dataset: any, x: number, y: number): Node => {
     return {
       id: dataset.dataset_version_id.toString(),
       type: "databaseTable",
-      position,
+      position: { x, y },
       data: {
         label: `${dataset.dataset_name} (v${dataset.version_nr})`,
         columns: dataset.columns || [],
       },
-    };
-  };
-
-  const calculateNodePosition = (index: number, spacing: number) => {
-    const angle = (index * 2 * Math.PI) / 5; // Distribute nodes in a circle
-    const radius = 300; // Adjust this value to change the circle size
-    return {
-      x: Math.cos(angle) * radius + 500, // Center X
-      y: Math.sin(angle) * radius + 300, // Center Y
+      draggable: true,
     };
   };
 
@@ -201,7 +196,7 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   }
 
   return (
-    <div style={{ width: "100%", height: "100%" }}>
+    <div style={{ width: "100%", height: "600px" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -212,9 +207,17 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        minZoom={0.1}
+        maxZoom={4}
       >
         <Background />
         <Controls />
+        <MiniMap />
+        <Panel position="top-right">
+          <button onClick={() => console.log(nodes, edges)}>
+            Log Nodes and Edges
+          </button>
+        </Panel>
       </ReactFlow>
       {isModalOpen && selectedEdge && (
         <ColumnSelectionModal
