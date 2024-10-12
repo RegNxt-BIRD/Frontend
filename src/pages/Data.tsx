@@ -315,44 +315,6 @@ const Data: React.FC = () => {
     },
     [selectedTable, datasetVersion, selectedDate, metadata, toast]
   );
-  // const filteredData = useMemo(() => {
-  //   const filtered: Record<string, Record<string, any[]>> = {};
-
-  //   Object.entries(groupedData).forEach(([framework, groups]) => {
-  //     if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
-  //       return;
-  //     }
-
-  //     filtered[framework] = {};
-
-  //     Object.entries(groups).forEach(([group, items]) => {
-  //       const filteredItems = items.filter((item) => {
-  //         const layerMatch =
-  //           selectedLayer === NO_FILTER || item.type === selectedLayer;
-  //         const columnFilterMatch = Object.entries(columnFilters).every(
-  //           ([key, value]) =>
-  //             value === "" ||
-  //             (item[key as keyof typeof item] &&
-  //               item[key as keyof typeof item]
-  //                 .toString()
-  //                 .toLowerCase()
-  //                 .includes(value.toLowerCase()))
-  //         );
-  //         return layerMatch && columnFilterMatch;
-  //       });
-
-  //       if (filteredItems.length > 0) {
-  //         filtered[framework][group] = filteredItems;
-  //       }
-  //     });
-
-  //     if (Object.keys(filtered[framework]).length === 0) {
-  //       delete filtered[framework];
-  //     }
-  //   });
-
-  //   return filtered;
-  // }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
   const totalFilteredItems = useMemo(() => {
     return Object.values(filteredData).reduce(
