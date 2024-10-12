@@ -65,11 +65,6 @@ export const Relationship: React.FC = () => {
       )
         return;
       if (selectedLayer !== NO_FILTER && item.type !== selectedLayer) return;
-      if (
-        searchTerm &&
-        !item.label.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-        return;
 
       const framework = item.framework;
       const group = item.groups.length > 0 ? item.groups[0].code : "Ungrouped";
@@ -80,7 +75,7 @@ export const Relationship: React.FC = () => {
     });
 
     return filtered;
-  }, [dataTableJson, selectedFramework, selectedLayer, searchTerm]);
+  }, [dataTableJson, selectedFramework, selectedLayer]);
 
   const handleDiagramSelectionChange = useCallback((selectedNodes: any[]) => {
     setSelectedDatasetVersions(selectedNodes);
@@ -139,6 +134,7 @@ export const Relationship: React.FC = () => {
           data={filteredData}
           selectedItems={selectedDatasetVersions}
           onItemSelect={handleDatasetVersionSelect}
+          searchTerm={searchTerm}
         />
       </div>
     </div>

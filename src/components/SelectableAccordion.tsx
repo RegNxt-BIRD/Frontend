@@ -1,4 +1,3 @@
-// components/SelectableAccordion.tsx
 import {
   Accordion,
   AccordionContent,
@@ -6,18 +5,20 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import React from "react";
+import React, { useMemo } from "react";
 
 interface SelectableAccordionProps {
   data: Record<string, Record<string, any[]>>;
   selectedItems: any[];
   onItemSelect: (item: any) => void;
+  searchTerm: string;
 }
 
 const SelectableAccordion: React.FC<SelectableAccordionProps> = ({
   data,
   selectedItems,
   onItemSelect,
+  searchTerm,
 }) => {
   const isGroupSelected = (items: any[]) => {
     return items.every((item) =>
@@ -40,9 +41,28 @@ const SelectableAccordion: React.FC<SelectableAccordionProps> = ({
     });
   };
 
+  const filteredData = useMemo(() => {
+    const filtered: Record<string, Record<string, any[]>> = {};
+    Object.entries(data).forEach(([framework, groups]) => {
+      filtered[framework] = {};
+      Object.entries(groups).forEach(([group, items]) => {
+        const filteredItems = items.filter((item) =>
+          item.code.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (filteredItems.length > 0) {
+          filtered[framework][group] = filteredItems;
+        }
+      });
+      if (Object.keys(filtered[framework]).length === 0) {
+        delete filtered[framework];
+      }
+    });
+    return filtered;
+  }, [data, searchTerm]);
+
   return (
     <Accordion type="multiple" className="w-full">
-      {Object.entries(data).map(([framework, groups]) => (
+      {Object.entries(filteredData).map(([framework, groups]) => (
         <AccordionItem key={framework} value={framework}>
           <AccordionTrigger>{framework}</AccordionTrigger>
           <AccordionContent>
