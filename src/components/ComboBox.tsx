@@ -7,7 +7,7 @@ import useSWR from "swr";
 interface ComboBoxProps {
   apiEndpoint: string;
   placeholder: string;
-  onSelect: (value: string) => void;
+  onSelect: (value: DatasetItem) => void;
 }
 
 interface DatasetItem {
@@ -104,7 +104,7 @@ export default function GenericComboBox({
               >
                 <Check
                   className={`w-5 h-5 mr-2 ${
-                    selectedValue === item.code
+                    selectedValue === item.label
                       ? "text-indigo-600"
                       : "text-transparent"
                   }`}

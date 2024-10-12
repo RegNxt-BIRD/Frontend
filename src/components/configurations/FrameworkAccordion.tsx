@@ -27,17 +27,20 @@ interface DatasetVersion {
   is_system_generated: boolean;
 }
 
-export const FrameworkAccordion: React.FC<{
+interface FrameworkAccordionProps {
   groupedDatasets: Record<string, Dataset[]>;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions: DatasetVersion[];
   selectedDataset: Dataset | null;
   handleCreateVersion: (dataset: Dataset) => void;
-  handleEditVersion: (version: DatasetVersion) => void;
-  handleDeleteVersion: (versionId: number) => void;
+  handleUpdateVersion: (version: DatasetVersion) => void;
+  handleDeleteVersion: (datasetId: number, versionId: number) => void;
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
-}> = ({
+  isLoadingVersions: boolean;
+}
+
+export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
   groupedDatasets,
   handleDatasetClick,
   datasetVersions,
@@ -45,7 +48,6 @@ export const FrameworkAccordion: React.FC<{
   isLoadingVersions,
   handleUpdateVersion,
   handleCreateVersion,
-  handleEditVersion,
   handleDeleteVersion,
   handleEditDataset,
   handleDeleteDataset,
