@@ -17,7 +17,6 @@ interface DatasetVersionResponse {
   data: {
     dataset_version_id: number;
     version_code: string;
-    // Add other properties as needed
   };
 }
 

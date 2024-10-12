@@ -10,15 +10,12 @@ import {
   MiniMap,
   Node,
   NodeTypes,
-  Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import React, { useCallback, useEffect, useState } from "react";
-import useSWR from "swr";
-import ColumnSelectionModal from "./ColumnSelectionModal";
+import React, { useCallback, useEffect } from "react";
 import CustomEdgeComponent from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
@@ -35,138 +32,94 @@ const edgeTypes: EdgeTypes = {
   custom: CustomEdgeComponent,
 };
 
-const fetcher = async (url: string) => {
-  try {
-    const response = await fastApiInstance.get(url);
-    return response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 301) {
-      const newUrl = error.response.headers.location;
-      if (newUrl) {
-        const redirectResponse = await fastApiInstance.get(newUrl);
-        return redirectResponse.data;
-      }
-    }
-    throw error;
-  }
-};
-
 const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   selectedDatasetVersions,
   onSelectionChange,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: relationshipsData, error } = useSWR(
-    selectedDatasetVersions.length > 0
-      ? selectedDatasetVersions.map(
-          (v) => `/api/v1/datasets/${v.dataset_version_id}/relationships/`
-        )
-      : null,
-    (urls) => Promise.all(urls.map(fetcher))
-  );
   useEffect(() => {
-    if (relationshipsData) {
-      const newNodes: Node[] = [];
-      const newEdges: Edge[] = [];
+    const fetchRelationships = async () => {
+      try {
+        const responses = await Promise.all(
+          selectedDatasetVersions.map((v) =>
+            fastApiInstance.get(
+              `/api/v1/datasets/${v.dataset_version_id}/relationships/`
+            )
+          )
+        );
+        const data = responses.map((r) => r.data);
 
-      relationshipsData.forEach((response, index) => {
-        const { central_dataset_version, inbound, outbound } = response;
+        const newNodes: Node[] = [];
+        const newEdges: Edge[] = [];
+        const processedTables = new Set<string>();
 
-        if (
-          central_dataset_version &&
-          central_dataset_version.dataset_version_id
-        ) {
-          const centralNode = createNode(
-            central_dataset_version,
-            index * 300,
-            0
-          );
-          newNodes.push(centralNode);
+        data.forEach((response) => {
+          const { central_dataset_version, inbound, outbound, all_datasets } =
+            response;
 
-          inbound.forEach((rel: any, i: number) => {
-            if (rel.source_dataset_version_id) {
-              const sourceNode = createNode(
-                {
-                  dataset_version_id: rel.source_dataset_version_id,
-                  code: rel.from_table,
-                  dataset_name: rel.from_table,
-                  version_nr: 1, // Assuming version 1 if not provided
-                  columns: [],
-                },
-                index * 300 - 200,
-                (i + 1) * 150
-              );
-              newNodes.push(sourceNode);
-              newEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
+          // Process all datasets
+          all_datasets.forEach((dataset: any) => {
+            if (!processedTables.has(dataset.dataset_code)) {
+              newNodes.push(createNode(dataset));
+              processedTables.add(dataset.dataset_code);
             }
           });
 
-          outbound.forEach((rel: any, i: number) => {
-            if (rel.destination_dataset_version_id) {
-              const targetNode = createNode(
-                {
-                  dataset_version_id: rel.destination_dataset_version_id,
-                  code: rel.to_table,
-                  dataset_name: rel.to_table,
-                  version_nr: 1, // Assuming version 1 if not provided
-                  columns: [],
-                },
-                index * 300 + 200,
-                (i + 1) * 150
-              );
-              newNodes.push(targetNode);
-              newEdges.push(createEdge(rel, centralNode.id, targetNode.id));
-            }
+          // Process relationships
+          inbound.forEach((rel: any) => {
+            newEdges.push(createEdge(rel, rel.from_table, rel.to_table));
           });
-        }
-      });
 
-      setNodes(newNodes);
-      setEdges(newEdges);
+          outbound.forEach((rel: any) => {
+            newEdges.push(createEdge(rel, rel.from_table, rel.to_table));
+          });
+        });
+
+        setNodes(newNodes);
+        setEdges(newEdges);
+      } catch (error) {
+        console.error("Error fetching relationships:", error);
+      }
+    };
+
+    if (selectedDatasetVersions.length > 0) {
+      fetchRelationships();
     }
-  }, [relationshipsData, setNodes, setEdges]);
+  }, [selectedDatasetVersions]);
 
-  const createNode = (dataset: any, x: number, y: number): Node => {
-    if (!dataset || !dataset.dataset_version_id) {
-      console.error("Invalid dataset object:", dataset);
-      return null;
-    }
-
+  const createNode = (dataset: any): Node => {
     return {
-      id: dataset.dataset_version_id.toString(),
+      id: dataset.dataset_code,
       type: "databaseTable",
-      position: { x, y },
+      position: { x: Math.random() * 800, y: Math.random() * 600 },
       data: {
-        label: `${dataset.code || "Unknown"} (v${dataset.version_nr || "N/A"})`,
-        columns: dataset.columns || [],
+        label: `${dataset.dataset_name} (v${dataset.version_nr})`,
+        columns: dataset.columns,
       },
-      draggable: true,
     };
   };
+
   const createEdge = (
     relationship: any,
     source: string,
     target: string
   ): Edge => {
     return {
-      id: `${source}-${target}`,
+      id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
       source,
       target,
+      sourceHandle: `${source}.${relationship.from_col}.right`,
+      targetHandle: `${target}.${relationship.to_col}.left`,
       type: "custom",
-      label: `${relationship.from_col || "Unknown"} -> ${
-        relationship.to_col || "Unknown"
-      }`,
+      animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       data: {
-        sourceColumn: relationship.from_col,
-        targetColumn: relationship.to_col,
-        relationType: relationship.relation_type,
+        label: `${relationship.from_col} -> ${relationship.to_col}`,
+        relationshipType: relationship.relation_type,
         sourceCardinality: relationship.source_cardinality,
         targetCardinality: relationship.destination_cardinality,
       },
@@ -178,98 +131,34 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
     [setEdges]
   );
 
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    setSelectedEdge(edge);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleColumnSelection = useCallback(
-    (sourceColumn: string, targetColumn: string) => {
-      if (selectedEdge) {
-        setEdges((eds) =>
-          eds.map((e) =>
-            e.id === selectedEdge.id
-              ? {
-                  ...e,
-                  label: `${sourceColumn} -> ${targetColumn}`,
-                  data: {
-                    ...e.data,
-                    sourceColumn,
-                    targetColumn,
-                  },
-                }
-              : e
-          )
-        );
-      }
-      setIsModalOpen(false);
-      setSelectedEdge(null);
-    },
-    [selectedEdge, setEdges]
-  );
-
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      console.log("check selected: ", selectedDatasetVersions);
       const updatedSelection = selectedDatasetVersions.filter(
-        (v) => v.dataset_version_id.toString() !== node.id
+        (v) => v.dataset_code !== node.id
       );
       onSelectionChange(updatedSelection);
     },
     [selectedDatasetVersions, onSelectionChange]
   );
 
-  useEffect(() => {
-    const selectedNodeIds = new Set(
-      selectedDatasetVersions.map((v) => v.dataset_version_id.toString())
-    );
-    setNodes((prevNodes) =>
-      prevNodes.map((node) => ({
-        ...node,
-        selected: selectedNodeIds.has(node.id),
-      }))
-    );
-  }, [selectedDatasetVersions, setNodes]);
-
-  if (error) {
-    return <div>Error loading relationships: {error.message}</div>;
-  }
-
   return (
-    <div style={{ width: "100%", height: "600px" }}>
+    <div style={{ width: "100%", height: "800px" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        minZoom={0.1}
-        maxZoom={4}
+        attributionPosition="bottom-left"
       >
         <Background />
         <Controls />
         <MiniMap />
-        <Panel position="top-right">
-          <button onClick={() => console.log(nodes, edges)}>
-            Log Nodes and Edges
-          </button>
-        </Panel>
       </ReactFlow>
-      {isModalOpen && selectedEdge && (
-        <ColumnSelectionModal
-          sourceNode={nodes.find((n) => n.id === selectedEdge.source)}
-          targetNode={nodes.find((n) => n.id === selectedEdge.target)}
-          onClose={() => setIsModalOpen(false)}
-          onSelect={handleColumnSelection}
-          initialSourceColumn={selectedEdge.data?.sourceColumn}
-          initialTargetColumn={selectedEdge.data?.targetColumn}
-        />
-      )}
     </div>
   );
 };

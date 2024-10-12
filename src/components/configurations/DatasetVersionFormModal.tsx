@@ -58,7 +58,7 @@ export const DatasetVersionFormModal: React.FC<
         label: initialData.label,
         description: initialData.description,
         valid_from: initialData.valid_from,
-        valid_to: initialData.valid_to,
+        valid_to: initialData.valid_to as string | undefined,
       });
     } else {
       form.reset({});
@@ -160,7 +160,7 @@ export const DatasetVersionFormModal: React.FC<
                   <FormLabel>Valid From</FormLabel>
                   <FormControl>
                     <DatePicker
-                      value={field.value}
+                      value={field.value as string | null}
                       onChange={field.onChange}
                       placeholder="Valid From"
                     />
@@ -177,7 +177,7 @@ export const DatasetVersionFormModal: React.FC<
                   <FormLabel>Valid To</FormLabel>
                   <FormControl>
                     <DatePicker
-                      value={field.value}
+                      value={field.value as string | null}
                       className="w-full"
                       onChange={field.onChange}
                       placeholder="Valid To"

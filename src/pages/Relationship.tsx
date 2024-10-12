@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fastApiInstance } from "@/lib/axios";
+import { DatasetItem, Frameworks, Layers } from "@/types/databaseTypes";
 import { ReactFlowProvider } from "@xyflow/react";
 import React, { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
@@ -25,12 +26,14 @@ export const Relationship: React.FC = () => {
   );
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: layers } = useSWR("/api/v1/layers/", fastApiInstance);
-  const { data: frameworks } = useSWR("/api/v1/frameworks/", fastApiInstance);
-  const { data: dataTableJson } = useSWR<any>(
-    "/api/v1/datasets/",
+  const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
+  const { data: frameworks } = useSWR<Frameworks>(
+    "/api/v1/frameworks/",
     fastApiInstance
   );
+  const { data: dataTableJson } = useSWR<{
+    data: DatasetItem[];
+  }>("/api/v1/datasets/", fastApiInstance);
 
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
@@ -115,7 +118,14 @@ export const Relationship: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
-          <DatePicker onSelect={handleDateChange} initialDate={selectedDate} />
+          <DatePicker
+            onSelect={
+              handleDateChange as React.ComponentProps<
+                typeof DatePicker
+              >["onSelect"]
+            }
+            initialDate={selectedDate}
+          />
         </div>
         <ReactFlowProvider>
           <DatabaseDiagram

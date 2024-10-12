@@ -1,22 +1,7 @@
-import { getBezierPath, Position } from "@xyflow/react";
+import { EdgeProps, getBezierPath } from "@xyflow/react";
 import React from "react";
 
-interface CustomEdgeProps {
-  id: string;
-  sourceX: number;
-  sourceY: number;
-  targetX: number;
-  targetY: number;
-  sourcePosition: Position | undefined;
-  targetPosition: Position | undefined;
-  style?: React.CSSProperties;
-  data?: {
-    label?: string;
-  };
-  markerEnd?: string;
-}
-
-const CustomEdge: React.FC<CustomEdgeProps> = ({
+const CustomEdge: React.FC<EdgeProps> = ({
   id,
   sourceX,
   sourceY,

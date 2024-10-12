@@ -18,9 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import {
   Dataset,
+  Datasets,
   DatasetVersion,
   Framework,
-  Layer,
+  Frameworks,
+  Layers,
 } from "@/types/databaseTypes";
 import { Plus } from "lucide-react";
 import React, { useMemo, useState } from "react";
@@ -52,23 +54,18 @@ export const ConfigureDatasets: React.FC = () => {
   );
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
 
-  const { data: layers, error: layersError } = useSWR<Layer[]>(
-    "/api/v1/layers/",
-    fastApiInstance
-  );
-  const { data: frameworks, error: frameworksError } = useSWR<Framework[]>(
+  const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
+  const { data: frameworks } = useSWR<Frameworks>(
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const {
-    data: datasets,
-    error: datasetsError,
-    mutate: mutateDatasets,
-  } = useSWR<Dataset[]>("/api/v1/datasets/", fastApiInstance);
+  const { data: datasets, mutate: mutateDatasets } = useSWR<Datasets>(
+    "/api/v1/datasets/",
+    fastApiInstance
+  );
 
   const {
     data: datasetVersions,
-    error: versionsError,
     mutate: mutateVersions,
     isValidating: isLoadingVersions,
   } = useSWR<DatasetVersion[]>(
@@ -79,10 +76,6 @@ export const ConfigureDatasets: React.FC = () => {
   );
 
   const isLoading = !layers || !frameworks || !datasets;
-  const error =
-    layersError || frameworksError || datasetsError || versionsError;
-
-  // Filtered and grouped datasets
   const filteredDatasets = useMemo(() => {
     return (
       (datasets &&
@@ -116,7 +109,6 @@ export const ConfigureDatasets: React.FC = () => {
     }, {} as Record<string, Dataset[]>);
   }, [filteredDatasets]);
 
-  // Handlers
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
     try {
       await fastApiInstance.post("/api/v1/datasets/", {
@@ -255,7 +247,7 @@ export const ConfigureDatasets: React.FC = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_FILTER}>No Framework Selected</SelectItem>
-            {frameworks?.data?.map((framework) => (
+            {frameworks?.data?.map((framework: Framework) => (
               <SelectItem key={framework.code} value={framework.code}>
                 {framework.name}
               </SelectItem>

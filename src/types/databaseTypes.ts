@@ -22,6 +22,9 @@ export interface Dataset {
   valid_to?: string;
   valid_from?: string;
 }
+export interface Datasets {
+  data: Dataset[];
+}
 
 export interface DatasetVersion {
   dataset_version_id: number;
