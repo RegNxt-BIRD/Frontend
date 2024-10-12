@@ -2,9 +2,9 @@ import { Handle, Position } from "@xyflow/react";
 import React, { memo } from "react";
 
 interface Column {
-  name: string;
-  type: string;
-  isPrimaryKey: boolean;
+  column_name: string;
+  data_type: string;
+  is_primary_key: boolean;
 }
 
 interface CustomNodeProps {
@@ -27,28 +27,30 @@ const DatabaseTableNode: React.FC<CustomNodeProps> = memo(({ id, data }) => {
       <div className="p-2">
         {data.columns.map((column, index) => (
           <div
-            key={`${id}-${column.name}`}
+            key={`${id}-${column.column_name}`}
             className="flex items-center text-sm py-1 border-b border-gray-200 last:border-b-0"
           >
             <Handle
               type="source"
               position={Position.Right}
-              id={`${id}.${column.name}.right`}
+              id={`${id}.${column.column_name}.right`}
               style={{ top: `${index * 24 + 36}px`, right: "-8px" }}
             />
             <Handle
               type="target"
               position={Position.Left}
-              id={`${id}.${column.name}.left`}
+              id={`${id}.${column.column_name}.left`}
               style={{ top: `${index * 24 + 36}px`, left: "-8px" }}
             />
             <span
-              className={`mr-2 ${column.isPrimaryKey ? "text-yellow-500" : ""}`}
+              className={`mr-2 ${
+                column.is_primary_key ? "text-yellow-500" : ""
+              }`}
             >
-              {column.isPrimaryKey ? "🔑" : ""}
+              {column.is_primary_key ? "🔑" : ""}
             </span>
-            <span className="font-medium">{column.name}</span>
-            <span className="ml-auto text-gray-500">{column.type}</span>
+            <span className="font-medium">{column.column_name}</span>
+            <span className="ml-auto text-gray-500">{column.data_type}</span>
           </div>
         ))}
       </div>
