@@ -68,7 +68,6 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
       : null,
     (urls) => Promise.all(urls.map(fetcher))
   );
-
   useEffect(() => {
     if (relationshipsData) {
       const newNodes: Node[] = [];
@@ -77,38 +76,53 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
       relationshipsData.forEach((response, index) => {
         const { central_dataset_version, inbound, outbound } = response;
 
-        const centralNode = createNode(central_dataset_version, index * 300, 0);
-        newNodes.push(centralNode);
-
-        inbound.forEach((rel: any, i: number) => {
-          const sourceNode = createNode(
-            {
-              dataset_version_id: rel.source_dataset_version_id,
-              dataset_name: rel.source_dataset_name,
-              version_nr: rel.source_version_nr,
-              columns: [],
-            },
-            index * 300 - 200,
-            (i + 1) * 150
+        if (
+          central_dataset_version &&
+          central_dataset_version.dataset_version_id
+        ) {
+          const centralNode = createNode(
+            central_dataset_version,
+            index * 300,
+            0
           );
-          newNodes.push(sourceNode);
-          newEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
-        });
+          newNodes.push(centralNode);
 
-        outbound.forEach((rel: any, i: number) => {
-          const targetNode = createNode(
-            {
-              dataset_version_id: rel.destination_dataset_version_id,
-              dataset_name: rel.destination_dataset_name,
-              version_nr: rel.destination_version_nr,
-              columns: [],
-            },
-            index * 300 + 200,
-            (i + 1) * 150
-          );
-          newNodes.push(targetNode);
-          newEdges.push(createEdge(rel, centralNode.id, targetNode.id));
-        });
+          inbound.forEach((rel: any, i: number) => {
+            if (rel.source_dataset_version_id) {
+              const sourceNode = createNode(
+                {
+                  dataset_version_id: rel.source_dataset_version_id,
+                  code: rel.from_table,
+                  dataset_name: rel.from_table,
+                  version_nr: 1, // Assuming version 1 if not provided
+                  columns: [],
+                },
+                index * 300 - 200,
+                (i + 1) * 150
+              );
+              newNodes.push(sourceNode);
+              newEdges.push(createEdge(rel, sourceNode.id, centralNode.id));
+            }
+          });
+
+          outbound.forEach((rel: any, i: number) => {
+            if (rel.destination_dataset_version_id) {
+              const targetNode = createNode(
+                {
+                  dataset_version_id: rel.destination_dataset_version_id,
+                  code: rel.to_table,
+                  dataset_name: rel.to_table,
+                  version_nr: 1, // Assuming version 1 if not provided
+                  columns: [],
+                },
+                index * 300 + 200,
+                (i + 1) * 150
+              );
+              newNodes.push(targetNode);
+              newEdges.push(createEdge(rel, centralNode.id, targetNode.id));
+            }
+          });
+        }
       });
 
       setNodes(newNodes);
@@ -117,19 +131,22 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
   }, [relationshipsData, setNodes, setEdges]);
 
   const createNode = (dataset: any, x: number, y: number): Node => {
-    console.log("dataset_version_id: ", dataset);
+    if (!dataset || !dataset.dataset_version_id) {
+      console.error("Invalid dataset object:", dataset);
+      return null;
+    }
+
     return {
       id: dataset.dataset_version_id.toString(),
       type: "databaseTable",
       position: { x, y },
       data: {
-        label: `${dataset.code} (v${dataset.version_nr})`,
+        label: `${dataset.code || "Unknown"} (v${dataset.version_nr || "N/A"})`,
         columns: dataset.columns || [],
       },
       draggable: true,
     };
   };
-
   const createEdge = (
     relationship: any,
     source: string,
@@ -140,15 +157,15 @@ const DatabaseDiagram: React.FC<DatabaseDiagramProps> = ({
       source,
       target,
       type: "custom",
-      label:
-        relationship.label ||
-        `${relationship.source_column_name} -> ${relationship.destination_column_name}`,
+      label: `${relationship.from_col || "Unknown"} -> ${
+        relationship.to_col || "Unknown"
+      }`,
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       data: {
-        sourceColumn: relationship.source_column_name,
-        targetColumn: relationship.destination_column_name,
+        sourceColumn: relationship.from_col,
+        targetColumn: relationship.to_col,
         relationType: relationship.relation_type,
         sourceCardinality: relationship.source_cardinality,
         targetCardinality: relationship.destination_cardinality,

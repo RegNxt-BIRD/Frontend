@@ -1,6 +1,6 @@
 import { SharedDataTable } from "@/components/SharedDataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useEffect, useState } from "react";
 
 interface DataItem {
   dataset_id: number;
@@ -48,12 +48,16 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
   data,
   onRowClick,
 }) => {
-  const flattenedData = useMemo(() => {
-    return Object.entries(data).flatMap(([framework, groups]) =>
-      Object.values(groups).flatMap((items) =>
-        items.map((item) => ({ ...item, framework }))
-      )
+  const [flattenedData, setFlattenedData] = useState<DataItem[]>([]);
+
+  useEffect(() => {
+    const newFlattenedData = Object.entries(data).flatMap(
+      ([framework, groups]) =>
+        Object.values(groups).flatMap((items) =>
+          items.map((item) => ({ ...item, framework }))
+        )
     );
+    setFlattenedData(newFlattenedData);
   }, [data]);
 
   return (

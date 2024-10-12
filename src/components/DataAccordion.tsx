@@ -77,15 +77,21 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
       : paginatedFrameworks;
 
   const getPaginatedGroups = (framework: string) => {
+    if (!data[framework]) return [];
     const groups = Object.keys(data[framework]);
     const page = groupPages[framework] || 1;
     return groups.slice((page - 1) * GROUPS_PER_PAGE, page * GROUPS_PER_PAGE);
   };
 
   const getGroupPageCount = (framework: string) => {
+    if (!data[framework]) return 0;
     const groups = Object.keys(data[framework]);
     return Math.ceil(groups.length / GROUPS_PER_PAGE);
   };
+
+  if (frameworks.length === 0) {
+    return <div>No data available</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -97,6 +103,8 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
         className="w-full space-y-2"
       >
         {renderFrameworks.map((framework) => {
+          if (!data[framework]) return null;
+
           const paginatedGroups = getPaginatedGroups(framework);
           const totalGroupPages = getGroupPageCount(framework);
           const currentGroupPage = groupPages[framework] || 1;

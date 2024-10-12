@@ -67,7 +67,8 @@ export const Relationship: React.FC = () => {
       if (selectedLayer !== NO_FILTER && item.type !== selectedLayer) return;
 
       const framework = item.framework;
-      const group = item.groups.length > 0 ? item.groups[0].code : "Ungrouped";
+      const group =
+        item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
 
       if (!filtered[framework]) filtered[framework] = {};
       if (!filtered[framework][group]) filtered[framework][group] = [];

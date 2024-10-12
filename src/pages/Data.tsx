@@ -77,8 +77,9 @@ const Data: React.FC = () => {
     if (!Array.isArray(dataTableJson?.data)) return {};
     return dataTableJson?.data?.reduce((acc, item) => {
       const framework = item.framework;
-      const group = item.groups.length > 0 ? item.groups[0].code : "Ungrouped";
-
+      const group =
+        item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
+  
       if (!acc[framework]) {
         acc[framework] = {};
       }
@@ -86,10 +87,49 @@ const Data: React.FC = () => {
         acc[framework][group] = [];
       }
       acc[framework][group].push(item);
-
+  
       return acc;
     }, {} as Record<string, Record<string, any[]>>);
   }, [dataTableJson]);
+  
+  const filteredData = useMemo(() => {
+    const filtered: Record<string, Record<string, any[]>> = {};
+  
+    Object.entries(groupedData).forEach(([framework, groups]) => {
+      if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
+        return;
+      }
+  
+      filtered[framework] = {};
+  
+      Object.entries(groups).forEach(([group, items]) => {
+        const filteredItems = items.filter((item) => {
+          const layerMatch =
+            selectedLayer === NO_FILTER || item.type === selectedLayer;
+          const columnFilterMatch = Object.entries(columnFilters).every(
+            ([key, value]) =>
+              value === "" ||
+              (item[key as keyof typeof item] &&
+                item[key as keyof typeof item]
+                  .toString()
+                  .toLowerCase()
+                  .includes(value.toLowerCase()))
+          );
+          return layerMatch && columnFilterMatch;
+        });
+  
+        if (filteredItems.length > 0) {
+          filtered[framework][group] = filteredItems;
+        }
+      });
+  
+      if (Object.keys(filtered[framework]).length === 0) {
+        delete filtered[framework];
+      }
+    });
+  
+    return filtered;
+  }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
   const handleDateChange = useCallback((newDate: Date | undefined) => {
     if (newDate instanceof Date) {
@@ -275,44 +315,44 @@ const Data: React.FC = () => {
     },
     [selectedTable, datasetVersion, selectedDate, metadata, toast]
   );
-  const filteredData = useMemo(() => {
-    const filtered: Record<string, Record<string, any[]>> = {};
+  // const filteredData = useMemo(() => {
+  //   const filtered: Record<string, Record<string, any[]>> = {};
 
-    Object.entries(groupedData).forEach(([framework, groups]) => {
-      if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
-        return;
-      }
+  //   Object.entries(groupedData).forEach(([framework, groups]) => {
+  //     if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
+  //       return;
+  //     }
 
-      filtered[framework] = {};
+  //     filtered[framework] = {};
 
-      Object.entries(groups).forEach(([group, items]) => {
-        const filteredItems = items.filter((item) => {
-          const layerMatch =
-            selectedLayer === NO_FILTER || item.type === selectedLayer;
-          const columnFilterMatch = Object.entries(columnFilters).every(
-            ([key, value]) =>
-              value === "" ||
-              (item[key as keyof typeof item] &&
-                item[key as keyof typeof item]
-                  .toString()
-                  .toLowerCase()
-                  .includes(value.toLowerCase()))
-          );
-          return layerMatch && columnFilterMatch;
-        });
+  //     Object.entries(groups).forEach(([group, items]) => {
+  //       const filteredItems = items.filter((item) => {
+  //         const layerMatch =
+  //           selectedLayer === NO_FILTER || item.type === selectedLayer;
+  //         const columnFilterMatch = Object.entries(columnFilters).every(
+  //           ([key, value]) =>
+  //             value === "" ||
+  //             (item[key as keyof typeof item] &&
+  //               item[key as keyof typeof item]
+  //                 .toString()
+  //                 .toLowerCase()
+  //                 .includes(value.toLowerCase()))
+  //         );
+  //         return layerMatch && columnFilterMatch;
+  //       });
 
-        if (filteredItems.length > 0) {
-          filtered[framework][group] = filteredItems;
-        }
-      });
+  //       if (filteredItems.length > 0) {
+  //         filtered[framework][group] = filteredItems;
+  //       }
+  //     });
 
-      if (Object.keys(filtered[framework]).length === 0) {
-        delete filtered[framework];
-      }
-    });
+  //     if (Object.keys(filtered[framework]).length === 0) {
+  //       delete filtered[framework];
+  //     }
+  //   });
 
-    return filtered;
-  }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
+  //   return filtered;
+  // }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
   const totalFilteredItems = useMemo(() => {
     return Object.values(filteredData).reduce(
