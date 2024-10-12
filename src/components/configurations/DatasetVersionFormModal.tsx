@@ -51,7 +51,6 @@ export const DatasetVersionFormModal: React.FC<
 
   useEffect(() => {
     if (initialData) {
-      console.log("initialData: ", initialData);
       form.reset({
         version_nr: initialData.version_nr.toString(),
         version_code: initialData.version_code,

@@ -75,7 +75,6 @@ const Data: React.FC = () => {
 
   const groupedData = useMemo(() => {
     if (!Array.isArray(dataTableJson?.data)) return {};
-    console.log("dataTableJson: ", dataTableJson);
     return dataTableJson?.data?.reduce((acc, item) => {
       const framework = item.framework;
       const group = item.groups.length > 0 ? item.groups[0].code : "Ungrouped";
