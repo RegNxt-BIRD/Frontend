@@ -38,7 +38,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
           startOffset="50%"
           textAnchor="middle"
         >
-          {data?.label}
+          {(data as any) && data?.label}
         </textPath>
       </text>
     </>
