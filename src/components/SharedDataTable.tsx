@@ -83,6 +83,7 @@ export function SharedDataTable<T>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
+                  className="cursor-pointer"
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick(row.original)}
                 >

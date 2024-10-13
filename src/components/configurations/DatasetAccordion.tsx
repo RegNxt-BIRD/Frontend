@@ -178,6 +178,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                     </h3>
                     {!dataset.is_system_generated && (
                       <Button
+                        className="flex flex-end"
                         onClick={() => {
                           setEditingVersion(null);
                           setIsVersionModalOpen(true);

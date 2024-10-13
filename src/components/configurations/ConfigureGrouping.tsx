@@ -1,3 +1,5 @@
+import { GroupFormModal } from "@/components/configurations/GroupFormModal";
+import { GroupItemsModal } from "@/components/configurations/GroupItemsModal";
 import { SharedDataTable } from "@/components/SharedDataTable";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import { Button } from "@/components/ui/button";
@@ -7,8 +9,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 import React, { useState } from "react";
 import useSWR from "swr";
-import { GroupFormModal } from "./GroupFormModal";
-import { GroupItemsModal } from "./GroupItemsModal";
 
 interface Group {
   code: string;
@@ -156,7 +156,7 @@ export const ConfigureGrouping: React.FC = () => {
         }
       />
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-row-reverse">
         <Button onClick={() => setIsGroupModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create New Group
