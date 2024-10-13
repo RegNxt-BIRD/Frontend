@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { DatasetVersion } from "@/types/databaseTypes";
+import { Dataset, DatasetVersion } from "@/types/databaseTypes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -23,7 +23,6 @@ import * as z from "zod";
 import { DatePicker } from "../GDate";
 
 const formSchema = z.object({
-  version_nr: z.string().min(1, "Version number is required"),
   version_code: z.string().min(1, "Version code is required"),
   code: z.string().min(1, "Code is required"),
   label: z.string().min(1, "Label is required"),
@@ -39,11 +38,12 @@ interface DatasetVersionFormModalProps {
   onClose: () => void;
   onSubmit: (version: Partial<DatasetVersion>) => void;
   initialData?: DatasetVersion;
+  dataset?: Dataset;
 }
 
 export const DatasetVersionFormModal: React.FC<
   DatasetVersionFormModalProps
-> = ({ isOpen, onClose, onSubmit, initialData }) => {
+> = ({ isOpen, onClose, onSubmit, initialData, dataset }) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
@@ -52,7 +52,6 @@ export const DatasetVersionFormModal: React.FC<
   useEffect(() => {
     if (initialData) {
       form.reset({
-        version_nr: initialData.version_nr.toString(),
         version_code: initialData.version_code,
         code: initialData.code,
         label: initialData.label,
@@ -60,10 +59,19 @@ export const DatasetVersionFormModal: React.FC<
         valid_from: initialData.valid_from,
         valid_to: initialData.valid_to as string | undefined,
       });
+    } else if (dataset) {
+      form.reset({
+        version_code: "",
+        code: dataset.code,
+        label: dataset.label,
+        description: dataset.description,
+        valid_from: "",
+        valid_to: "",
+      });
     } else {
       form.reset({});
     }
-  }, [initialData, form]);
+  }, [initialData, dataset, form]);
 
   const handleSubmit = (data: FormValues) => {
     onSubmit({
@@ -89,19 +97,6 @@ export const DatasetVersionFormModal: React.FC<
           >
             <FormField
               control={form.control}
-              name="version_nr"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Version Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Version Number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="version_code"
               render={({ field }) => (
                 <FormItem>
@@ -120,7 +115,11 @@ export const DatasetVersionFormModal: React.FC<
                 <FormItem>
                   <FormLabel>Code</FormLabel>
                   <FormControl>
-                    <Input placeholder="Code" {...field} />
+                    <Input
+                      placeholder="Code"
+                      {...field}
+                      disabled={!initialData}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
