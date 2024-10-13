@@ -28,13 +28,24 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-const formSchema = z.object({
-  code: z.string().min(1, "Code is required"),
-  label: z.string().min(1, "Label is required"),
-  description: z.string().optional(),
-  framework: z.string().min(1, "Framework is required"),
-  type: z.string().min(1, "Layer is required"),
-});
+const formSchema = z
+  .object({
+    code: z
+      .string()
+      .min(1, "Code is required")
+      .regex(
+        /^[a-zA-Z0-9]+$/,
+        "Code must only contain alphanumeric characters"
+      ),
+    label: z.string().min(1, "Label is required"),
+    description: z.string().optional(),
+    framework: z.string().min(1, "Framework is required"),
+    type: z.string().min(1, "Layer is required"),
+  })
+  .refine((data: any) => data.validFrom < data.validTo, {
+    message: "Valid from date must be earlier than valid to date",
+    path: ["validFrom"],
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 

@@ -22,14 +22,26 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { DatePicker } from "../GDate";
 
-const formSchema = z.object({
-  version_code: z.string().min(1, "Version code is required"),
-  code: z.string().min(1, "Code is required"),
-  label: z.string().min(1, "Label is required"),
-  description: z.string().optional(),
-  valid_from: z.string().optional(),
-  valid_to: z.string().optional(),
-});
+const formSchema = z
+  .object({
+    version_code: z.string().min(1, "Version code is required"),
+    code: z.string().min(1, "Code is required"),
+    label: z.string().min(1, "Label is required"),
+    description: z.string().optional(),
+    valid_from: z.string().min(1, "Valid from date is required"),
+    valid_to: z.string().min(1, "Valid to date is required"),
+  })
+  .refine(
+    (data) => {
+      const validFrom = new Date(data.valid_from);
+      const validTo = new Date(data.valid_to);
+      return validFrom < validTo;
+    },
+    {
+      message: "Valid from date must be earlier than valid to date",
+      path: ["valid_from"],
+    }
+  );
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -56,8 +68,8 @@ export const DatasetVersionFormModal: React.FC<
         code: initialData.code,
         label: initialData.label,
         description: initialData.description,
-        valid_from: initialData.valid_from,
-        valid_to: initialData.valid_to as string | undefined,
+        valid_from: initialData.valid_from || "",
+        valid_to: (initialData.valid_to as string) || "",
       });
     } else if (dataset) {
       form.reset({
@@ -159,7 +171,7 @@ export const DatasetVersionFormModal: React.FC<
                   <FormLabel>Valid From</FormLabel>
                   <FormControl>
                     <DatePicker
-                      value={field.value as string | null}
+                      value={field.value}
                       onChange={field.onChange}
                       placeholder="Valid From"
                     />
@@ -176,7 +188,7 @@ export const DatasetVersionFormModal: React.FC<
                   <FormLabel>Valid To</FormLabel>
                   <FormControl>
                     <DatePicker
-                      value={field.value as string | null}
+                      value={field.value}
                       className="w-full"
                       onChange={field.onChange}
                       placeholder="Valid To"
@@ -186,7 +198,6 @@ export const DatasetVersionFormModal: React.FC<
                 </FormItem>
               )}
             />
-
             <DialogFooter>
               <Button type="button" onClick={onClose} variant="outline">
                 Cancel
