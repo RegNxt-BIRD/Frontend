@@ -19,12 +19,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { fastApiInstance } from "@/lib/axios";
-import { DatasetItem, Frameworks, Layers } from "@/types/databaseTypes";
+import { DatasetResponse, Frameworks, Layers } from "@/types/databaseTypes";
 import { ReactFlowProvider } from "@xyflow/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
 const NO_FILTER = "NO_FILTER";
+const PAGE_SIZE = 10000; // Adjust this value as needed
 
 export default function Relationship() {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
@@ -35,14 +36,15 @@ export default function Relationship() {
   );
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
   const { data: frameworks } = useSWR<Frameworks>(
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson } = useSWR<{ data: DatasetItem[] }>(
-    "/api/v1/datasets/",
+  const { data: dataTableJson } = useSWR<DatasetResponse>(
+    `/api/v1/datasets/?page=${currentPage}&page_size=${PAGE_SIZE}`,
     fastApiInstance,
     {
       revalidateOnFocus: false,
@@ -73,11 +75,11 @@ export default function Relationship() {
     );
   }, []);
 
-  const filteredData = useCallback(() => {
-    if (!dataTableJson?.data) return {};
+  const filteredData = useMemo(() => {
+    if (!dataTableJson?.data?.results) return {};
 
     const filtered: Record<string, Record<string, any[]>> = {};
-    dataTableJson.data.forEach((item: any) => {
+    dataTableJson.data.results.forEach((item: any) => {
       if (
         selectedFramework !== NO_FILTER &&
         item.framework !== selectedFramework
@@ -100,6 +102,13 @@ export default function Relationship() {
   const handleDiagramSelectionChange = useCallback((selectedNodes: any[]) => {
     setSelectedDatasetVersions(selectedNodes);
   }, []);
+
+  useEffect(() => {
+    // If there are more pages, fetch them
+    if (dataTableJson && currentPage < dataTableJson.data.num_pages) {
+      setCurrentPage(currentPage + 1);
+    }
+  }, [dataTableJson, currentPage]);
 
   return (
     <div className="flex h-screen">
@@ -171,7 +180,7 @@ export default function Relationship() {
               className="mb-4"
             />
             <SelectableAccordion
-              data={filteredData()}
+              data={filteredData}
               selectedItems={selectedDatasetVersions}
               onItemSelect={handleDatasetVersionSelect}
               searchTerm={searchTerm}

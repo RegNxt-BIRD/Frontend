@@ -23,6 +23,7 @@ interface DatasetVersionResponse {
 interface DataVersionColumnsResponse {
   data: any[];
 }
+
 const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
   framework,
   layer,
@@ -48,6 +49,7 @@ const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
       : null,
     fastApiInstance
   );
+
   useEffect(() => {
     setSelectedDataset(null);
   }, [framework, layer]);

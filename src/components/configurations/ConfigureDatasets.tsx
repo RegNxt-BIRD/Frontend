@@ -18,9 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import {
   Dataset,
-  Datasets,
+  DatasetResponse,
   DatasetVersion,
-  DatasetVersions,
   Framework,
   Frameworks,
   Layers,
@@ -46,6 +45,8 @@ export const ConfigureDatasets: React.FC = () => {
     type: "",
     description: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10000);
 
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
@@ -60,27 +61,29 @@ export const ConfigureDatasets: React.FC = () => {
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: datasets, mutate: mutateDatasets } = useSWR<Datasets>(
-    "/api/v1/datasets/",
-    fastApiInstance
-  );
+  const { data: datasetsResponse, mutate: mutateDatasets } =
+    useSWR<DatasetResponse>(
+      `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
+      fastApiInstance
+    );
 
   const {
     data: datasetVersions,
     mutate: mutateVersions,
     isValidating: isLoadingVersions,
-  } = useSWR<DatasetVersions>(
+  } = useSWR<DatasetVersion[]>(
     selectedDataset
       ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions_all/`
       : null,
     fastApiInstance
   );
 
-  const isLoading = !layers || !frameworks || !datasets;
+  const isLoading = !layers || !frameworks || !datasetsResponse;
+
   const filteredDatasets = useMemo(() => {
     return (
-      (datasets?.data &&
-        datasets.data.filter((dataset) => {
+      (datasetsResponse?.data?.results &&
+        datasetsResponse.data.results.filter((dataset) => {
           const frameworkMatch =
             selectedFramework === NO_FILTER ||
             dataset.framework === selectedFramework;
@@ -98,7 +101,7 @@ export const ConfigureDatasets: React.FC = () => {
         })) ||
       []
     );
-  }, [datasets, selectedFramework, selectedLayer, columnFilters]);
+  }, [datasetsResponse, selectedFramework, selectedLayer, columnFilters]);
 
   const groupedDatasets = useMemo(() => {
     return filteredDatasets.reduce((acc, dataset) => {
@@ -230,9 +233,14 @@ export const ConfigureDatasets: React.FC = () => {
       });
     }
   };
+
   const handleEditDataset = (dataset: Dataset) => {
     setEditingDataset(dataset);
     setIsDatasetModalOpen(true);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
   if (isLoading) return <DataSkeleton />;
@@ -316,6 +324,30 @@ export const ConfigureDatasets: React.FC = () => {
             setIsDeleteDialogOpen(true);
           }}
         />
+      )}
+
+      {datasetsResponse && (
+        <div className="mt-4 flex justify-between items-center">
+          <div>
+            Showing {(currentPage - 1) * pageSize + 1} to{" "}
+            {Math.min(currentPage * pageSize, datasetsResponse.data.count)} of{" "}
+            {datasetsResponse.data.count} entries
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === datasetsResponse.data.num_pages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
 
       <DatasetFormModal

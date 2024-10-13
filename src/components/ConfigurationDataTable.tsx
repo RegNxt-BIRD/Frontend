@@ -57,7 +57,10 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
     );
   }, [data]);
 
-  
+  if (flattenedData.length === 0) {
+    return <div>No data available</div>;
+  }
+
   return (
     <SharedDataTable
       data={flattenedData}

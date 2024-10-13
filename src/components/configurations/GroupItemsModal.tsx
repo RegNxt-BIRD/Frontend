@@ -120,7 +120,6 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
   };
 
   const handleDatasetSelect = (dataset: any) => {
-    console.log("dataset: ", dataset);
     setNewItem({
       ...newItem,
       dataset_version_id: dataset.dataset_version_id,

@@ -21,9 +21,17 @@ export interface Dataset {
   version_code?: string;
   valid_to?: string;
   valid_from?: string;
+  latest_version_id?: number;
+  groups: { code: string | null; label: string | null; order: number | null }[];
 }
+
 export interface Datasets {
-  data: Dataset[];
+  count: number;
+  num_pages: number;
+  results: Dataset[];
+}
+export interface DatasetResponse {
+  data: Datasets;
 }
 
 export interface DatasetVersion {
@@ -52,19 +60,6 @@ export interface DatabaseTableData {
 
 export interface CustomNodeProps extends Node<DatabaseTableData> {
   zIndex?: number;
-}
-
-export interface DatasetVersion {
-  dataset_version_id: number;
-  dataset_id: number;
-  version_nr: string;
-  version_code: string;
-  code: string;
-  label: string;
-  description: string;
-  valid_from: string;
-  valid_to: string | null;
-  is_system_generated: boolean;
 }
 
 export interface EdgeData {
@@ -120,12 +115,16 @@ export interface DatasetItem {
   description: string;
   framework: string;
   type: string;
-  groups: { code: string }[];
+  groups: { code: string | null; label: string | null; order: number | null }[];
+  latest_version_id: number;
+  version_nr: number;
 }
+
 export interface Layer {
   name: string;
   code: string;
 }
+
 export interface Layers {
   data: Layer[];
 }

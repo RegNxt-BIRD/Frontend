@@ -11,6 +11,7 @@ import { SelectionDisplay } from "@/components/SelectionDisplay";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import DataSkeleton from "@/components/skeletons/DataSkeleton";
 import { TableInfoHeader } from "@/components/TableInfoHeader";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import {
   DatasetItem,
+  DatasetResponse,
   Frameworks,
   Layers,
   ValidationResult,
@@ -36,6 +38,8 @@ const Data: React.FC = () => {
   const [metadata, setMetadata] = useState<any[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10000);
 
   const [metadataTableData, setMetadataTableData] = useState<
     Record<string, string>[]
@@ -60,13 +64,16 @@ const Data: React.FC = () => {
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson, error: dataError } = useSWR<{
-    data: DatasetItem[];
-  }>("/api/v1/datasets/", fastApiInstance, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    dedupingInterval: 3600000,
-  });
+  const { data: dataTableJson, error: dataError } = useSWR<DatasetResponse>(
+    `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
+    fastApiInstance,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 3600000,
+    }
+  );
+
   const isLoading = !layers || !frameworks || !dataTableJson;
   const error = layersError || frameworksError || dataError;
 
@@ -79,17 +86,18 @@ const Data: React.FC = () => {
       });
     }
   }, [error, toast]);
-
   const groupedData = useMemo(() => {
-    if (!Array.isArray(dataTableJson?.data)) return {};
-    return dataTableJson?.data?.reduce(
+    if (!dataTableJson?.data?.results) return {};
+    return dataTableJson.data.results.reduce(
       (
         acc: Record<string, Record<string, DatasetItem[]>>,
         item: DatasetItem
       ) => {
         const framework = item.framework;
         const group =
-          item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
+          item.groups && item.groups.length > 0 && item.groups[0].code
+            ? item.groups[0].code
+            : "Ungrouped Datasets";
 
         if (!acc[framework]) {
           acc[framework] = {};
@@ -104,6 +112,7 @@ const Data: React.FC = () => {
       {}
     );
   }, [dataTableJson]);
+
   const filteredData = useMemo(() => {
     const filtered: Record<string, Record<string, DatasetItem[]>> = {};
 
@@ -142,6 +151,10 @@ const Data: React.FC = () => {
 
     return filtered;
   }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   const handleDateChange = useCallback((newDate: Date | undefined) => {
     if (newDate instanceof Date) {
@@ -414,6 +427,30 @@ const Data: React.FC = () => {
           data={filteredData}
           onRowClick={handleTableClick}
         />
+      )}
+
+      {dataTableJson && (
+        <div className="mt-4 flex justify-between items-center">
+          <div>
+            Showing {(currentPage - 1) * pageSize + 1} to{" "}
+            {Math.min(currentPage * pageSize, dataTableJson.data.count)} of{" "}
+            {dataTableJson.data.count} entries
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === dataTableJson.data.num_pages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
       {selectedTable && (
         <div className="mt-8">
