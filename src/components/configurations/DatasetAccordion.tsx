@@ -151,9 +151,11 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {dataset.is_system_generated
-                          ? "Cannot edit system-generated dataset"
-                          : "Edit Dataset"}
+                        <span>
+                          {dataset.is_system_generated
+                            ? "Cannot edit system-generated dataset"
+                            : "Edit Dataset"}
+                        </span>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -220,6 +222,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                     )}
                     {selectedVersion && (
                       <DatasetVersionColumns
+                        isSystemGenerated={dataset?.is_system_generated}
                         datasetId={dataset.dataset_id}
                         versionId={selectedVersion.dataset_version_id}
                       />

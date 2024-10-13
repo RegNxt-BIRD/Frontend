@@ -58,7 +58,6 @@ export default function GenericComboBox({
   const handleSelect = (item: DatasetItem) => {
     setSelectedValue(item.label);
     setIsOpen(false);
-    console.log("asd: ", item);
     onSelect(item);
   };
 

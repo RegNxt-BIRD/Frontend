@@ -21,7 +21,7 @@ interface DatasetVersionResponse {
 }
 
 interface DataVersionColumnsResponse {
-  data: any[]; // Replace 'any' with a more specific type if possible
+  data: any[];
 }
 const DatasetVersionSelector: React.FC<DatasetVersionSelectorProps> = ({
   framework,

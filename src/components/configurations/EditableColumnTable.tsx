@@ -117,7 +117,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Order</TableHead>
             <TableHead>Code</TableHead>
             <TableHead>Label</TableHead>
             <TableHead>Data Type</TableHead>
@@ -132,19 +131,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
             <TableRow key={column.dataset_version_column_id || index}>
               <TableCell>
                 <Input
-                  type="number"
-                  value={column.column_order}
-                  onChange={(e) =>
-                    handleInputChange(
-                      index,
-                      "column_order",
-                      parseInt(e.target.value)
-                    )
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Input
+                  disabled={column?.is_system_generated}
                   value={column.code}
                   onChange={(e) =>
                     handleInputChange(index, "code", e.target.value)
@@ -154,6 +141,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Input
                   value={column.label}
+                  disabled={column?.is_system_generated}
                   onChange={(e) =>
                     handleInputChange(index, "label", e.target.value)
                   }
@@ -162,11 +150,12 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Select
                   value={column.datatype}
+                  disabled={column?.is_system_generated}
                   onValueChange={(value) =>
                     handleInputChange(index, "datatype", value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger disabled={column?.is_system_generated}>
                     <SelectValue placeholder="Select data type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -181,11 +170,12 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Select
                   value={column.role}
+                  disabled={column?.is_system_generated}
                   onValueChange={(value) =>
                     handleInputChange(index, "role", value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger disabled={column?.is_system_generated}>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -197,6 +187,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               </TableCell>
               <TableCell>
                 <Switch
+                  disabled={column?.is_system_generated}
                   checked={column.is_mandatory}
                   onCheckedChange={(checked) =>
                     handleInputChange(index, "is_mandatory", checked)
@@ -206,6 +197,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Switch
                   checked={column.is_key}
+                  disabled={column?.is_system_generated}
                   onCheckedChange={(checked) =>
                     handleInputChange(index, "is_key", checked)
                   }
@@ -215,6 +207,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
+                  disabled={column?.is_system_generated}
                   onClick={() => handleDeleteColumn(index)}
                   disabled={column.is_system_generated}
                 >
