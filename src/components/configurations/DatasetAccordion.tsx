@@ -222,7 +222,6 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                     )}
                     {selectedVersion && (
                       <DatasetVersionColumns
-                        isSystemGenerated={dataset?.is_system_generated}
                         datasetId={dataset.dataset_id}
                         versionId={selectedVersion.dataset_version_id}
                       />

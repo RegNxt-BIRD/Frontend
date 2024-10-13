@@ -209,7 +209,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                   size="sm"
                   disabled={column?.is_system_generated}
                   onClick={() => handleDeleteColumn(index)}
-                  disabled={column.is_system_generated}
                 >
                   <Trash className="h-4 w-4" />
                 </Button>
