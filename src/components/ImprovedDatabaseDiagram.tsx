@@ -96,6 +96,7 @@ export default function DatabaseDiagram({
         const processedTables = new Set<string>();
 
         data.forEach((response) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { central_dataset_version, inbound, outbound, all_datasets } =
             response;
 
@@ -173,7 +174,7 @@ export default function DatabaseDiagram({
 
   const onConnect = useCallback(
     (params) =>
-      setEdges((eds) =>
+      setEdges((eds: any) =>
         addEdge({ ...params, type: "custom", animated: true }, eds)
       ),
     [setEdges]

@@ -1,5 +1,5 @@
+import DatabaseDiagram from "@/components/DatabaseDiagram";
 import DatePicker from "@/components/DatePicker";
-import ImprovedDatabaseDiagram from "@/components/ImprovedDatabaseDiagram";
 import SelectableAccordion from "@/components/SelectableAccordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { fastApiInstance } from "@/lib/axios";
 import { DatasetItem, Frameworks, Layers } from "@/types/databaseTypes";
@@ -96,49 +97,61 @@ export default function Relationship() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex space-x-4 p-4 bg-gray-100">
-        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select Framework" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_FILTER}>All Frameworks</SelectItem>
-            {frameworks?.data?.map((framework: any) => (
-              <SelectItem key={framework.code} value={framework.code}>
-                {framework.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select onValueChange={handleLayerChange} value={selectedLayer}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select Layer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_FILTER}>All Layers</SelectItem>
-            {layers?.data?.map((layer: any) => (
-              <SelectItem key={layer.code} value={layer.code}>
-                {layer.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <DatePicker onSelect={handleDateChange} initialDate={selectedDate} />
-        <Button onClick={() => setIsSheetOpen(true)} className="ml-auto">
-          Open Dataset List
-        </Button>
-      </div>
-      <div className="flex-grow">
+    <div className="flex h-screen">
+      <div className="w-full p-4">
+        <div className="flex space-x-4 mb-4">
+          <Select
+            onValueChange={handleFrameworkChange}
+            value={selectedFramework}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Framework" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FILTER}>All Frameworks</SelectItem>
+              {frameworks?.data?.map((framework: any) => (
+                <SelectItem key={framework.code} value={framework.code}>
+                  {framework.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select onValueChange={handleLayerChange} value={selectedLayer}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Layer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_FILTER}>All Layers</SelectItem>
+              {layers?.data?.map((layer: any) => (
+                <SelectItem key={layer.code} value={layer.code}>
+                  {layer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DatePicker
+            onSelect={
+              handleDateChange as React.ComponentProps<
+                typeof DatePicker
+              >["onSelect"]
+            }
+            initialDate={selectedDate}
+          />
+        </div>
         <ReactFlowProvider>
-          <ImprovedDatabaseDiagram
+          <DatabaseDiagram
             selectedDatasetVersions={selectedDatasetVersions}
             onSelectionChange={handleDiagramSelectionChange}
           />
         </ReactFlowProvider>
       </div>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent>
+        <SheetTrigger asChild>
+          <Button className="fixed right-4 top-4 z-10">
+            Open Dataset List
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="overflow-y-auto max-h-screen">
           <SheetHeader>
             <SheetTitle>Selected Datasets</SheetTitle>
             <SheetDescription>

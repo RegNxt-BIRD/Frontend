@@ -89,7 +89,7 @@ const router = createBrowserRouter([
                 element: <ConfigureDataviews />,
               },
               {
-                path: "grouping",
+                path: "groups",
                 element: <ConfigureGrouping />,
               },
             ],

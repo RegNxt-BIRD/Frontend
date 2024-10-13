@@ -57,6 +57,7 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
     );
   }, [data]);
 
+  
   return (
     <SharedDataTable
       data={flattenedData}

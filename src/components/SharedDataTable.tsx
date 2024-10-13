@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,16 +16,14 @@ import {
 } from "@/components/ui/table";
 import {
   ColumnDef,
-  ColumnFiltersState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 interface SharedDataTableProps<T> {
   data: T[];
@@ -41,92 +38,56 @@ export function SharedDataTable<T>({
   onRowClick,
   showPagination = true,
 }: SharedDataTableProps<T>) {
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
     state: {
-      columnFilters,
-      columnVisibility,
-      globalFilter,
+      sorting,
+      pagination,
     },
   });
 
-  const handleSearch = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setGlobalFilter(event.target.value);
-    },
-    []
-  );
-
-  const memoizedRows = useMemo(() => table.getRowModel().rows, [table]);
-
   return (
     <div className="space-y-4">
-      <Input
-        placeholder="Search..."
-        value={globalFilter ?? ""}
-        onChange={handleSearch}
-        className="max-w-sm"
-      />
-      <div className="rounded-md border overflow-hidden">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-gray-100">
+              <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="font-bold text-lg py-0 px-4"
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={`flex items-center space-x-2 ${
-                          header.column.id === "name" ||
-                          header.column.id === "code"
-                            ? "cursor-pointer select-none"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          if (header.column.id === "code") {
-                            header.column.toggleSorting();
-                          }
-                        }}
-                      >
-                        <span>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </span>
-                      </div>
-                    )}
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
-            {memoizedRows.length ? (
-              memoizedRows.map((row) => (
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick(row.original)}
-                  className="cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3 px-4 text-base">
+                    <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -148,7 +109,6 @@ export function SharedDataTable<T>({
           </TableBody>
         </Table>
       </div>
-
       {showPagination && (
         <div className="flex items-center justify-between">
           <div className="flex-1 text-sm text-muted-foreground">
@@ -159,18 +119,16 @@ export function SharedDataTable<T>({
             <div className="flex items-center space-x-2">
               <p className="text-sm font-medium">Rows per page</p>
               <Select
-                value={`${table.getState().pagination.pageSize}`}
+                value={`${pagination.pageSize}`}
                 onValueChange={(value) => {
                   table.setPageSize(Number(value));
                 }}
               >
                 <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue
-                    placeholder={table.getState().pagination.pageSize}
-                  />
+                  <SelectValue placeholder={pagination.pageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[10, 20, 50, 100].map((pageSize) => (
+                  {[10, 20, 30, 50, 100].map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>

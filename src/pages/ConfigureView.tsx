@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Columns, Database, Settings2, Table } from "lucide-react";
+import { Columns, Database, Group, Settings2, Table } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Config = () => {
@@ -74,8 +74,12 @@ const Config = () => {
             </p>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" variant="outline">
-              Edit Columns
+            <Button
+              className="w-full"
+              variant="secondary"
+              onClickCapture={() => navigate("/configuration/groups")}
+            >
+              <Group className="mr-2 h-4 w-4" /> Configure
             </Button>
           </CardFooter>
         </Card>

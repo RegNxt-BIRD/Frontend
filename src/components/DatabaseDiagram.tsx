@@ -76,7 +76,42 @@ export default function DatabaseDiagram({
 }: DatabaseDiagramProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const handleExpandNode = useCallback(
+    async (nodeId: string) => {
+      try {
+        const response = await fastApiInstance.get(
+          `/api/v1/datasets/${nodeId}/relationships/`
+        );
+        const { inbound, outbound, all_datasets } = response.data;
+
+        const newNodes = all_datasets
+          .filter(
+            (dataset: any) =>
+              !nodes.some((node) => node.id === dataset.dataset_code)
+          )
+          .map((dataset: any) => createNode(dataset));
+
+        const newEdges = [
+          ...inbound.map((rel: any) =>
+            createEdge(rel, rel.from_table, rel.to_table, "inbound")
+          ),
+          ...outbound.map((rel: any) =>
+            createEdge(rel, rel.from_table, rel.to_table, "outbound")
+          ),
+        ];
+
+        setNodes((nds) => [...nds, ...newNodes]);
+        setEdges((eds) => [...eds, ...newEdges]);
+
+        onLayout();
+      } catch (error) {
+        console.error("Error expanding node:", error);
+      }
+    },
+    [nodes, setNodes, setEdges]
+  );
 
   useEffect(() => {
     const fetchRelationships = async () => {
@@ -96,8 +131,7 @@ export default function DatabaseDiagram({
         const processedTables = new Set<string>();
 
         data.forEach((response) => {
-          const { central_dataset_version, inbound, outbound, all_datasets } =
-            response;
+          const { all_datasets, inbound, outbound } = response;
 
           all_datasets.forEach((dataset: any) => {
             if (!processedTables.has(dataset.dataset_code)) {
@@ -143,6 +177,7 @@ export default function DatabaseDiagram({
     data: {
       label: `${dataset.dataset_name} (v${dataset.version_nr})`,
       columns: dataset.columns,
+      onExpand: handleExpandNode,
     },
   });
 
@@ -168,6 +203,8 @@ export default function DatabaseDiagram({
       relationshipType: relationship.relation_type,
       sourceCardinality: relationship.source_cardinality,
       targetCardinality: relationship.destination_cardinality,
+      isSourceMandatory: relationship.is_source_mandatory,
+      isTargetMandatory: relationship.is_destination_mandatory,
     },
   });
 
@@ -177,16 +214,6 @@ export default function DatabaseDiagram({
         addEdge({ ...params, type: "custom", animated: true }, eds)
       ),
     [setEdges]
-  );
-
-  const onNodeClick = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      const updatedSelection = selectedDatasetVersions.filter(
-        (v) => v.dataset_code !== node.id
-      );
-      onSelectionChange(updatedSelection);
-    },
-    [selectedDatasetVersions, onSelectionChange]
   );
 
   const onLayout = useCallback(() => {
@@ -214,7 +241,6 @@ export default function DatabaseDiagram({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionLineType={ConnectionLineType.SmoothStep}
