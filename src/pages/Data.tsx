@@ -62,7 +62,11 @@ const Data: React.FC = () => {
   );
   const { data: dataTableJson, error: dataError } = useSWR<{
     data: DatasetItem[];
-  }>("/api/v1/datasets/", fastApiInstance);
+  }>("/api/v1/datasets/", fastApiInstance, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 3600000,
+  });
   const isLoading = !layers || !frameworks || !dataTableJson;
   const error = layersError || frameworksError || dataError;
 

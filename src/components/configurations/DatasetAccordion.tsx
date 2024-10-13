@@ -12,7 +12,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Dataset, DatasetVersion } from "@/types/databaseTypes";
+import {
+  Dataset,
+  DatasetVersion,
+  DatasetVersions,
+} from "@/types/databaseTypes";
 import { ColumnDef } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, Edit, Plus, Trash } from "lucide-react";
 import React, { useMemo, useState } from "react";
@@ -22,7 +26,7 @@ import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 interface DatasetAccordionProps {
   datasets: Dataset[];
   handleDatasetClick: (dataset: Dataset) => void;
-  datasetVersions: DatasetVersion[];
+  datasetVersions?: DatasetVersions;
   selectedDataset: Dataset | null;
   handleCreateVersion: (dataset: Dataset) => void;
   handleUpdateVersion: (version: DatasetVersion) => void;

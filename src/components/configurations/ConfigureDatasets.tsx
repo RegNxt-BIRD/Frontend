@@ -20,6 +20,7 @@ import {
   Dataset,
   Datasets,
   DatasetVersion,
+  DatasetVersions,
   Framework,
   Frameworks,
   Layers,
@@ -68,7 +69,7 @@ export const ConfigureDatasets: React.FC = () => {
     data: datasetVersions,
     mutate: mutateVersions,
     isValidating: isLoadingVersions,
-  } = useSWR<DatasetVersion[]>(
+  } = useSWR<DatasetVersions>(
     selectedDataset
       ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions_all/`
       : null,
@@ -78,8 +79,8 @@ export const ConfigureDatasets: React.FC = () => {
   const isLoading = !layers || !frameworks || !datasets;
   const filteredDatasets = useMemo(() => {
     return (
-      (datasets &&
-        datasets?.data?.filter((dataset) => {
+      (datasets?.data &&
+        datasets.data.filter((dataset) => {
           const frameworkMatch =
             selectedFramework === NO_FILTER ||
             dataset.framework === selectedFramework;
@@ -88,8 +89,8 @@ export const ConfigureDatasets: React.FC = () => {
           const columnFilterMatch = Object.entries(columnFilters).every(
             ([key, value]) =>
               value === "" ||
-              dataset[key as keyof Dataset]
-                .toString()
+              dataset?.[key as keyof Dataset]
+                ?.toString()
                 .toLowerCase()
                 .includes(value.toLowerCase())
           );
@@ -287,7 +288,7 @@ export const ConfigureDatasets: React.FC = () => {
         <FrameworkAccordion
           groupedDatasets={groupedDatasets}
           handleDatasetClick={setSelectedDataset}
-          datasetVersions={datasetVersions || []}
+          datasetVersions={datasetVersions}
           selectedDataset={selectedDataset}
           handleEditDataset={handleEditDataset}
           handleUpdateVersion={handleUpdateVersion}
@@ -303,7 +304,7 @@ export const ConfigureDatasets: React.FC = () => {
         <DatasetAccordion
           datasets={filteredDatasets}
           handleDatasetClick={setSelectedDataset}
-          datasetVersions={datasetVersions || []}
+          datasetVersions={datasetVersions}
           handleEditDataset={handleEditDataset}
           isLoadingVersions={isLoadingVersions}
           selectedDataset={selectedDataset}

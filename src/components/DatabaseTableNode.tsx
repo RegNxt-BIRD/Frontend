@@ -24,7 +24,7 @@ const DatabaseTableNode = memo(({ id, data }: DatabaseTableNodeProps) => {
       <div className="bg-blue-500 text-white font-bold py-2 px-4 text-center truncate">
         {data.label}
       </div>
-      <div className="p-2 max-h-[1000px] overflow-y-auto">
+      <div className="p-2 max-h-[4000px] overflow-y-auto">
         {data.columns.map((column, index) => (
           <div
             key={`${id}-${column.column_name}`}

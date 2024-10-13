@@ -30,6 +30,7 @@ export const ConfigureGrouping: React.FC = () => {
   const [columnFilters, setColumnFilters] = useState({
     code: "",
     label: "",
+    type: "",
     description: "",
   });
 

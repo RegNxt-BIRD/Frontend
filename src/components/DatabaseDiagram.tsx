@@ -72,10 +72,9 @@ interface DatabaseDiagramProps {
 
 export default function DatabaseDiagram({
   selectedDatasetVersions,
-  onSelectionChange,
 }: DatabaseDiagramProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [loading, setLoading] = useState(false);
 
   const handleExpandNode = useCallback(
@@ -110,6 +109,7 @@ export default function DatabaseDiagram({
         console.error("Error expanding node:", error);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [nodes, setNodes, setEdges]
   );
 
@@ -168,6 +168,7 @@ export default function DatabaseDiagram({
     if (selectedDatasetVersions.length > 0) {
       fetchRelationships();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDatasetVersions, setNodes, setEdges]);
 
   const createNode = (dataset: any): Node => ({
@@ -186,30 +187,42 @@ export default function DatabaseDiagram({
     source: string,
     target: string,
     direction: "inbound" | "outbound"
-  ): Edge => ({
-    id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
-    source,
-    target,
-    sourceHandle: `${source}.${relationship.from_col}.${
-      direction === "outbound" ? "right" : "left"
-    }`,
-    targetHandle: `${target}.${relationship.to_col}.${
-      direction === "outbound" ? "left" : "right"
-    }`,
-    type: "custom",
-    animated: true,
-    data: {
-      label: `${relationship.from_col} -> ${relationship.to_col}`,
-      relationshipType: relationship.relation_type,
-      sourceCardinality: relationship.source_cardinality,
-      targetCardinality: relationship.destination_cardinality,
-      isSourceMandatory: relationship.is_source_mandatory,
-      isTargetMandatory: relationship.is_destination_mandatory,
-    },
-  });
+  ): Edge => {
+    const isOutbound = direction === "outbound";
+    const actualSource = isOutbound ? source : target;
+    const actualTarget = isOutbound ? target : source;
+    const sourceColumn = isOutbound
+      ? relationship.from_col
+      : relationship.to_col;
+    const targetColumn = isOutbound
+      ? relationship.to_col
+      : relationship.from_col;
+
+    return {
+      id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+      source: actualSource,
+      target: actualTarget,
+      sourceHandle: `${actualSource}.${sourceColumn}.${
+        isOutbound ? "right" : "left"
+      }`,
+      targetHandle: `${actualTarget}.${targetColumn}.${
+        isOutbound ? "left" : "right"
+      }`,
+      type: "custom",
+      animated: true,
+      data: {
+        label: `${relationship.from_col} -> ${relationship.to_col}`,
+        relationshipType: relationship.relation_type,
+        sourceCardinality: relationship.source_cardinality,
+        targetCardinality: relationship.destination_cardinality,
+        isSourceMandatory: relationship.is_source_mandatory,
+        isTargetMandatory: relationship.is_destination_mandatory,
+      },
+    };
+  };
 
   const onConnect = useCallback(
-    (params) =>
+    (params: any) =>
       setEdges((eds) =>
         addEdge({ ...params, type: "custom", animated: true }, eds)
       ),

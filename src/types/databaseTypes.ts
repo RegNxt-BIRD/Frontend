@@ -39,6 +39,10 @@ export interface DatasetVersion {
   description: string;
 }
 
+export interface DatasetVersions {
+  data: DatasetVersion[];
+}
+
 export interface DatabaseTableData {
   label: string;
   columns: TableColumn[];

@@ -18,14 +18,14 @@ interface Group {
   code: string;
   label: string;
   description: string;
-  system_generated: boolean;
+  is_system_generated: boolean;
 }
 
 interface GroupItem {
   dataset_code: string;
   dataset_version_id: string;
   order: number;
-  system_generated: boolean;
+  is_system_generated: boolean;
 }
 
 interface GroupItemsModalProps {
@@ -51,6 +51,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
     if (isOpen) {
       fetchGroupItems();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, group.code]);
 
   const fetchGroupItems = async () => {
@@ -103,7 +104,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
       await fastApiInstance.delete(
         `/api/v1/groups/${group.code}/remove_item/`,
         {
-          data: { dataset_code: datasetCode },
+          data: { dataset_version_id: datasetCode },
         }
       );
       await fetchGroupItems();
@@ -141,7 +142,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
           variant="outline"
           size="sm"
           onClick={() => handleRemoveItem(row.original.dataset_version_id)}
-          disabled={row.original.system_generated}
+          disabled={row.original.is_system_generated}
         >
           Remove
         </Button>

@@ -56,11 +56,11 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
   selectedFramework,
 }) => {
   const [expandedFramework, setExpandedFramework] = useState<
-    string | string[] | undefined
+    string | undefined
   >(undefined);
-  const [expandedGroup, setExpandedGroup] = useState<
-    string | string[] | undefined
-  >(undefined);
+  const [expandedGroup, setExpandedGroup] = useState<string | undefined>(
+    undefined
+  );
   const [frameworkPage, setFrameworkPage] = useState(1);
   const [groupPages, setGroupPages] = useState<Record<string, number>>({});
 

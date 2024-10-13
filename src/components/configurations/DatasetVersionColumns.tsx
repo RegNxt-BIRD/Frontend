@@ -38,6 +38,7 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
 
   useEffect(() => {
     fetchColumns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, versionId]);
 
   const fetchColumns = async () => {
@@ -59,8 +60,8 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
     }
   };
 
-  const handleColumnsChange = (updatedColumns: Column[]) => {
-    setColumns(updatedColumns);
+  const handleColumnsChange = (columns: Column[]) => {
+    setColumns(columns);
   };
 
   const handleSave = async () => {

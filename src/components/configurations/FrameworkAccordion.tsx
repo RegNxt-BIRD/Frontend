@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { DatasetVersions } from "@/types/databaseTypes";
 import React from "react";
 import { DatasetAccordion } from "./DatasetAccordion";
 
@@ -37,7 +38,7 @@ export interface DatasetVersion {
 interface FrameworkAccordionProps {
   groupedDatasets: Record<string, Dataset[]>;
   handleDatasetClick: (dataset: Dataset) => void;
-  datasetVersions: DatasetVersion[];
+  datasetVersions?: DatasetVersions;
   selectedDataset: Dataset | null;
   handleCreateVersion: (dataset: Dataset) => void;
   handleUpdateVersion: (version: DatasetVersion) => void;
