@@ -276,7 +276,7 @@ export const ConfigureDatasets: React.FC = () => {
         }
       />
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-row-reverse">
         <Button onClick={() => setIsDatasetModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create New Dataset

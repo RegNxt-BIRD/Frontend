@@ -43,7 +43,12 @@ export default function Relationship() {
   );
   const { data: dataTableJson } = useSWR<{ data: DatasetItem[] }>(
     "/api/v1/datasets/",
-    fastApiInstance
+    fastApiInstance,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 3600000,
+    }
   );
 
   const handleFrameworkChange = useCallback((value: string) => {

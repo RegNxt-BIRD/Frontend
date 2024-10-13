@@ -1,7 +1,7 @@
-import { Edge, EdgeProps, getBezierPath, Position } from "@xyflow/react";
-import { ReactNode } from "react";
+import { EdgeProps, getBezierPath } from "@xyflow/react";
+import React from "react";
 
-export default function CustomEdge({
+const CustomEdge: React.FC<EdgeProps> = ({
   id,
   sourceX,
   sourceY,
@@ -9,8 +9,10 @@ export default function CustomEdge({
   targetY,
   sourcePosition,
   targetPosition,
+  style = {},
   data,
-}: EdgeProps<Edge<Record<string, unknown>, string | undefined>>) {
+  markerEnd,
+}) => {
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
@@ -20,74 +22,27 @@ export default function CustomEdge({
     targetPosition,
   });
 
-  const getCardinalityMarker = (cardinality?: string) => {
-    switch (cardinality) {
-      case "1":
-        return "1";
-      case "N":
-        return "N";
-      default:
-        return "";
-    }
-  };
-
-  const sourceLabel = `${getCardinalityMarker(
-    data?.sourceCardinality as string | undefined
-  )}${data?.isSourceMandatory ? "*" : ""}`;
-  const targetLabel = `${getCardinalityMarker(
-    data?.targetCardinality as string | undefined
-  )}${data?.isTargetMandatory ? "*" : ""}`;
-
   return (
-    <div>
+    <>
       <path
         id={id}
+        style={style}
         className="react-flow__edge-path"
         d={edgePath}
-        strokeWidth={2}
-        stroke="#b1b1b7"
+        markerEnd={markerEnd}
       />
-      {(data?.label as ReactNode) && (
-        <text>
-          <textPath
-            href={`#${id}`}
-            startOffset="50%"
-            textAnchor="middle"
-            fontSize={10}
-            fill="#888"
-          >
-            {data?.label as ReactNode}
-          </textPath>
-        </text>
-      )}
-      <text
-        x={sourceX}
-        y={sourceY}
-        dx={sourcePosition === Position.Left ? -8 : 8}
-        dy={sourcePosition === Position.Top ? -8 : 8}
-        fontSize={12}
-        textAnchor={sourcePosition === Position.Left ? "end" : "start"}
-        dominantBaseline={
-          sourcePosition === Position.Top ? "baseline" : "hanging"
-        }
-        fill="#888"
-      >
-        {sourceLabel}
+      <text>
+        <textPath
+          href={`#${id}`}
+          style={{ fontSize: 12 }}
+          startOffset="50%"
+          textAnchor="middle"
+        >
+          {data?.label}
+        </textPath>
       </text>
-      <text
-        x={targetX}
-        y={targetY}
-        dx={targetPosition === Position.Left ? -8 : 8}
-        dy={targetPosition === Position.Top ? -8 : 8}
-        fontSize={12}
-        textAnchor={targetPosition === Position.Left ? "end" : "start"}
-        dominantBaseline={
-          targetPosition === Position.Top ? "baseline" : "hanging"
-        }
-        fill="#888"
-      >
-        {targetLabel}
-      </text>
-    </div>
+    </>
   );
-}
+};
+
+export default CustomEdge;
