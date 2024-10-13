@@ -28,24 +28,16 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-const formSchema = z
-  .object({
-    code: z
-      .string()
-      .min(1, "Code is required")
-      .regex(
-        /^[a-zA-Z0-9]+$/,
-        "Code must only contain alphanumeric characters"
-      ),
-    label: z.string().min(1, "Label is required"),
-    description: z.string().optional(),
-    framework: z.string().min(1, "Framework is required"),
-    type: z.string().min(1, "Layer is required"),
-  })
-  .refine((data: any) => data.validFrom < data.validTo, {
-    message: "Valid from date must be earlier than valid to date",
-    path: ["validFrom"],
-  });
+const formSchema = z.object({
+  code: z
+    .string()
+    .min(1, "Code is required")
+    .regex(/^[a-zA-Z0-9]+$/, "Code must only contain alphanumeric characters"),
+  label: z.string().min(1, "Label is required"),
+  description: z.string().optional(),
+  framework: z.string().min(1, "Framework is required"),
+  type: z.string().min(1, "Layer is required"),
+});
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -72,12 +64,32 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset(initialData);
-    } else {
-      form.reset({});
+    if (isOpen) {
+      if (initialData) {
+        form.reset(initialData);
+      } else {
+        form.reset({
+          code: "",
+          label: "",
+          description: "",
+          framework: "",
+          type: "",
+        });
+      }
     }
-  }, [initialData, form]);
+
+    return () => {
+      if (!isOpen) {
+        form.reset({
+          code: "",
+          label: "",
+          description: "",
+          framework: "",
+          type: "",
+        });
+      }
+    };
+  }, [isOpen, initialData, form]);
 
   const handleSubmit = (data: FormValues) => {
     onSubmit(data);
@@ -114,7 +126,7 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
               control={form.control}
               name="label"
               render={({ field }) => (
-                <FormItem>
+                <FormItem id="form-label">
                   <FormLabel>Label</FormLabel>
                   <FormControl>
                     <Input placeholder="Label" {...field} />

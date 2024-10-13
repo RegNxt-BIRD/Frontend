@@ -62,28 +62,53 @@ export const DatasetVersionFormModal: React.FC<
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset({
-        version_code: initialData.version_code,
-        code: initialData.code,
-        label: initialData.label,
-        description: initialData.description,
-        valid_from: initialData.valid_from || "",
-        valid_to: (initialData.valid_to as string) || "",
-      });
-    } else if (dataset) {
-      form.reset({
-        version_code: "",
-        code: dataset.code,
-        label: dataset.label,
-        description: dataset.description,
-        valid_from: "",
-        valid_to: "",
-      });
-    } else {
-      form.reset({});
+    if (isOpen) {
+      if (initialData) {
+        // Editing an existing version
+        form.reset({
+          version_code: initialData.version_code,
+          code: initialData.code,
+          label: initialData.label,
+          description: initialData.description,
+          valid_from: initialData.valid_from || "",
+          valid_to: (initialData.valid_to as string) || "",
+        });
+      } else if (dataset) {
+        // Creating a new version
+        form.reset({
+          version_code: "",
+          code: dataset.code,
+          label: "", // Start with an empty label for new versions
+          description: "", // Start with an empty description for new versions
+          valid_from: "",
+          valid_to: "",
+        });
+      } else {
+        // Fallback case (should not typically occur)
+        form.reset({
+          version_code: "",
+          code: "",
+          label: "",
+          description: "",
+          valid_from: "",
+          valid_to: "",
+        });
+      }
     }
-  }, [initialData, dataset, form]);
+
+    return () => {
+      if (!isOpen) {
+        form.reset({
+          version_code: "",
+          code: "",
+          label: "",
+          description: "",
+          valid_from: "",
+          valid_to: "",
+        });
+      }
+    };
+  }, [isOpen, initialData, dataset, form]);
 
   const handleSubmit = (data: FormValues) => {
     onSubmit({
