@@ -14,7 +14,7 @@ interface Group {
   code: string;
   label: string;
   description: string;
-  system_generated: boolean;
+  is_system_generated: boolean;
 }
 
 interface Groups {
@@ -103,9 +103,9 @@ export const ConfigureGrouping: React.FC = () => {
     { accessorKey: "label", header: "Label" },
     { accessorKey: "description", header: "Description" },
     {
-      accessorKey: "system_generated",
+      accessorKey: "is_system_generated",
       header: "System Generated",
-      cell: ({ row }) => (row.getValue("system_generated") ? "Yes" : "No"),
+      cell: ({ row }) => (row.getValue("is_system_generated") ? "Yes" : "No"),
     },
     {
       id: "actions",
@@ -118,7 +118,7 @@ export const ConfigureGrouping: React.FC = () => {
               setEditingGroup(row.original);
               setIsGroupModalOpen(true);
             }}
-            disabled={row.original.system_generated}
+            disabled={row.original.is_system_generated}
           >
             Edit
           </Button>
@@ -126,7 +126,7 @@ export const ConfigureGrouping: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => handleDeleteGroup(row.original.code)}
-            disabled={row.original.system_generated}
+            disabled={row.original.is_system_generated}
           >
             Delete
           </Button>

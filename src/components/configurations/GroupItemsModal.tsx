@@ -130,9 +130,9 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
     { accessorKey: "dataset_version_id", header: "Dataset Code" },
     { accessorKey: "order", header: "Order" },
     {
-      accessorKey: "system_generated",
+      accessorKey: "is_system_generated",
       header: "System Generated",
-      cell: ({ row }) => (row.getValue("system_generated") ? "Yes" : "No"),
+      cell: ({ row }) => (row.getValue("is_system_generated") ? "Yes" : "No"),
     },
     {
       id: "actions",
