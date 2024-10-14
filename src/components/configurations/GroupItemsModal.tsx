@@ -132,7 +132,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
   const handleDatasetSelect = (dataset: any) => {
     setNewItem({
       ...newItem,
-      dataset_version_id: dataset.latest_version_id.toString(),
+      dataset_version_id: dataset.dataset_version_id.toString(),
     });
   };
 
