@@ -15,10 +15,16 @@ interface Group {
   label: string;
   description: string;
   is_system_generated: boolean;
+  items: string;
 }
 
-interface Groups {
-  data: Group[];
+interface GroupsResponse {
+  count: number;
+  num_pages: number;
+  results: Group[];
+}
+interface Grouping {
+  data: GroupsResponse;
 }
 
 export const ConfigureGrouping: React.FC = () => {
@@ -35,10 +41,10 @@ export const ConfigureGrouping: React.FC = () => {
   });
 
   const {
-    data: groups,
+    data: groupsResponse,
     error: groupsError,
     mutate: mutateGroups,
-  } = useSWR<Groups>("/api/v1/groups/", fastApiInstance);
+  } = useSWR<Grouping>("/api/v1/groups/", fastApiInstance);
 
   if (groupsError) {
     toast({
@@ -109,6 +115,14 @@ export const ConfigureGrouping: React.FC = () => {
       cell: ({ row }) => (row.getValue("is_system_generated") ? "Yes" : "No"),
     },
     {
+      accessorKey: "items",
+      header: "Items Count",
+      cell: ({ row }) => {
+        const items = JSON.parse(row.getValue("items") as string);
+        return items.length;
+      },
+    },
+    {
       id: "actions",
       cell: ({ row }) => (
         <div className="flex space-x-2">
@@ -164,9 +178,9 @@ export const ConfigureGrouping: React.FC = () => {
         </Button>
       </div>
 
-      {groups && groups.data && (
+      {groupsResponse && groupsResponse.data.results && (
         <SharedDataTable
-          data={groups.data}
+          data={groupsResponse.data.results}
           columns={columns}
           onRowClick={() => {}}
           showPagination={true}

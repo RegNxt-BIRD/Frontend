@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { SharedDataTable } from "@/components/SharedDataTable";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +43,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
   const [items, setItems] = useState<GroupItem[]>([]);
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [newItem, setNewItem] = useState<Partial<GroupItem>>({
-    dataset_version_id: "0",
+    dataset_version_id: "",
     order: 0,
   });
   const { toast } = useToast();
@@ -51,7 +52,6 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
     if (isOpen) {
       fetchGroupItems();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, group.code]);
 
   const fetchGroupItems = async () => {
@@ -77,10 +77,20 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
 
   const handleAddItem = async () => {
     try {
+      if (!newItem.dataset_version_id) {
+        toast({
+          title: "Error",
+          description: "Please select a dataset.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const itemToAdd = {
-        ...newItem,
+        dataset_version_id: newItem.dataset_version_id,
         order: calculateNextOrder(),
       };
+
       await fastApiInstance.post(
         `/api/v1/groups/${group.code}/add_item/`,
         itemToAdd
@@ -88,7 +98,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
       await fetchGroupItems();
       toast({ title: "Success", description: "Item added successfully." });
       setIsAddItemModalOpen(false);
-      setNewItem({ dataset_code: "", order: 0 });
+      setNewItem({ dataset_version_id: "", order: 0 });
     } catch (error) {
       console.error("Error adding item:", error);
       toast({
@@ -99,12 +109,12 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
     }
   };
 
-  const handleRemoveItem = async (datasetCode: string) => {
+  const handleRemoveItem = async (datasetVersionId: string) => {
     try {
       await fastApiInstance.delete(
         `/api/v1/groups/${group.code}/remove_item/`,
         {
-          data: { dataset_version_id: datasetCode },
+          data: { dataset_version_id: datasetVersionId },
         }
       );
       await fetchGroupItems();
@@ -122,12 +132,12 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
   const handleDatasetSelect = (dataset: any) => {
     setNewItem({
       ...newItem,
-      dataset_version_id: dataset.dataset_version_id,
+      dataset_version_id: dataset.latest_version_id.toString(),
     });
   };
 
   const columns: ColumnDef<GroupItem>[] = [
-    { accessorKey: "dataset_version_id", header: "Dataset Code" },
+    { accessorKey: "dataset_code", header: "Dataset Code" },
     { accessorKey: "order", header: "Order" },
     {
       accessorKey: "is_system_generated",
@@ -174,7 +184,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="dataset_code" className="text-right">
-                Dataset Code
+                Dataset
               </Label>
               <div className="col-span-3">
                 <GenericComboBox

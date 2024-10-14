@@ -43,7 +43,7 @@ export default function GenericComboBox({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const getKey = (pageIndex: number, previousPageData: ApiResponse | null) => {
+  const getKey = (pageIndex: number, previousPageData: any | null) => {
     if (previousPageData && !previousPageData.data.results.length) return null;
     return `${apiEndpoint}?page=${pageIndex + 1}&page_size=${PAGE_SIZE}${
       debouncedSearchTerm ? `&search=${debouncedSearchTerm}` : ""
@@ -59,6 +59,7 @@ export default function GenericComboBox({
   const isLoadingMore =
     isLoadingInitialData ||
     (size > 0 && data && typeof data[size - 1] === "undefined");
+  console.log("data?.[0]: ", data?.[0]);
   const isEmpty = data?.[0]?.data.results.length === 0;
   const isReachingEnd =
     isEmpty || (data && data[data.length - 1]?.data.results.length < PAGE_SIZE);
@@ -84,7 +85,8 @@ export default function GenericComboBox({
   }, [debouncedSearchTerm, setSize]);
 
   const handleSelect = (item: DatasetItem) => {
-    setSelectedValue(item.label);
+    console.log("handle: ", item);
+    setSelectedValue(item.code);
     setIsOpen(false);
     onSelect(item);
   };
@@ -132,6 +134,9 @@ export default function GenericComboBox({
             className="py-1 overflow-auto max-h-60"
             onScroll={handleScroll}
           >
+            {isLoadingInitialData && (
+              <li className="px-4 py-2 text-gray-500">Loading...</li>
+            )}
             {error && (
               <li className="px-4 py-2 text-red-500">Error loading data</li>
             )}
@@ -146,7 +151,7 @@ export default function GenericComboBox({
               >
                 <Check
                   className={`w-5 h-5 mr-2 ${
-                    selectedValue === item.label
+                    selectedValue === item.code
                       ? "text-indigo-600"
                       : "text-transparent"
                   }`}
