@@ -79,7 +79,7 @@ export default function Relationship() {
     if (!dataTableJson?.data?.results) return {};
 
     const filtered: Record<string, Record<string, any[]>> = {};
-    dataTableJson.data.results.forEach((item: any) => {
+    dataTableJson?.data?.results.forEach((item: any) => {
       if (
         selectedFramework !== NO_FILTER &&
         item.framework !== selectedFramework
@@ -89,7 +89,9 @@ export default function Relationship() {
 
       const framework = item.framework;
       const group =
-        item.groups.length > 0 ? item.groups[0].code : "Ungrouped Datasets";
+        item.groups && item.groups.length > 0
+          ? item.groups[0].code
+          : "Ungrouped Datasets";
 
       if (!filtered[framework]) filtered[framework] = {};
       if (!filtered[framework][group]) filtered[framework][group] = [];

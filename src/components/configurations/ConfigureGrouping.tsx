@@ -9,6 +9,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 import React, { useState } from "react";
 import useSWR from "swr";
+import { Skeleton } from "../ui/skeleton";
 
 interface Group {
   code: string;
@@ -44,8 +45,8 @@ export const ConfigureGrouping: React.FC = () => {
     data: groupsResponse,
     error: groupsError,
     mutate: mutateGroups,
+    isLoading,
   } = useSWR<Grouping>("/api/v1/groups/", fastApiInstance);
-
   if (groupsError) {
     toast({
       title: "Error",
@@ -178,14 +179,22 @@ export const ConfigureGrouping: React.FC = () => {
         </Button>
       </div>
 
-      {groupsResponse && groupsResponse.data.results && (
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : groupsResponse && groupsResponse.data.results ? (
         <SharedDataTable
           data={groupsResponse.data.results}
           columns={columns}
           onRowClick={() => {}}
           showPagination={true}
         />
-      )}
+      ) : null}
 
       <GroupFormModal
         isOpen={isGroupModalOpen}
