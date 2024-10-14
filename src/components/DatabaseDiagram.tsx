@@ -30,7 +30,7 @@ const edgeTypes = {
 
 const elk = new ELK();
 
-const calculateNodeDimensions = (columns) => {
+const calculateNodeDimensions = (columns: any) => {
   const baseHeight = 40;
   const rowHeight = 24;
   const width = 250;
@@ -38,14 +38,14 @@ const calculateNodeDimensions = (columns) => {
   return { width, height };
 };
 
-const getLayoutedElements = async (nodes, edges) => {
+const getLayoutedElements = async (nodes: any[], edges: any) => {
   const elkNodes = nodes.map((node) => ({
     id: node.id,
     width: node.width,
     height: node.height,
   }));
 
-  const elkEdges = edges.map((edge) => ({
+  const elkEdges = edges.map((edge: any) => ({
     id: edge.id,
     sources: [edge.source],
     targets: [edge.target],
@@ -90,41 +90,6 @@ export default function DatabaseDiagram({
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleExpandNode = useCallback(
-    async (nodeId: string) => {
-      try {
-        const response = await fastApiInstance.get(
-          `/api/v1/datasets/${nodeId}/relationships/`
-        );
-        const { inbound, outbound, all_datasets } = response.data;
-
-        const newNodes = all_datasets
-          .filter(
-            (dataset: any) =>
-              !nodes.some((node) => node.id === dataset.dataset_code)
-          )
-          .map((dataset: any) => console.log("createNode(dataset): ", dataset));
-
-        const newEdges = [
-          ...inbound.map((rel: any) =>
-            createEdge(rel, rel.from_table, rel.to_table, "inbound")
-          ),
-          ...outbound.map((rel: any) =>
-            createEdge(rel, rel.from_table, rel.to_table, "outbound")
-          ),
-        ];
-
-        setNodes((nds) => [...nds, ...newNodes]);
-        setEdges((eds) => [...eds, ...newEdges]);
-
-        onLayout();
-      } catch (error) {
-        console.error("Error expanding node:", error);
-      }
-    },
-    [nodes, setNodes, setEdges]
-  );
-
   useEffect(() => {
     const fetchRelationships = async () => {
       setLoading(true);
@@ -137,8 +102,6 @@ export default function DatabaseDiagram({
           )
         );
         const data = responses.map((r) => r.data);
-        console.log("response: ", responses);
-        console.log("data: ", data[0]);
 
         const newNodes: Node[] = [];
         const newEdges: Edge[] = [];
@@ -147,10 +110,10 @@ export default function DatabaseDiagram({
         newNodes.push(createNode(data[0].central_dataset_version));
         processedTables.add(data[0].central_dataset_version.code);
 
-        data[0].inbound.forEach((rel) => {
+        data[0].inbound.forEach((rel: any) => {
           if (!processedTables.has(rel.from_dataset_code)) {
             const sourceDataset = data[0].all_datasets.find(
-              (d) => d.dataset_code === rel.from_dataset_code
+              (d: any) => d.dataset_code === rel.from_dataset_code
             );
             newNodes.push(createNode(sourceDataset));
             processedTables.add(rel.from_dataset_code);
@@ -160,10 +123,10 @@ export default function DatabaseDiagram({
           );
         });
 
-        data[0].outbound.forEach((rel) => {
+        data[0].outbound.forEach((rel: any) => {
           if (!processedTables.has(rel.to_dataset_code)) {
             const targetDataset = data[0].all_datasets.find(
-              (d) => d.dataset_code === rel.to_dataset_code
+              (d: any) => d.dataset_code === rel.to_dataset_code
             );
             newNodes.push(createNode(targetDataset));
             processedTables.add(rel.to_dataset_code);
@@ -190,8 +153,7 @@ export default function DatabaseDiagram({
     }
   }, [selectedDatasetVersions, setNodes, setEdges]);
 
-  const createNode = (dataset) => {
-    console.log("dataset: ", dataset);
+  const createNode = (dataset: any) => {
     const { width, height } = calculateNodeDimensions(dataset.columns);
     return {
       id: dataset.dataset_code || dataset.code,
@@ -252,7 +214,7 @@ export default function DatabaseDiagram({
   };
 
   const onConnect = useCallback(
-    (params) =>
+    (params: any) =>
       setEdges((eds) =>
         addEdge({ ...params, type: "custom", animated: true }, eds)
       ),
