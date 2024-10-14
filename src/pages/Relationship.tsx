@@ -68,7 +68,6 @@ export default function Relationship() {
   }, []);
 
   const handleDatasetVersionSelect = useCallback((item: any) => {
-    console.log("item: ", item);
     setSelectedDatasetVersions((prev) =>
       prev.some((v) => v.dataset_version_id === item.dataset_version_id)
         ? prev.filter((v) => v.dataset_version_id !== item.dataset_version_id)

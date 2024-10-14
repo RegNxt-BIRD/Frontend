@@ -1,7 +1,6 @@
 "use client";
 
 import { fastApiInstance } from "@/lib/axios";
-import dagre from "@dagrejs/dagre";
 import {
   Background,
   BackgroundVariant,
@@ -16,7 +15,8 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useState } from "react";
+import ELK from "elkjs/lib/elk.bundled.js";
+import React, { useCallback, useEffect, useState } from "react";
 import CustomEdge from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
@@ -28,43 +28,53 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-const nodeWidth = 250;
-const nodeHeight = 300;
+const elk = new ELK();
 
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+const calculateNodeDimensions = (columns) => {
+  const baseHeight = 40;
+  const rowHeight = 24;
+  const width = 250;
+  const height = baseHeight + columns.length * rowHeight;
+  return { width, height };
+};
 
-const getLayoutedElements = (
-  nodes: Node[],
-  edges: Edge[],
-  direction = "LR"
-) => {
-  const isHorizontal = direction === "LR";
-  dagreGraph.setGraph({ rankdir: direction });
+const getLayoutedElements = async (nodes, edges) => {
+  const elkNodes = nodes.map((node) => ({
+    id: node.id,
+    width: node.width,
+    height: node.height,
+  }));
 
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  const elkEdges = edges.map((edge) => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
+
+  const elkGraph = await elk.layout({
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.direction": "RIGHT",
+      "elk.spacing.nodeNode": "50",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+      "elk.padding": "[top=50,left=50,bottom=50,right=50]",
+      "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+    },
+    children: elkNodes,
+    edges: elkEdges,
   });
 
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      targetPosition: isHorizontal ? "left" : "top",
-      sourcePosition: isHorizontal ? "right" : "bottom",
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-    };
-  });
-
-  return { nodes: layoutedNodes, edges };
+  return {
+    nodes: nodes.map((node) => {
+      const elkNode = elkGraph.children?.find((n) => n.id === node.id);
+      return {
+        ...node,
+        position: { x: elkNode?.x || 0, y: elkNode?.y || 0 },
+      };
+    }),
+    edges,
+  };
 };
 
 interface DatabaseDiagramProps {
@@ -93,7 +103,7 @@ export default function DatabaseDiagram({
             (dataset: any) =>
               !nodes.some((node) => node.id === dataset.dataset_code)
           )
-          .map((dataset: any) => createNode(dataset));
+          .map((dataset: any) => console.log("createNode(dataset): ", dataset));
 
         const newEdges = [
           ...inbound.map((rel: any) =>
@@ -127,49 +137,44 @@ export default function DatabaseDiagram({
           )
         );
         const data = responses.map((r) => r.data);
+        console.log("response: ", responses);
+        console.log("data: ", data[0]);
 
         const newNodes: Node[] = [];
         const newEdges: Edge[] = [];
         const processedTables = new Set<string>();
 
-        data.forEach((response) => {
-          const { central_dataset_version, inbound, outbound, all_datasets } =
-            response;
+        newNodes.push(createNode(data[0].central_dataset_version));
+        processedTables.add(data[0].central_dataset_version.code);
 
-          console.log("inbound response: ", inbound);
-
-          // Add central dataset version node
-          if (!processedTables.has(central_dataset_version.code)) {
-            newNodes.push(createNode(central_dataset_version));
-            processedTables.add(central_dataset_version.code);
+        data[0].inbound.forEach((rel) => {
+          if (!processedTables.has(rel.from_dataset_code)) {
+            const sourceDataset = data[0].all_datasets.find(
+              (d) => d.dataset_code === rel.from_dataset_code
+            );
+            newNodes.push(createNode(sourceDataset));
+            processedTables.add(rel.from_dataset_code);
           }
+          newEdges.push(
+            createEdge(rel, rel.from_table, rel.to_table, "inbound")
+          );
+        });
 
-          // Add nodes for all datasets
-          all_datasets.forEach((dataset: any) => {
-            if (!processedTables.has(dataset.dataset_code)) {
-              newNodes.push(createNode(dataset));
-              processedTables.add(dataset.dataset_code);
-            }
-          });
-
-          // Add edges for inbound relationships
-          inbound.forEach((rel: any) => {
-            console.log("rel: ", rel);
-            newEdges.push(
-              createEdge(rel, rel.from_table, rel.to_table, "inbound")
+        data[0].outbound.forEach((rel) => {
+          if (!processedTables.has(rel.to_dataset_code)) {
+            const targetDataset = data[0].all_datasets.find(
+              (d) => d.dataset_code === rel.to_dataset_code
             );
-          });
-
-          // Add edges for outbound relationships
-          outbound.forEach((rel: any) => {
-            newEdges.push(
-              createEdge(rel, rel.from_table, rel.to_table, "outbound")
-            );
-          });
+            newNodes.push(createNode(targetDataset));
+            processedTables.add(rel.to_dataset_code);
+          }
+          newEdges.push(
+            createEdge(rel, rel.from_table, rel.to_table, "outbound")
+          );
         });
 
         const { nodes: layoutedNodes, edges: layoutedEdges } =
-          getLayoutedElements(newNodes, newEdges);
+          await getLayoutedElements(newNodes, newEdges);
 
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
@@ -185,79 +190,78 @@ export default function DatabaseDiagram({
     }
   }, [selectedDatasetVersions, setNodes, setEdges]);
 
-  const createNode = (dataset: any): Node => ({
-    id: dataset.dataset_code || dataset.code,
-    type: "databaseTable",
-    position: { x: 0, y: 0 },
-    data: {
-      label: `${dataset.dataset_name} (v${dataset.version_nr})`,
-      columns: dataset.columns,
-      onExpand: handleExpandNode,
-    },
-  });
-
-  const createEdge = (
-    relationship: any,
-    source: string,
-    target: string,
-    direction: "inbound" | "outbound"
-  ): Edge => {
-    const isOutbound = direction === "outbound";
-    let actualSource;
-
-    let actualTarget;
-
-    let sourceColumn;
-    let targetColumn;
-
-    if (isOutbound) {
-      actualSource = source;
-      actualTarget = target;
-      sourceColumn = relationship.from_col;
-      targetColumn = relationship.to_col;
-    } else {
-      actualSource = source;
-      actualTarget = target;
-      sourceColumn = relationship.from_col;
-      targetColumn = relationship.to_col;
-    }
-
+  const createNode = (dataset) => {
+    console.log("dataset: ", dataset);
+    const { width, height } = calculateNodeDimensions(dataset.columns);
     return {
-      id: `${source}-${target}-${sourceColumn}-${targetColumn}`,
-      source: actualSource,
-      target: actualTarget,
-      sourceHandle: `${actualSource}.${sourceColumn}.${
-        isOutbound ? "right" : "left"
-      }`,
-      targetHandle: `${actualTarget}.${targetColumn}.${
-        isOutbound ? "left" : "right"
-      }`,
-      type: "custom",
-      animated: true,
+      id: dataset.dataset_code || dataset.code,
+      type: "databaseTable",
+      position: { x: 0, y: 0 },
       data: {
-        label: `${sourceColumn} -> ${targetColumn}`,
-        relationshipType: relationship.relation_type,
-        sourceCardinality: relationship.source_cardinality,
-        targetCardinality: relationship.destination_cardinality,
-        isSourceMandatory: relationship.is_source_mandatory,
-        isTargetMandatory: relationship.is_destination_mandatory,
+        label: `${dataset.dataset_name} (v${dataset.version_nr})`,
+        columns: dataset.columns,
       },
+      width,
+      height,
     };
   };
 
+  const createEdge = (
+    relationship: any,
+    source: any,
+    target: any,
+    direction: any
+  ) => {
+    if (direction === "outbound") {
+      return {
+        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+        source: source,
+        target: target,
+        sourceHandle: `${source}.${relationship.from_col}.right`,
+        targetHandle: `${target}.${relationship.to_col}.left`,
+        type: "custom",
+        animated: true,
+        data: {
+          label: `${relationship.from_col} -> ${relationship.to_col}`,
+          relationshipType: relationship.relation_type,
+          sourceCardinality: relationship.source_cardinality,
+          targetCardinality: relationship.destination_cardinality,
+          isSourceMandatory: relationship.is_source_mandatory,
+          isTargetMandatory: relationship.is_destination_mandatory,
+        },
+      };
+    } else {
+      return {
+        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+        source: source,
+        target: target,
+        sourceHandle: `${source}.${relationship.from_col}.right`,
+        targetHandle: `${target}.${relationship.to_col}.left`,
+        type: "custom",
+        animated: true,
+        data: {
+          label: `${relationship.from_col} <- ${relationship.to_col}`,
+          relationshipType: relationship.relation_type,
+          sourceCardinality: relationship.source_cardinality,
+          targetCardinality: relationship.destination_cardinality,
+          isSourceMandatory: relationship.is_source_mandatory,
+          isTargetMandatory: relationship.is_destination_mandatory,
+        },
+      };
+    }
+  };
+
   const onConnect = useCallback(
-    (params: any) =>
+    (params) =>
       setEdges((eds) =>
         addEdge({ ...params, type: "custom", animated: true }, eds)
       ),
     [setEdges]
   );
 
-  const onLayout = useCallback(() => {
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      nodes,
-      edges
-    );
+  const onLayout = useCallback(async () => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } =
+      await getLayoutedElements(nodes, edges);
     setNodes([...layoutedNodes]);
     setEdges([...layoutedEdges]);
   }, [nodes, edges, setNodes, setEdges]);
