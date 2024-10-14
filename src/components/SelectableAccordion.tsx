@@ -60,6 +60,16 @@ const SelectableAccordion: React.FC<SelectableAccordionProps> = ({
     return filtered;
   }, [data, searchTerm]);
 
+  const hasResults = Object.keys(filteredData).length > 0;
+
+  if (!hasResults) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-gray-500">No results found</p>
+      </div>
+    );
+  }
+
   return (
     <Accordion type="multiple" className="w-full">
       {Object.entries(filteredData).map(([framework, groups]) => (

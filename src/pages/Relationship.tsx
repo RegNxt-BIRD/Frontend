@@ -18,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fastApiInstance } from "@/lib/axios";
 import { DatasetResponse, Frameworks, Layers } from "@/types/databaseTypes";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -43,7 +44,7 @@ export default function Relationship() {
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson } = useSWR<DatasetResponse>(
+  const { data: dataTableJson, isLoading } = useSWR<DatasetResponse>(
     `/api/v1/datasets/?page=${currentPage}&page_size=${PAGE_SIZE}`,
     fastApiInstance,
     {
@@ -106,7 +107,6 @@ export default function Relationship() {
   }, []);
 
   useEffect(() => {
-    // If there are more pages, fetch them
     if (dataTableJson && currentPage < dataTableJson.data.num_pages) {
       setCurrentPage(currentPage + 1);
     }
@@ -181,12 +181,22 @@ export default function Relationship() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="mb-4"
             />
-            <SelectableAccordion
-              data={filteredData}
-              selectedItems={selectedDatasetVersions}
-              onItemSelect={handleDatasetVersionSelect}
-              searchTerm={searchTerm}
-            />
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-[20px] w-full" />
+                <Skeleton className="h-[20px] w-full" />
+                <Skeleton className="h-[20px] w-full" />
+                <Skeleton className="h-[20px] w-full" />
+                <Skeleton className="h-[20px] w-full" />
+              </div>
+            ) : (
+              <SelectableAccordion
+                data={filteredData}
+                selectedItems={selectedDatasetVersions}
+                onItemSelect={handleDatasetVersionSelect}
+                searchTerm={searchTerm}
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>
