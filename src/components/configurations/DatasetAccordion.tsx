@@ -18,6 +18,7 @@ import {
   DatasetVersions,
 } from "@/types/databaseTypes";
 import { ColumnDef } from "@tanstack/react-table";
+import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, Edit, Plus, Trash } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { DatasetVersionColumns } from "./DatasetVersionColumns";
@@ -69,8 +70,23 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   const versionColumns: ColumnDef<DatasetVersion>[] = [
     { accessorKey: "version_nr", header: "Version" },
     { accessorKey: "version_code", header: "Version Code" },
-    { accessorKey: "valid_from", header: "Valid From" },
-    { accessorKey: "valid_to", header: "Valid To" },
+    { accessorKey: "code", header: "Code" },
+    {
+      accessorKey: "valid_from",
+      header: "Valid From",
+      cell: ({ row }) => {
+        const date = new Date(row.original.valid_from);
+        return format(date, "MM/dd/yyyy");
+      },
+    },
+    {
+      accessorKey: "valid_to",
+      header: "Valid To",
+      cell: ({ row }) => {
+        const date = new Date(row.original.valid_to as any);
+        return format(date, "MM/dd/yyyy");
+      },
+    },
     {
       id: "actions",
       header: "Actions",
@@ -130,7 +146,9 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
               onClick={() => handleDatasetClick(dataset)}
             >
               <div className="flex justify-between w-full items-center">
-                <span>{dataset.label}</span>
+                <span>
+                  {dataset.label} ({dataset.code})
+                </span>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-500">
                     {dataset.framework} - {dataset.type}
