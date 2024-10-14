@@ -1,3 +1,5 @@
+"use client";
+
 import { fastApiInstance } from "@/lib/axios";
 import dagre from "@dagrejs/dagre";
 import {
@@ -26,8 +28,8 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-const nodeWidth = 200;
-const nodeHeight = 200;
+const nodeWidth = 250;
+const nodeHeight = 300;
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
@@ -72,6 +74,7 @@ interface DatabaseDiagramProps {
 
 export default function DatabaseDiagram({
   selectedDatasetVersions,
+  onSelectionChange,
 }: DatabaseDiagramProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
@@ -109,7 +112,6 @@ export default function DatabaseDiagram({
         console.error("Error expanding node:", error);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [nodes, setNodes, setEdges]
   );
 
@@ -131,8 +133,18 @@ export default function DatabaseDiagram({
         const processedTables = new Set<string>();
 
         data.forEach((response) => {
-          const { all_datasets, inbound, outbound } = response;
+          const { central_dataset_version, inbound, outbound, all_datasets } =
+            response;
 
+          console.log("inbound response: ", inbound);
+
+          // Add central dataset version node
+          if (!processedTables.has(central_dataset_version.code)) {
+            newNodes.push(createNode(central_dataset_version));
+            processedTables.add(central_dataset_version.code);
+          }
+
+          // Add nodes for all datasets
           all_datasets.forEach((dataset: any) => {
             if (!processedTables.has(dataset.dataset_code)) {
               newNodes.push(createNode(dataset));
@@ -140,12 +152,15 @@ export default function DatabaseDiagram({
             }
           });
 
+          // Add edges for inbound relationships
           inbound.forEach((rel: any) => {
+            console.log("rel: ", rel);
             newEdges.push(
               createEdge(rel, rel.from_table, rel.to_table, "inbound")
             );
           });
 
+          // Add edges for outbound relationships
           outbound.forEach((rel: any) => {
             newEdges.push(
               createEdge(rel, rel.from_table, rel.to_table, "outbound")
@@ -168,11 +183,10 @@ export default function DatabaseDiagram({
     if (selectedDatasetVersions.length > 0) {
       fetchRelationships();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDatasetVersions, setNodes, setEdges]);
 
   const createNode = (dataset: any): Node => ({
-    id: dataset.dataset_code,
+    id: dataset.dataset_code || dataset.code,
     type: "databaseTable",
     position: { x: 0, y: 0 },
     data: {
@@ -189,17 +203,27 @@ export default function DatabaseDiagram({
     direction: "inbound" | "outbound"
   ): Edge => {
     const isOutbound = direction === "outbound";
-    const actualSource = isOutbound ? source : target;
-    const actualTarget = isOutbound ? target : source;
-    const sourceColumn = isOutbound
-      ? relationship.from_col
-      : relationship.to_col;
-    const targetColumn = isOutbound
-      ? relationship.to_col
-      : relationship.from_col;
+    let actualSource;
+
+    let actualTarget;
+
+    let sourceColumn;
+    let targetColumn;
+
+    if (isOutbound) {
+      actualSource = source;
+      actualTarget = target;
+      sourceColumn = relationship.from_col;
+      targetColumn = relationship.to_col;
+    } else {
+      actualSource = source;
+      actualTarget = target;
+      sourceColumn = relationship.from_col;
+      targetColumn = relationship.to_col;
+    }
 
     return {
-      id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+      id: `${source}-${target}-${sourceColumn}-${targetColumn}`,
       source: actualSource,
       target: actualTarget,
       sourceHandle: `${actualSource}.${sourceColumn}.${
@@ -211,7 +235,7 @@ export default function DatabaseDiagram({
       type: "custom",
       animated: true,
       data: {
-        label: `${relationship.from_col} -> ${relationship.to_col}`,
+        label: `${sourceColumn} -> ${targetColumn}`,
         relationshipType: relationship.relation_type,
         sourceCardinality: relationship.source_cardinality,
         targetCardinality: relationship.destination_cardinality,
@@ -238,6 +262,18 @@ export default function DatabaseDiagram({
     setEdges([...layoutedEdges]);
   }, [nodes, edges, setNodes, setEdges]);
 
+  const onNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      const updatedSelection = selectedDatasetVersions.some(
+        (v) => v.dataset_code === node.id
+      )
+        ? selectedDatasetVersions.filter((v) => v.dataset_code !== node.id)
+        : [...selectedDatasetVersions, { dataset_code: node.id }];
+      onSelectionChange(updatedSelection);
+    },
+    [selectedDatasetVersions, onSelectionChange]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[800px]">
@@ -254,6 +290,7 @@ export default function DatabaseDiagram({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionLineType={ConnectionLineType.SmoothStep}
