@@ -15,15 +15,11 @@ interface DatePickerProps {
   value: string | null;
   onChange: (value: string | null) => void;
   className?: string;
+  placeholder?: string;
   isValidDate?: (date: Date) => boolean;
 }
 
-export function DatePicker({
-  value,
-  onChange,
-  className,
-  isValidDate,
-}: DatePickerProps) {
+export function DatePicker({ value, onChange, className }: DatePickerProps) {
   const parseDate = (dateString: string | null): Date | undefined => {
     if (!dateString) return undefined;
 

@@ -1,392 +1,278 @@
+"use client";
+
+import { fastApiInstance } from "@/lib/axios";
 import {
-  CustomNodeProps,
-  DatabaseConfig,
-  EdgeConfig,
-  EdgeData,
-} from "@/types/databaseTypes";
-import {
-  addEdge,
   Background,
   BackgroundVariant,
-  Connection,
+  ConnectionLineType,
   Controls,
   Edge,
-  EdgeTypes,
-  MarkerType,
-  MiniMap,
   Node,
-  NodeTypes,
+  Panel,
   ReactFlow,
-  ReactFlowProps,
+  addEdge,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Edit, Trash2 } from "lucide-react";
-import React, { useCallback, useMemo, useState } from "react";
-import { databaseConfig } from "../databaseConfig";
-import ColumnSelectionModal from "./ColumnSelectionModal";
-import CustomEdgeComponent from "./CustomEdge";
+import ELK from "elkjs/lib/elk.bundled.js";
+import React, { useCallback, useEffect, useState } from "react";
+import CustomEdge from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
-// Type overrides
-type OverriddenEdge = Omit<Edge, "data"> & { data: EdgeData };
-type OverriddenNode = Omit<Node, "data"> & { data: CustomNodeProps["data"] };
-
-// Override ReactFlow props
-type OverriddenReactFlowProps = Omit<ReactFlowProps, "edges" | "nodes"> & {
-  edges: OverriddenEdge[];
-  nodes: OverriddenNode[];
-  onEdgeClick?: (event: React.MouseEvent, edge: OverriddenEdge) => void;
-  onNodeClick?: (event: React.MouseEvent, node: OverriddenNode) => void;
+const nodeTypes = {
+  databaseTable: DatabaseTableNode,
 };
 
-// Override node types
-const nodeTypes: NodeTypes = {
-  databaseTable: DatabaseTableNode as any,
+const edgeTypes = {
+  custom: CustomEdge,
 };
 
-// Override edge types
-const edgeTypes: EdgeTypes = {
-  custom: CustomEdgeComponent as any,
+const elk = new ELK();
+
+const calculateNodeDimensions = (columns: any) => {
+  const baseHeight = 40;
+  const rowHeight = 24;
+  const width = 250;
+  const height = baseHeight + columns.length * rowHeight;
+  return { width, height };
 };
 
-const DatabaseDiagram: React.FC = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_highlightedEdges, setHighlightedEdges] = useState<string[]>([]);
-  const [selectedEdge, setSelectedEdge] = useState<OverriddenEdge | null>(null);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pendingConnection, setPendingConnection] = useState<Connection | null>(
-    null
-  );
+const getLayoutedElements = async (nodes: any[], edges: any) => {
+  const elkNodes = nodes.map((node) => ({
+    id: node.id,
+    width: node.width,
+    height: node.height,
+  }));
 
-  const initialNodes: OverriddenNode[] = useMemo(
-    () =>
-      databaseConfig.tables.map((table: DatabaseConfig["tables"][0]) => ({
-        id: table.schema
-          ? `${table.schema}.${table.name}`
-          : `public.${table.name}`,
-        type: "databaseTable",
-        data: {
-          label: table.name,
-          columns: table.columns.map((col) => ({
-            id: `${
-              table.schema
-                ? `${table.schema}.${table.name}`
-                : `public.${table.name}`
-            }.${col.name}`,
-            name: col.name,
-            type: col.type,
-            description: col.description,
-            key: col.key,
-            handleType: col.handleType,
-          })),
-          schemaColor: table.schemaColor,
-        },
-        position: table.position,
-      })),
-    []
-  );
+  const elkEdges = edges.map((edge: any) => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
+  const elkGraph = await elk.layout({
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.direction": "RIGHT",
+      "elk.spacing.nodeNode": "50",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+      "elk.padding": "[top=50,left=50,bottom=50,right=50]",
+      "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+    },
+    children: elkNodes,
+    edges: elkEdges,
+  });
 
-  const initialEdges: OverriddenEdge[] = useMemo(() => {
-    return databaseConfig.edgeConfigs.map(
-      (edgeConfig: EdgeConfig, index: number) => ({
-        id: `e${index}`,
-        source: edgeConfig.source,
-        target: edgeConfig.target,
-        sourceHandle: `${edgeConfig.source}.${edgeConfig.sourceKey}`,
-        targetHandle: `${edgeConfig.target}.${edgeConfig.targetKey}`,
-        type: "custom",
-        animated: true,
-        style: { stroke: "#000" },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: "#000",
-        },
-        data: {
-          label: `${edgeConfig.sourceKey} -> ${edgeConfig.targetKey}`,
-          relation: edgeConfig.relation,
-          sourceKey: edgeConfig.sourceKey,
-          targetKey: edgeConfig.targetKey,
-        },
-      })
-    );
-  }, []);
+  return {
+    nodes: nodes.map((node) => {
+      const elkNode = elkGraph.children?.find((n) => n.id === node.id);
+      return {
+        ...node,
+        position: { x: elkNode?.x || 0, y: elkNode?.y || 0 },
+      };
+    }),
+    edges,
+  };
+};
 
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+interface DatabaseDiagramProps {
+  selectedDatasetVersions: any[];
+  onSelectionChange: (selectedVersions: any[]) => void;
+}
 
-  const onConnect = useCallback((params: Connection) => {
-    if (params.sourceHandle && params.targetHandle) {
-      setPendingConnection(params);
-      setIsModalOpen(true);
-    }
-  }, []);
+export default function DatabaseDiagram({
+  selectedDatasetVersions,
+  onSelectionChange,
+}: DatabaseDiagramProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleColumnSelection = useCallback(
-    (
-      sourceColumn: string,
-      targetColumn: string,
-      edgeToUpdate?: OverriddenEdge
-    ) => {
-      if (edgeToUpdate) {
-        setEdges((eds) =>
-          eds.map((e) =>
-            e.id === edgeToUpdate.id
-              ? {
-                  ...e,
-                  sourceHandle: `${e.source}.${sourceColumn}`,
-                  targetHandle: `${e.target}.${targetColumn}`,
-                  data: {
-                    ...e.data,
-                    sourceKey: sourceColumn,
-                    targetKey: targetColumn,
-                    label: `${sourceColumn} -> ${targetColumn}`,
-                  },
-                }
-              : e
+  useEffect(() => {
+    const fetchRelationships = async () => {
+      setLoading(true);
+      try {
+        const responses = await Promise.all(
+          selectedDatasetVersions.map((v) =>
+            fastApiInstance.get(
+              `/api/v1/datasets/${v.dataset_version_id}/relationships/`
+            )
           )
         );
-      } else if (pendingConnection) {
-        const newEdge = {
-          id: `e${Date.now()}`,
-          source: pendingConnection.source!,
-          target: pendingConnection.target!,
-          sourceHandle: `${pendingConnection.source}.${sourceColumn}`,
-          targetHandle: `${pendingConnection.target}.${targetColumn}`,
-          type: "custom",
-          animated: true,
-          style: { stroke: "#000" },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#000",
-          },
-          data: {
-            relation: "custom",
-            sourceKey: sourceColumn,
-            targetKey: targetColumn,
-            label: `${sourceColumn} -> ${targetColumn}`,
-          },
-        };
-        setEdges((eds) => addEdge(newEdge, eds as any));
+        const data = responses.map((r) => r.data);
+
+        const newNodes: Node[] = [];
+        const newEdges: Edge[] = [];
+        const processedTables = new Set<string>();
+
+        newNodes.push(createNode(data[0].central_dataset_version));
+        processedTables.add(data[0].central_dataset_version.code);
+
+        data[0].inbound.forEach((rel: any) => {
+          if (!processedTables.has(rel.from_dataset_code)) {
+            const sourceDataset = data[0].all_datasets.find(
+              (d: any) => d.dataset_code === rel.from_dataset_code
+            );
+            newNodes.push(createNode(sourceDataset));
+            processedTables.add(rel.from_dataset_code);
+          }
+          newEdges.push(
+            createEdge(rel, rel.from_table, rel.to_table, "inbound")
+          );
+        });
+
+        data[0].outbound.forEach((rel: any) => {
+          if (!processedTables.has(rel.to_dataset_code)) {
+            const targetDataset = data[0].all_datasets.find(
+              (d: any) => d.dataset_code === rel.to_dataset_code
+            );
+            newNodes.push(createNode(targetDataset));
+            processedTables.add(rel.to_dataset_code);
+          }
+          newEdges.push(
+            createEdge(rel, rel.from_table, rel.to_table, "outbound")
+          );
+        });
+
+        const { nodes: layoutedNodes, edges: layoutedEdges } =
+          await getLayoutedElements(newNodes, newEdges);
+
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+      } catch (error) {
+        console.error("Error fetching relationships:", error);
+      } finally {
+        setLoading(false);
       }
-      setIsModalOpen(false);
-      setPendingConnection(null);
-      setSelectedEdge(null);
-    },
-    [pendingConnection, setEdges]
+    };
+
+    if (selectedDatasetVersions.length > 0) {
+      fetchRelationships();
+    }
+  }, [selectedDatasetVersions, setNodes, setEdges]);
+
+  const createNode = (dataset: any) => {
+    const { width, height } = calculateNodeDimensions(dataset.columns);
+    return {
+      id: dataset.dataset_code || dataset.code,
+      type: "databaseTable",
+      position: { x: 0, y: 0 },
+      data: {
+        label: `${dataset.dataset_name} (v${dataset.version_nr})`,
+        columns: dataset.columns,
+      },
+      width,
+      height,
+    };
+  };
+
+  const createEdge = (
+    relationship: any,
+    source: any,
+    target: any,
+    direction: any
+  ) => {
+    if (direction === "outbound") {
+      return {
+        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+        source: source,
+        target: target,
+        sourceHandle: `${source}.${relationship.from_col}.right`,
+        targetHandle: `${target}.${relationship.to_col}.left`,
+        type: "custom",
+        animated: true,
+        data: {
+          label: `${relationship.from_col} -> ${relationship.to_col}`,
+          relationshipType: relationship.relation_type,
+          sourceCardinality: relationship.source_cardinality,
+          targetCardinality: relationship.destination_cardinality,
+          isSourceMandatory: relationship.is_source_mandatory,
+          isTargetMandatory: relationship.is_destination_mandatory,
+        },
+      };
+    } else {
+      return {
+        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
+        source: source,
+        target: target,
+        sourceHandle: `${source}.${relationship.from_col}.right`,
+        targetHandle: `${target}.${relationship.to_col}.left`,
+        type: "custom",
+        animated: true,
+        data: {
+          label: `${relationship.from_col} <- ${relationship.to_col}`,
+          relationshipType: relationship.relation_type,
+          sourceCardinality: relationship.source_cardinality,
+          targetCardinality: relationship.destination_cardinality,
+          isSourceMandatory: relationship.is_source_mandatory,
+          isTargetMandatory: relationship.is_destination_mandatory,
+        },
+      };
+    }
+  };
+
+  const onConnect = useCallback(
+    (params: any) =>
+      setEdges((eds) =>
+        addEdge({ ...params, type: "custom", animated: true }, eds)
+      ),
+    [setEdges]
   );
 
-  const onEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: OverriddenEdge) => {
-      event.stopPropagation();
-      setSelectedEdge(edge);
-    },
-    []
-  );
-
-  const onEdgeEdit = useCallback(() => {
-    if (selectedEdge) {
-      setIsModalOpen(true);
-    }
-  }, [selectedEdge]);
-
-  const onEdgeDelete = useCallback(() => {
-    if (selectedEdge) {
-      setEdges((eds) => eds.filter((e) => e.id !== selectedEdge.id));
-      setSelectedEdge(null);
-    }
-  }, [selectedEdge, setEdges]);
+  const onLayout = useCallback(async () => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } =
+      await getLayoutedElements(nodes, edges);
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+  }, [nodes, edges, setNodes, setEdges]);
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: OverriddenNode) => {
-      setSelectedNode(node.id);
-      setSelectedEdge(null);
+    (event: React.MouseEvent, node: Node) => {
+      const updatedSelection = selectedDatasetVersions.some(
+        (v) => v.dataset_code === node.id
+      )
+        ? selectedDatasetVersions.filter((v) => v.dataset_code !== node.id)
+        : [...selectedDatasetVersions, { dataset_code: node.id }];
+      onSelectionChange(updatedSelection);
     },
-    []
+    [selectedDatasetVersions, onSelectionChange]
   );
 
-  const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
-    setSelectedEdge(null);
-  }, []);
-
-  const highlightConnections = useCallback(
-    (nodeId: string, direction: "successors" | "predecessors") => {
-      const visited = new Set<string>();
-      const highlighted = new Set<string>();
-      const stack = [nodeId];
-
-      while (stack.length > 0) {
-        const currentNode = stack.pop()!;
-        if (!visited.has(currentNode)) {
-          visited.add(currentNode);
-          edges.forEach((edge) => {
-            const [source, target] =
-              direction === "successors"
-                ? [edge.source, edge.target]
-                : [edge.target, edge.source];
-            if (source === currentNode) {
-              highlighted.add(edge.id);
-              stack.push(target);
-            }
-          });
-        }
-      }
-
-      setHighlightedEdges(Array.from(highlighted));
-      setEdges((eds) =>
-        eds.map((e) => ({
-          ...e,
-          style: {
-            ...e.style,
-            stroke: highlighted.has(e.id) ? "#ff0000" : "#000",
-            strokeWidth: highlighted.has(e.id) ? 3 : 2,
-          },
-        }))
-      );
-    },
-    [edges, setEdges]
-  );
-
-  const highlightSuccessors = useCallback(
-    () => selectedNode && highlightConnections(selectedNode, "successors"),
-    [highlightConnections, selectedNode]
-  );
-
-  const highlightPredecessors = useCallback(
-    () => selectedNode && highlightConnections(selectedNode, "predecessors"),
-    [highlightConnections, selectedNode]
-  );
-
-  const resetHighlight = useCallback(() => {
-    setHighlightedEdges([]);
-    setSelectedEdge(null);
-    setSelectedNode(null);
-    setEdges((eds) =>
-      eds.map((e) => ({
-        ...e,
-        style: { ...e.style, stroke: "#000", strokeWidth: 2 },
-      }))
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[800px]">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      </div>
     );
-  }, [setEdges]);
+  }
 
   return (
-    <div className="w-full h-full flex">
-      <div className="w-full h-full relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onEdgeClick={onEdgeClick as OverriddenReactFlowProps["onEdgeClick"]}
-          onNodeClick={onNodeClick as OverriddenReactFlowProps["onNodeClick"]}
-          onPaneClick={onPaneClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          fitView
-        >
-          <MiniMap
-            nodeClassName={(node) => `react-flow__node-${node.type}`}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-          />
-          <Controls />
-          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        </ReactFlow>
-        <div className="absolute left-4 top-2 z-50 bg-white p-2 rounded-md shadow-md">
+    <div style={{ width: "100%", height: "800px" }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={onNodeClick}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        fitView
+      >
+        <Controls />
+        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        <Panel position="top-right">
           <button
-            onClick={highlightSuccessors}
-            className="px-2 py-1 bg-blue-500 text-white rounded-md mr-2"
-            disabled={!selectedNode}
+            onClick={onLayout}
+            className="px-4 py-2 font-semibold text-sm bg-primary text-white rounded-lg shadow-sm"
           >
-            Highlight Successors
+            Layout
           </button>
-          <button
-            onClick={highlightPredecessors}
-            className="px-2 py-1 bg-green-500 text-white rounded-md mr-2"
-            disabled={!selectedNode}
-          >
-            Highlight Predecessors
-          </button>
-          <button
-            onClick={resetHighlight}
-            className="px-2 py-1 bg-gray-500 text-white rounded-md"
-          >
-            Reset Highlight
-          </button>
-        </div>
-      </div>
-      {selectedEdge && selectedEdge.data && (
-        <div className="bg-gray-100 p-4 overflow-y-auto">
-          <h3 className="font-bold text-lg mb-2">Selected Edge Details</h3>
-          <p>
-            <strong>Source:</strong> {selectedEdge.source}
-          </p>
-          <p>
-            <strong>Target:</strong> {selectedEdge.target}
-          </p>
-          <p>
-            <strong>Source Column:</strong> {selectedEdge.data.sourceKey}
-          </p>
-          <p>
-            <strong>Target Column:</strong> {selectedEdge.data.targetKey}
-          </p>
-          <p>
-            <strong>Relation:</strong> {selectedEdge.data.relation}
-          </p>
-          <div className="mt-4">
-            <button
-              onClick={onEdgeEdit}
-              className="px-2 py-1 bg-blue-500 text-white rounded-md mr-2"
-            >
-              <Edit size={16} className="inline mr-1" /> Edit
-            </button>
-            <button
-              onClick={onEdgeDelete}
-              className="px-2 py-1 bg-red-500 text-white rounded-md"
-            >
-              <Trash2 size={16} className="inline mr-1" /> Delete
-            </button>
-          </div>
-        </div>
-      )}
-      {isModalOpen && (pendingConnection || selectedEdge) && (
-        <ColumnSelectionModal
-          sourceNode={
-            nodes.find(
-              (node) =>
-                node.id === (pendingConnection?.source || selectedEdge?.source)
-            ) as CustomNodeProps | undefined
-          }
-          targetNode={
-            nodes.find(
-              (node) =>
-                node.id === (pendingConnection?.target || selectedEdge?.target)
-            ) as CustomNodeProps | undefined
-          }
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedEdge(null);
-          }}
-          onSelect={(sourceColumn, targetColumn) =>
-            handleColumnSelection(
-              sourceColumn,
-              targetColumn,
-              selectedEdge || undefined
-            )
-          }
-          initialSourceColumn={selectedEdge?.data?.sourceKey}
-          initialTargetColumn={selectedEdge?.data?.targetKey}
-        />
-      )}
+        </Panel>
+      </ReactFlow>
     </div>
   );
-};
-
-export default DatabaseDiagram;
+}

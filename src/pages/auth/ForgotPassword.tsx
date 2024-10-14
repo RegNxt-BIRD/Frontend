@@ -22,7 +22,7 @@ export default function ForgotPassword() {
       subtitle="Reset your BIRD account password"
       imageSrc="/logo.svg"
       imageAlt="BIRD"
-      description="It provides a user interface for managing and visualizing datasets without predefined models or classes"
+      description="Intuitive user interface for visualizing, managing and extending the BIRD model"
     >
       <form onSubmit={onSubmit} className="space-y-6">
         <div className="space-y-2">

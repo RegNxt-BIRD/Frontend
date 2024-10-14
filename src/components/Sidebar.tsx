@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "boring-avatars";
 import { motion } from "framer-motion";
 import {
   Database,
@@ -196,11 +196,14 @@ const CollapsibleSidebar: React.FC<SidebarProps> = ({
                       isExpanded || isDropdownOpen ? "w-full" : "justify-center"
                     }`}
                   >
-                    <Avatar className="h-10 w-10">
-                      {/* <AvatarImage src={user?.avatar} alt={user?.firstName} /> */}
+                    <Avatar
+                      className="h-10 w-10"
+                      name={user?.firstName?.charAt(0)}
+                    >
+                      {/* <AvatarImage src={user?.avatar} alt={user?.firstName} />
                       <AvatarFallback>
                         {user?.firstName?.charAt(0)}
-                      </AvatarFallback>
+                      </AvatarFallback> */}
                     </Avatar>
                     {(isExpanded || isDropdownOpen) && (
                       <div className="ml-3 text-left">

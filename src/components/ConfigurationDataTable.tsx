@@ -1,6 +1,7 @@
 import { SharedDataTable } from "@/components/SharedDataTable";
+import { DatasetItem } from "@/types/databaseTypes";
 import { ColumnDef } from "@tanstack/react-table";
-import React from "react";
+import React, { useMemo } from "react";
 
 interface DataItem {
   dataset_id: number;
@@ -12,7 +13,7 @@ interface DataItem {
 }
 
 interface ConfigurationDataTableProps {
-  data: DataItem[];
+  data: Record<string, Record<string, DatasetItem[]>>;
   onRowClick: (row: DataItem) => void;
 }
 
@@ -48,9 +49,21 @@ export const ConfigurationDataTable: React.FC<ConfigurationDataTableProps> = ({
   data,
   onRowClick,
 }) => {
+  const flattenedData = useMemo(() => {
+    return Object.entries(data).flatMap(([framework, groups]) =>
+      Object.values(groups).flatMap((items) =>
+        items.map((item) => ({ ...item, framework }))
+      )
+    );
+  }, [data]);
+
+  if (flattenedData.length === 0) {
+    return <div>No data available</div>;
+  }
+
   return (
     <SharedDataTable
-      data={data}
+      data={flattenedData}
       columns={columns}
       onRowClick={onRowClick}
       showPagination={true}

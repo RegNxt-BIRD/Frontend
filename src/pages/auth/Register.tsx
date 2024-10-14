@@ -29,7 +29,7 @@ export default function Register() {
       subtitle="Sign up for BIRD"
       imageSrc="/logo.svg"
       imageAlt="BIRD"
-      description="It provides a user interface for managing and visualizing datasets without predefined models or classes"
+      description="Intuitive user interface for visualizing, managing and extending the BIRD model"
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">

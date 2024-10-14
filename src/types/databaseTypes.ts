@@ -9,6 +9,48 @@ export interface TableColumn {
   handleType?: "source" | "target";
 }
 
+export interface Dataset {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
+  is_system_generated: boolean;
+  version_nr?: string;
+  version_code?: string;
+  valid_to?: string;
+  valid_from?: string;
+  latest_version_id?: number;
+  groups: { code: string | null; label: string | null; order: number | null }[];
+}
+
+export interface Datasets {
+  count: number;
+  num_pages: number;
+  results: Dataset[];
+}
+export interface DatasetResponse {
+  data: Datasets;
+}
+
+export interface DatasetVersion {
+  dataset_version_id: number;
+  dataset_id: number;
+  version_nr: string;
+  version_code: string;
+  valid_from: string;
+  valid_to: string | null;
+  is_system_generated: boolean;
+  code: string;
+  label: string;
+  description: string;
+}
+
+export interface DatasetVersions {
+  data: DatasetVersion[];
+}
+
 export interface DatabaseTableData {
   label: string;
   columns: TableColumn[];
@@ -66,10 +108,23 @@ export interface Frameworks {
   data: Framework[];
 }
 
+export interface DatasetItem {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
+  groups: { code: string | null; label: string | null; order: number | null }[];
+  latest_version_id: number;
+  version_nr: number;
+}
+
 export interface Layer {
   name: string;
   code: string;
 }
+
 export interface Layers {
   data: Layer[];
 }

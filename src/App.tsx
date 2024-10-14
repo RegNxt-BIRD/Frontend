@@ -9,16 +9,19 @@ import {
   useLocation,
 } from "react-router-dom";
 import { SWRConfig } from "swr";
+import { ConfigureDatasets } from "./components/configurations/ConfigureDatasets";
+import { ConfigureDataviews } from "./components/configurations/ConfigureDataviews";
+import { ConfigureGrouping } from "./components/configurations/ConfigureGrouping";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Layout from "./components/Layout";
 import LogoSpinner from "./components/LogoSpinner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import Configuration from "./pages/Configuration";
-import Data from "./pages/Data";
-import Relationships from "./pages/Relationship";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Config from "./pages/ConfigureView";
+import Data from "./pages/Data";
+import Relationships from "./pages/Relationship";
 
 const PrivateRoute: React.FC = () => {
   const { user, loading, refreshUserSession } = useAuth();
@@ -72,7 +75,24 @@ const router = createBrowserRouter([
           },
           {
             path: "configuration",
-            element: <Configuration />,
+            children: [
+              {
+                path: "",
+                element: <Config />,
+              },
+              {
+                path: "dataset",
+                element: <ConfigureDatasets />,
+              },
+              {
+                path: "dataview",
+                element: <ConfigureDataviews />,
+              },
+              {
+                path: "groups",
+                element: <ConfigureGrouping />,
+              },
+            ],
           },
           {
             path: "data",
