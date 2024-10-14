@@ -59,7 +59,6 @@ export default function GenericComboBox({
   const isLoadingMore =
     isLoadingInitialData ||
     (size > 0 && data && typeof data[size - 1] === "undefined");
-  console.log("data?.[0]: ", data?.[0]);
   const isEmpty = data?.[0]?.data.results.length === 0;
   const isReachingEnd =
     isEmpty || (data && data[data.length - 1]?.data.results.length < PAGE_SIZE);
@@ -85,7 +84,6 @@ export default function GenericComboBox({
   }, [debouncedSearchTerm, setSize]);
 
   const handleSelect = (item: DatasetItem) => {
-    console.log("handle: ", item);
     setSelectedValue(item.code);
     setIsOpen(false);
     onSelect(item);

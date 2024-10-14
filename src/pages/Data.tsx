@@ -94,8 +94,8 @@ const Data: React.FC = () => {
     >((acc, item) => {
       const framework = item.framework;
       const group =
-        item.groups && item.groups.length > 0 && item.groups[0].code
-          ? item.groups[0].code
+        item.groups && item.groups.length > 0 && item.groups[0].label
+          ? item.groups[0].label
           : "Ungrouped Datasets";
 
       if (!acc[framework]) {
