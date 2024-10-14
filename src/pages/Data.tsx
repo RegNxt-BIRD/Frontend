@@ -39,7 +39,8 @@ const Data: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10000);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [pageSize, _] = useState(10000);
 
   const [metadataTableData, setMetadataTableData] = useState<
     Record<string, string>[]
@@ -88,29 +89,25 @@ const Data: React.FC = () => {
   }, [error, toast]);
   const groupedData = useMemo(() => {
     if (!dataTableJson?.data?.results) return {};
-    return dataTableJson.data.results.reduce(
-      (
-        acc: Record<string, Record<string, DatasetItem[]>>,
-        item: DatasetItem
-      ) => {
-        const framework = item.framework;
-        const group =
-          item.groups && item.groups.length > 0 && item.groups[0].code
-            ? item.groups[0].code
-            : "Ungrouped Datasets";
+    return dataTableJson.data.results.reduce<
+      Record<string, Record<string, DatasetItem[]>>
+    >((acc, item) => {
+      const framework = item.framework;
+      const group =
+        item.groups && item.groups.length > 0 && item.groups[0].code
+          ? item.groups[0].code
+          : "Ungrouped Datasets";
 
-        if (!acc[framework]) {
-          acc[framework] = {};
-        }
-        if (!acc[framework][group]) {
-          acc[framework][group] = [];
-        }
-        acc[framework][group].push(item);
+      if (!acc[framework]) {
+        acc[framework] = {};
+      }
+      if (!acc[framework][group]) {
+        acc[framework][group] = [];
+      }
+      acc[framework][group].push(item as any);
 
-        return acc;
-      },
-      {}
-    );
+      return acc;
+    }, {});
   }, [dataTableJson]);
 
   const filteredData = useMemo(() => {
@@ -123,26 +120,28 @@ const Data: React.FC = () => {
 
       filtered[framework] = {};
 
-      Object.entries(groups).forEach(([group, items]) => {
-        const filteredItems = items.filter((item: any) => {
-          const layerMatch =
-            selectedLayer === NO_FILTER || item.type === selectedLayer;
-          const columnFilterMatch = Object.entries(columnFilters).every(
-            ([key, value]) =>
-              value === "" ||
-              (item[key] &&
-                item[key]
-                  .toString()
-                  .toLowerCase()
-                  .includes(value.toLowerCase()))
-          );
-          return layerMatch && columnFilterMatch;
-        });
+      Object.entries(groups as Record<string, DatasetItem[]>).forEach(
+        ([group, items]) => {
+          const filteredItems = items.filter((item: DatasetItem) => {
+            const layerMatch =
+              selectedLayer === NO_FILTER || item.type === selectedLayer;
+            const columnFilterMatch = Object.entries(columnFilters).every(
+              ([key, value]) =>
+                value === "" ||
+                (item[key as keyof DatasetItem] &&
+                  item[key as keyof DatasetItem]
+                    .toString()
+                    .toLowerCase()
+                    .includes(value.toLowerCase()))
+            );
+            return layerMatch && columnFilterMatch;
+          });
 
-        if (filteredItems.length > 0) {
-          filtered[framework][group] = filteredItems;
+          if (filteredItems.length > 0) {
+            filtered[framework][group] = filteredItems;
+          }
         }
-      });
+      );
 
       if (Object.keys(filtered[framework]).length === 0) {
         delete filtered[framework];

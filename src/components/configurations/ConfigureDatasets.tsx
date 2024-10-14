@@ -20,6 +20,7 @@ import {
   Dataset,
   DatasetResponse,
   DatasetVersion,
+  DatasetVersions,
   Framework,
   Frameworks,
   Layers,
@@ -46,7 +47,9 @@ export const ConfigureDatasets: React.FC = () => {
     description: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10000);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [pageSize, _] = useState(10000);
 
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
@@ -71,7 +74,7 @@ export const ConfigureDatasets: React.FC = () => {
     data: datasetVersions,
     mutate: mutateVersions,
     isValidating: isLoadingVersions,
-  } = useSWR<DatasetVersion[]>(
+  } = useSWR<DatasetVersions>(
     selectedDataset
       ? `/api/v1/datasets/${selectedDataset.dataset_id}/versions_all/`
       : null,
