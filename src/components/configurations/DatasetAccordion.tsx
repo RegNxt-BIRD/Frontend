@@ -92,7 +92,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
       header: "Actions",
       cell: ({ row }) => (
         <div className="flex space-x-2">
-          <TooltipProvider>
+          {/* <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -108,7 +108,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
               </TooltipTrigger>
               <TooltipContent>Edit Version</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
+          </TooltipProvider> */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

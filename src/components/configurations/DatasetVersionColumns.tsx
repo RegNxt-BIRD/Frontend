@@ -50,11 +50,6 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
       setColumns(response.data);
     } catch (error) {
       console.error("Error fetching columns:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch columns. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }

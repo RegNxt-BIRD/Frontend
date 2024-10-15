@@ -1,7 +1,7 @@
-"use client";
-
-import { fastApiInstance } from "@/lib/axios";
 import {
+  addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
   Background,
   BackgroundVariant,
   ConnectionLineType,
@@ -10,13 +10,9 @@ import {
   Node,
   Panel,
   ReactFlow,
-  addEdge,
-  useEdgesState,
-  useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import ELK from "elkjs/lib/elk.bundled.js";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import CustomEdge from "./CustomEdge";
 import DatabaseTableNode from "./DatabaseTableNode";
 
@@ -28,191 +24,30 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-const elk = new ELK();
-
-const calculateNodeDimensions = (columns: any) => {
-  const baseHeight = 40;
-  const rowHeight = 24;
-  const width = 250;
-  const height = baseHeight + columns.length * rowHeight;
-  return { width, height };
-};
-
-const getLayoutedElements = async (nodes: any[], edges: any) => {
-  const elkNodes = nodes.map((node) => ({
-    id: node.id,
-    width: node.width,
-    height: node.height,
-  }));
-
-  const elkEdges = edges.map((edge: any) => ({
-    id: edge.id,
-    sources: [edge.source],
-    targets: [edge.target],
-  }));
-
-  const elkGraph = await elk.layout({
-    id: "root",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": "RIGHT",
-      "elk.spacing.nodeNode": "50",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
-      "elk.padding": "[top=50,left=50,bottom=50,right=50]",
-      "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-    },
-    children: elkNodes,
-    edges: elkEdges,
-  });
-
-  return {
-    nodes: nodes.map((node) => {
-      const elkNode = elkGraph.children?.find((n) => n.id === node.id);
-      return {
-        ...node,
-        position: { x: elkNode?.x || 0, y: elkNode?.y || 0 },
-      };
-    }),
-    edges,
-  };
-};
-
 interface DatabaseDiagramProps {
+  nodes: Node[];
+  edges: Edge[];
+  loading: boolean;
   selectedDatasetVersions: any[];
   onSelectionChange: (selectedVersions: any[]) => void;
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  getLayoutedElements: (
+    nodes: Node[],
+    edges: Edge[]
+  ) => Promise<{ nodes: Node[]; edges: Edge[] }>;
+  onNodeInfoLog: (node: Node) => void;
 }
 
 export default function DatabaseDiagram({
-  selectedDatasetVersions,
-  onSelectionChange,
+  nodes,
+  edges,
+  loading,
+  setNodes,
+  setEdges,
+  getLayoutedElements,
+  onNodeInfoLog,
 }: DatabaseDiagramProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchRelationships = async () => {
-      setLoading(true);
-      try {
-        const responses = await Promise.all(
-          selectedDatasetVersions.map((v) =>
-            fastApiInstance.get(
-              `/api/v1/datasets/${v.dataset_version_id}/relationships/`
-            )
-          )
-        );
-        const data = responses.map((r) => r.data);
-
-        const newNodes: Node[] = [];
-        const newEdges: Edge[] = [];
-        const processedTables = new Set<string>();
-
-        newNodes.push(createNode(data[0].central_dataset_version));
-        processedTables.add(data[0].central_dataset_version.code);
-
-        data[0].inbound.forEach((rel: any) => {
-          if (!processedTables.has(rel.from_dataset_code)) {
-            const sourceDataset = data[0].all_datasets.find(
-              (d: any) => d.dataset_code === rel.from_dataset_code
-            );
-            newNodes.push(createNode(sourceDataset));
-            processedTables.add(rel.from_dataset_code);
-          }
-          newEdges.push(
-            createEdge(rel, rel.from_table, rel.to_table, "inbound")
-          );
-        });
-
-        data[0].outbound.forEach((rel: any) => {
-          if (!processedTables.has(rel.to_dataset_code)) {
-            const targetDataset = data[0].all_datasets.find(
-              (d: any) => d.dataset_code === rel.to_dataset_code
-            );
-            newNodes.push(createNode(targetDataset));
-            processedTables.add(rel.to_dataset_code);
-          }
-          newEdges.push(
-            createEdge(rel, rel.from_table, rel.to_table, "outbound")
-          );
-        });
-
-        const { nodes: layoutedNodes, edges: layoutedEdges } =
-          await getLayoutedElements(newNodes, newEdges);
-
-        setNodes(layoutedNodes);
-        setEdges(layoutedEdges);
-      } catch (error) {
-        console.error("Error fetching relationships:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (selectedDatasetVersions.length > 0) {
-      fetchRelationships();
-    }
-  }, [selectedDatasetVersions, setNodes, setEdges]);
-
-  const createNode = (dataset: any) => {
-    const { width, height } = calculateNodeDimensions(dataset.columns);
-    return {
-      id: dataset.dataset_code || dataset.code,
-      type: "databaseTable",
-      position: { x: 0, y: 0 },
-      data: {
-        label: `${dataset.dataset_name} (v${dataset.version_nr})`,
-        columns: dataset.columns,
-      },
-      width,
-      height,
-    };
-  };
-
-  const createEdge = (
-    relationship: any,
-    source: any,
-    target: any,
-    direction: any
-  ) => {
-    if (direction === "outbound") {
-      return {
-        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
-        source: source,
-        target: target,
-        sourceHandle: `${source}.${relationship.from_col}.right`,
-        targetHandle: `${target}.${relationship.to_col}.left`,
-        type: "custom",
-        animated: true,
-        data: {
-          label: `${relationship.from_col} -> ${relationship.to_col}`,
-          relationshipType: relationship.relation_type,
-          sourceCardinality: relationship.source_cardinality,
-          targetCardinality: relationship.destination_cardinality,
-          isSourceMandatory: relationship.is_source_mandatory,
-          isTargetMandatory: relationship.is_destination_mandatory,
-        },
-      };
-    } else {
-      return {
-        id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
-        source: source,
-        target: target,
-        sourceHandle: `${source}.${relationship.from_col}.right`,
-        targetHandle: `${target}.${relationship.to_col}.left`,
-        type: "custom",
-        animated: true,
-        data: {
-          label: `${relationship.from_col} <- ${relationship.to_col}`,
-          relationshipType: relationship.relation_type,
-          sourceCardinality: relationship.source_cardinality,
-          targetCardinality: relationship.destination_cardinality,
-          isSourceMandatory: relationship.is_source_mandatory,
-          isTargetMandatory: relationship.is_destination_mandatory,
-        },
-      };
-    }
-  };
-
   const onConnect = useCallback(
     (params: any) =>
       setEdges((eds) =>
@@ -226,18 +61,14 @@ export default function DatabaseDiagram({
       await getLayoutedElements(nodes, edges);
     setNodes([...layoutedNodes]);
     setEdges([...layoutedEdges]);
-  }, [nodes, edges, setNodes, setEdges]);
+  }, [nodes, edges, setNodes, setEdges, getLayoutedElements]);
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      const updatedSelection = selectedDatasetVersions.some(
-        (v) => v.dataset_code === node.id
-      )
-        ? selectedDatasetVersions.filter((v) => v.dataset_code !== node.id)
-        : [...selectedDatasetVersions, { dataset_code: node.id }];
-      onSelectionChange(updatedSelection);
+      // Only log table information
+      onNodeInfoLog(node);
     },
-    [selectedDatasetVersions, onSelectionChange]
+    [onNodeInfoLog]
   );
 
   if (loading) {
@@ -253,8 +84,12 @@ export default function DatabaseDiagram({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onNodesChange={(changes) =>
+          setNodes((nds) => applyNodeChanges(changes, nds))
+        }
+        onEdgesChange={(changes) =>
+          setEdges((eds) => applyEdgeChanges(changes, eds))
+        }
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
