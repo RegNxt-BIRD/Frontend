@@ -22,6 +22,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
     targetPosition,
   });
 
+  const cardinalityLabel = `${data?.sourceCardinality || ""} : ${
+    data?.targetCardinality || ""
+  }`;
+
   return (
     <>
       <path
@@ -38,7 +42,17 @@ const CustomEdge: React.FC<EdgeProps> = ({
           startOffset="50%"
           textAnchor="middle"
         >
-          {(data as any) && data?.label}
+          {data?.label as any}
+        </textPath>
+      </text>
+      <text>
+        <textPath
+          href={`#${id}`}
+          style={{ fontSize: 10, fill: "blue" }}
+          startOffset="75%"
+          textAnchor="middle"
+        >
+          {cardinalityLabel}
         </textPath>
       </text>
     </>
