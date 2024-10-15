@@ -43,17 +43,9 @@ export const ConfigureGrouping: React.FC = () => {
 
   const {
     data: groupsResponse,
-    error: groupsError,
     mutate: mutateGroups,
     isLoading,
   } = useSWR<Grouping>("/api/v1/groups/", fastApiInstance);
-  if (groupsError) {
-    toast({
-      title: "Error",
-      description: "Failed to fetch groups. Please try again.",
-      variant: "destructive",
-    });
-  }
 
   const handleCreateGroup = async (newGroup: Partial<Group>) => {
     try {

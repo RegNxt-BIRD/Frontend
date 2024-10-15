@@ -288,6 +288,10 @@ export default function Relationship() {
     }
   }, [selectedDatasetVersions]);
 
+  const handleNodeInfoLog = useCallback((node: any) => {
+    console.log("Table Information:", node.data);
+  }, []);
+
   return (
     <div className="flex h-screen">
       <div className="w-full p-4">
@@ -340,6 +344,7 @@ export default function Relationship() {
             setNodes={setNodes}
             setEdges={setEdges}
             getLayoutedElements={getLayoutedElements}
+            onNodeInfoLog={handleNodeInfoLog}
           />
         </ReactFlowProvider>
       </div>

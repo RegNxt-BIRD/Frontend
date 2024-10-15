@@ -57,15 +57,12 @@ const Data: React.FC = () => {
   >([]);
   const { toast } = useToast();
 
-  const { data: layers, error: layersError } = useSWR<Layers>(
-    "/api/v1/layers/",
-    fastApiInstance
-  );
-  const { data: frameworks, error: frameworksError } = useSWR<Frameworks>(
+  const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
+  const { data: frameworks } = useSWR<Frameworks>(
     "/api/v1/frameworks/",
     fastApiInstance
   );
-  const { data: dataTableJson, error: dataError } = useSWR<DatasetResponse>(
+  const { data: dataTableJson } = useSWR<DatasetResponse>(
     `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
     fastApiInstance,
     {
@@ -76,17 +73,7 @@ const Data: React.FC = () => {
   );
 
   const isLoading = !layers || !frameworks || !dataTableJson;
-  const error = layersError || frameworksError || dataError;
 
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch data. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
   const groupedData = useMemo(() => {
     if (!dataTableJson?.data?.results) return {};
     return dataTableJson.data.results.reduce<
@@ -189,11 +176,6 @@ const Data: React.FC = () => {
     } catch (error) {
       console.error("Error fetching dataset version:", error);
       setDatasetVersion(null);
-      toast({
-        title: "Error",
-        description: "Failed to fetch dataset version. Please try again.",
-        variant: "destructive",
-      });
     }
   }, [selectedTable, selectedDate, toast]);
 
@@ -210,12 +192,8 @@ const Data: React.FC = () => {
       setMetadataTableData(response.data);
     } catch (error) {
       console.error("Error fetching table data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch table data. Please try again.",
-        variant: "destructive",
-      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTable, datasetVersion, toast]);
 
   useEffect(() => {
@@ -239,15 +217,10 @@ const Data: React.FC = () => {
       console.error("Error fetching metadata:", error);
       setMetadata(null);
       setMetadataTableData([]);
-      toast({
-        title: "Error",
-        description: "Failed to fetch metadata. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsMetadataLoading(false);
     }
-  }, [selectedTable, datasetVersion, toast]);
+  }, [selectedTable, datasetVersion]);
 
   useEffect(() => {
     fetchMetadata();
@@ -325,16 +298,6 @@ const Data: React.FC = () => {
         });
       } catch (error: any) {
         console.error("Validation error:", error);
-        let errorMessage =
-          "Failed to fetch validation results. Please try again.";
-        if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        }
-        toast({
-          title: "Validation Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
       }
     },
     [selectedTable, datasetVersion, selectedDate, metadata, toast]

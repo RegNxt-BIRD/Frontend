@@ -15,6 +15,7 @@ import { ConfigureGrouping } from "./components/configurations/ConfigureGrouping
 import ErrorBoundary from "./components/ErrorBoundary";
 import Layout from "./components/Layout";
 import LogoSpinner from "./components/LogoSpinner";
+import { Toaster } from "./components/ui/toaster";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Login from "./pages/auth/Login";
@@ -119,6 +120,7 @@ const App: React.FC = () => {
       <AuthProvider>
         <SWRConfig value={swrConfig}>
           <TooltipProvider>
+            <Toaster />
             <RouterProvider router={router} />
           </TooltipProvider>
         </SWRConfig>

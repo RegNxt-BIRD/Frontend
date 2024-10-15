@@ -36,17 +36,17 @@ interface DatabaseDiagramProps {
     nodes: Node[],
     edges: Edge[]
   ) => Promise<{ nodes: Node[]; edges: Edge[] }>;
+  onNodeInfoLog: (node: Node) => void;
 }
 
 export default function DatabaseDiagram({
   nodes,
   edges,
   loading,
-  selectedDatasetVersions,
-  onSelectionChange,
   setNodes,
   setEdges,
   getLayoutedElements,
+  onNodeInfoLog,
 }: DatabaseDiagramProps) {
   const onConnect = useCallback(
     (params: any) =>
@@ -65,14 +65,10 @@ export default function DatabaseDiagram({
 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      const updatedSelection = selectedDatasetVersions.some(
-        (v) => v.dataset_code === node.id
-      )
-        ? selectedDatasetVersions.filter((v) => v.dataset_code !== node.id)
-        : [...selectedDatasetVersions, { dataset_code: node.id }];
-      onSelectionChange(updatedSelection);
+      // Only log table information
+      onNodeInfoLog(node);
     },
-    [selectedDatasetVersions, onSelectionChange]
+    [onNodeInfoLog]
   );
 
   if (loading) {

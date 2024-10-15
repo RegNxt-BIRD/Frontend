@@ -62,11 +62,6 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
       setItems(response.data);
     } catch (error) {
       console.error("Error fetching group items:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch group items. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
