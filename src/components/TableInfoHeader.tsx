@@ -9,9 +9,14 @@ interface TableData {
   type: string;
 }
 
+interface DatasetVersion {
+  version_nr: string;
+  dataset_version_id: string;
+}
+
 interface TableInfoHeaderProps {
   selectedTable: TableData;
-  datasetVersion: any;
+  datasetVersion: DatasetVersion;
 }
 
 export const TableInfoHeader: React.FC<TableInfoHeaderProps> = ({

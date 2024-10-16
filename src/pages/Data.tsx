@@ -186,15 +186,28 @@ const Data: React.FC = () => {
   const fetchTableData = useCallback(async () => {
     if (!selectedTable || !datasetVersion) return;
     try {
-      const response = await fastApiInstance.get(
-        `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion?.dataset_version_id}`
+      const [metadataResponse, dataResponse] = await Promise.all([
+        fastApiInstance.get(
+          `/api/v1/datasets/${selectedTable.dataset_id}/columns/`,
+          {
+            params: { version_id: datasetVersion.dataset_version_id },
+          }
+        ),
+        fastApiInstance.get(
+          `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion.dataset_version_id}`
+        ),
+      ]);
+
+      setMetadata(
+        Array.isArray(metadataResponse.data) ? metadataResponse.data : null
       );
-      setMetadataTableData(response.data);
+      setMetadataTableData(dataResponse.data);
     } catch (error) {
       console.error("Error fetching table data:", error);
+      setMetadata(null);
+      setMetadataTableData([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTable, datasetVersion, toast]);
+  }, [selectedTable, datasetVersion]);
 
   useEffect(() => {
     fetchTableData();
@@ -224,7 +237,7 @@ const Data: React.FC = () => {
 
   useEffect(() => {
     fetchMetadata();
-  }, [fetchMetadata]);
+  }, [fetchMetadata, selectedTable]);
 
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
@@ -240,6 +253,7 @@ const Data: React.FC = () => {
     setSelectedTable(table);
     setMetadata(null);
     setMetadataTableData([]);
+    setDatasetVersion(null);
   }, []);
 
   const handleSaveMetadata = useCallback(

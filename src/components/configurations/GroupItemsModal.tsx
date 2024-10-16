@@ -29,6 +29,16 @@ interface GroupItem {
   is_system_generated: boolean;
 }
 
+interface DatasetVersion {
+  version_nr: string;
+  dataset_id: string;
+  dataset_version_id: string;
+  version_code: string;
+  code: string;
+  label: string;
+  description: string;
+}
+
 interface GroupItemsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -124,7 +134,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
     }
   };
 
-  const handleDatasetSelect = (dataset: any) => {
+  const handleDatasetSelect = (dataset: DatasetVersion) => {
     setNewItem({
       ...newItem,
       dataset_version_id: dataset.dataset_version_id.toString(),
@@ -185,7 +195,7 @@ export const GroupItemsModal: React.FC<GroupItemsModalProps> = ({
                 <GenericComboBox
                   apiEndpoint="/api/v1/datasets/"
                   placeholder="Select a Dataset"
-                  onSelect={handleDatasetSelect}
+                  onSelect={handleDatasetSelect as any}
                 />
               </div>
             </div>
