@@ -1,3 +1,5 @@
+"use client";
+
 import DatabaseDiagram from "@/components/DatabaseDiagram";
 import DatePicker from "@/components/DatePicker";
 import SelectableAccordion from "@/components/SelectableAccordion";
@@ -27,11 +29,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
 const NO_FILTER = "NO_FILTER";
-const PAGE_SIZE = 10000; // Adjust this value as needed
+const PAGE_SIZE = 10000;
 
 const elk = new ELK();
 
-const calculateNodeDimensions = (columns: any) => {
+const calculateNodeDimensions = (columns: any[]) => {
   const baseHeight = 40;
   const rowHeight = 24;
   const width = 250;
@@ -39,7 +41,7 @@ const calculateNodeDimensions = (columns: any) => {
   return { width, height };
 };
 
-const getLayoutedElements = async (nodes: any[], edges: any) => {
+const getLayoutedElements = async (nodes: any[], edges: any[]) => {
   const elkNodes = nodes.map((node) => ({
     id: node.id,
     width: node.width,
@@ -85,12 +87,14 @@ export default function Relationship() {
   const [selectedDatasetVersions, setSelectedDatasetVersions] = useState<any[]>(
     []
   );
+  const [pendingSelections, setPendingSelections] = useState<any[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [nodes, setNodes] = useState<any[]>([]);
   const [edges, setEdges] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  // const [allDatasets, setAllDatasets] = useState<any[]>([]);
 
   const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
   const { data: frameworks } = useSWR<Frameworks>(
@@ -122,12 +126,34 @@ export default function Relationship() {
   }, []);
 
   const handleDatasetVersionSelect = useCallback((item: any) => {
-    setSelectedDatasetVersions((prev) =>
+    setPendingSelections((prev) =>
       prev.some((v) => v.dataset_version_id === item.dataset_version_id)
         ? prev.filter((v) => v.dataset_version_id !== item.dataset_version_id)
-        : [...prev, item]
+        : [...prev, { ...item, dataset_code: item.dataset_code || item.code }]
     );
   }, []);
+
+  const handleApplySelection = useCallback(() => {
+    setSelectedDatasetVersions(pendingSelections);
+    setIsSheetOpen(false);
+  }, [pendingSelections]);
+
+  // const handleRemoveDataset = useCallback((id: number) => {
+  //   setSelectedDatasetVersions((prev) =>
+  //     prev.filter((v) => v.dataset_version_id !== id)
+  //   );
+  //   setPendingSelections((prev) =>
+  //     prev.filter((v) => v.dataset_version_id !== id)
+  //   );
+  //   setNodes((prevNodes) =>
+  //     prevNodes.filter((node) => node.id !== id.toString())
+  //   );
+  //   setEdges((prevEdges) =>
+  //     prevEdges.filter(
+  //       (edge) => edge.source !== id.toString() && edge.target !== id.toString()
+  //     )
+  //   );
+  // }, []);
 
   const filteredData = useMemo(() => {
     if (!dataTableJson?.data?.results) return {};
@@ -189,7 +215,9 @@ export default function Relationship() {
             type: "databaseTable",
             position: { x: 0, y: 0 },
             data: {
-              label: `${dataset.dataset_name} (v${dataset.version_nr})`,
+              label: `${dataset.dataset_name} (${
+                dataset.dataset_code || dataset.code
+              })`,
               columns: dataset.columns,
             },
             width,
@@ -201,75 +229,80 @@ export default function Relationship() {
           relationship: any,
           source: any,
           target: any,
-          direction: any
+          direction: "inbound" | "outbound"
         ) => {
-          if (direction === "outbound") {
-            return {
-              id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
-              source: source,
-              target: target,
-              sourceHandle: `${source}.${relationship.from_col}.right`,
-              targetHandle: `${target}.${relationship.to_col}.left`,
-              type: "custom",
-              animated: true,
-              data: {
-                label: `${relationship.from_col} -> ${relationship.to_col}`,
-                relationshipType: relationship.relation_type,
-                sourceCardinality: relationship.source_cardinality,
-                targetCardinality: relationship.destination_cardinality,
-                isSourceMandatory: relationship.is_source_mandatory,
-                isTargetMandatory: relationship.is_destination_mandatory,
-              },
-            };
-          } else {
-            return {
-              id: `${source}-${target}-${relationship.from_col}-${relationship.to_col}`,
-              source: source,
-              target: target,
-              sourceHandle: `${source}.${relationship.from_col}.right`,
-              targetHandle: `${target}.${relationship.to_col}.left`,
-              type: "custom",
-              animated: true,
-              data: {
-                label: `${relationship.from_col} <- ${relationship.to_col}`,
-                relationshipType: relationship.relation_type,
-                sourceCardinality: relationship.source_cardinality,
-                targetCardinality: relationship.destination_cardinality,
-                isSourceMandatory: relationship.is_source_mandatory,
-                isTargetMandatory: relationship.is_destination_mandatory,
-              },
-            };
-          }
+          const edgeId = `${source}-${target}-${relationship.from_col}-${relationship.to_col}`;
+          const sourceHandle = `${source}.${relationship.from_col}.right`;
+          const targetHandle = `${target}.${relationship.to_col}.left`;
+          const label =
+            direction === "outbound"
+              ? `${relationship.from_col} -> ${relationship.to_col}`
+              : `${relationship.from_col} <- ${relationship.to_col}`;
+
+          return {
+            id: edgeId,
+            source,
+            target,
+            sourceHandle,
+            targetHandle,
+            type: "custom",
+            animated: true,
+            data: {
+              label,
+              relationshipType: relationship.relation_type,
+              sourceCardinality: relationship.source_cardinality,
+              targetCardinality: relationship.destination_cardinality,
+              isSourceMandatory: relationship.is_source_mandatory,
+              isTargetMandatory: relationship.is_destination_mandatory,
+            },
+          };
         };
 
-        newNodes.push(createNode(data[0].central_dataset_version));
-        processedTables.add(data[0].central_dataset_version.code);
+        const allDatasetsSet = new Set();
 
-        data[0].inbound.forEach((rel: any) => {
-          if (!processedTables.has(rel.from_dataset_code)) {
-            const sourceDataset = data[0].all_datasets.find(
-              (d: any) => d.dataset_code === rel.from_dataset_code
-            );
-            newNodes.push(createNode(sourceDataset));
-            processedTables.add(rel.from_dataset_code);
+        data.forEach((relationshipData) => {
+          console.log("Processing relationship data:", relationshipData);
+
+          if (!relationshipData.central_dataset_version) {
+            console.error("Missing central_dataset_version:", relationshipData);
+            return;
           }
-          newEdges.push(
-            createEdge(rel, rel.from_table, rel.to_table, "inbound")
-          );
+
+          const centralDataset = relationshipData.central_dataset_version;
+          if (!processedTables.has(centralDataset.code)) {
+            newNodes.push(createNode(centralDataset));
+            processedTables.add(centralDataset.code);
+          }
+
+          relationshipData.all_datasets.forEach((dataset: any) => {
+            allDatasetsSet.add(JSON.stringify(dataset));
+            if (!processedTables.has(dataset.dataset_code)) {
+              newNodes.push(createNode(dataset));
+              processedTables.add(dataset.dataset_code);
+            }
+          });
+
+          relationshipData.inbound.forEach((rel: any) => {
+            newEdges.push(
+              createEdge(rel, rel.from_table, rel.to_table, "inbound")
+            );
+          });
+
+          relationshipData.outbound.forEach((rel: any) => {
+            newEdges.push(
+              createEdge(rel, rel.from_table, rel.to_table, "outbound")
+            );
+          });
         });
 
-        data[0].outbound.forEach((rel: any) => {
-          if (!processedTables.has(rel.to_dataset_code)) {
-            const targetDataset = data[0].all_datasets.find(
-              (d: any) => d.dataset_code === rel.to_dataset_code
-            );
-            newNodes.push(createNode(targetDataset));
-            processedTables.add(rel.to_dataset_code);
-          }
-          newEdges.push(
-            createEdge(rel, rel.from_table, rel.to_table, "outbound")
-          );
-        });
+        // setAllDatasets(
+        //   Array.from(allDatasetsSet).map((dataset) =>
+        //     JSON.parse(dataset as string)
+        //   )
+        // );
+
+        console.log("Generated nodes:", newNodes);
+        console.log("Generated edges:", newEdges);
 
         const { nodes: layoutedNodes, edges: layoutedEdges } =
           await getLayoutedElements(newNodes, newEdges);
@@ -295,7 +328,7 @@ export default function Relationship() {
   return (
     <div className="flex h-screen">
       <div className="w-full p-4">
-        <div className="flex space-x-4 mb-4">
+        <div className="flex flex-wrap space-x-4 mb-4">
           <Select
             onValueChange={handleFrameworkChange}
             value={selectedFramework}
@@ -334,6 +367,7 @@ export default function Relationship() {
             initialDate={selectedDate}
           />
         </div>
+
         <ReactFlowProvider>
           <DatabaseDiagram
             nodes={nodes}
@@ -362,6 +396,10 @@ export default function Relationship() {
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4">
+            {/* <SelectedDatasetChips
+              selectedDatasets={allDatasets}
+              onRemove={handleRemoveDataset}
+            /> */}
             <Input
               placeholder="Search datasets..."
               value={searchTerm}
@@ -379,11 +417,18 @@ export default function Relationship() {
             ) : (
               <SelectableAccordion
                 data={filteredData}
-                selectedItems={selectedDatasetVersions}
+                selectedItems={pendingSelections}
                 onItemSelect={handleDatasetVersionSelect}
                 searchTerm={searchTerm}
               />
             )}
+            <Button
+              onClick={handleApplySelection}
+              className="mt-4 w-full"
+              disabled={pendingSelections.length === 0}
+            >
+              Apply Selection
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
