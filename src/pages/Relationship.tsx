@@ -261,8 +261,6 @@ export default function Relationship() {
         const allDatasetsSet = new Set();
 
         data.forEach((relationshipData) => {
-          console.log("Processing relationship data:", relationshipData);
-
           if (!relationshipData.central_dataset_version) {
             console.error("Missing central_dataset_version:", relationshipData);
             return;
@@ -300,9 +298,6 @@ export default function Relationship() {
         //     JSON.parse(dataset as string)
         //   )
         // );
-
-        console.log("Generated nodes:", newNodes);
-        console.log("Generated edges:", newEdges);
 
         const { nodes: layoutedNodes, edges: layoutedEdges } =
           await getLayoutedElements(newNodes, newEdges);

@@ -15,7 +15,6 @@ export default function SelectedDatasetChips(
     onRemove: () => {},
   }
 ) {
-  console.log("selectedDatasets: ", selectedDatasets);
   return (
     <div className="flex flex-wrap gap-2 mb-4">
       {selectedDatasets.map((dataset) => (
