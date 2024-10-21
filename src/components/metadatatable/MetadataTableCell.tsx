@@ -105,8 +105,8 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
           <SelectContent>
             {item.value_options.map((option) => (
               <SelectItem
-                key={option.item_code}
-                value={option.item_code.toString()}
+                key={option?.item_code}
+                value={option?.item_code?.toString()}
               >
                 {option.item_name}
               </SelectItem>
