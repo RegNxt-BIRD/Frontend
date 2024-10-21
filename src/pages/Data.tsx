@@ -50,6 +50,7 @@ const Data: React.FC = () => {
     code: "",
     label: "",
     type: "",
+    group: "",
     description: "",
   });
   const [validationResults, setValidationResults] = useState<
@@ -113,13 +114,27 @@ const Data: React.FC = () => {
             const layerMatch =
               selectedLayer === NO_FILTER || item.type === selectedLayer;
             const columnFilterMatch = Object.entries(columnFilters).every(
-              ([key, value]) =>
-                value === "" ||
-                (item[key as keyof DatasetItem] &&
-                  item[key as keyof DatasetItem]
-                    .toString()
-                    .toLowerCase()
-                    .includes(value.toLowerCase()))
+              ([key, value]) => {
+                if (key === "group") {
+                  return (
+                    value === "" ||
+                    (item.groups &&
+                      item.groups.some(
+                        (g: any) =>
+                          g.code.toLowerCase().includes(value.toLowerCase()) ||
+                          g.label.toLowerCase().includes(value.toLowerCase())
+                      ))
+                  );
+                }
+                return (
+                  value === "" ||
+                  (item[key as keyof DatasetItem] &&
+                    item[key as keyof DatasetItem]
+                      .toString()
+                      .toLowerCase()
+                      .includes(value.toLowerCase()))
+                );
+              }
             );
             return layerMatch && columnFilterMatch;
           });
@@ -391,7 +406,6 @@ const Data: React.FC = () => {
           setColumnFilters((prev) => ({ ...prev, [key]: value }))
         }
       />
-
       {selectedLayer === NO_FILTER ? (
         <DataAccordion
           data={filteredData}

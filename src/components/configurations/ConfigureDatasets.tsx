@@ -43,6 +43,7 @@ export const ConfigureDatasets: React.FC = () => {
     code: "",
     label: "",
     framework: "",
+    group: "",
     type: "",
     description: "",
   });

@@ -47,6 +47,15 @@ export interface DatasetVersion {
   description: string;
 }
 
+export interface DataItem {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
+}
+
 export interface DatasetVersions {
   data: DatasetVersion[];
 }
