@@ -21,8 +21,30 @@ export interface Dataset {
   version_code?: string;
   valid_to?: string;
   valid_from?: string;
+  is_visible?: boolean;
   latest_version_id?: number;
   groups: { code: string | null; label: string | null; order: number | null }[];
+}
+
+export interface Column {
+  dataset_version_column_id?: number;
+  dataset_version_id: number;
+  column_order: number;
+  code: string;
+  label: string;
+  description: string;
+  role: string;
+  dimension_type: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+  is_report_snapshot_field: boolean;
+  is_system_generated: boolean;
+  is_visible: boolean;
+  historization_type: number;
 }
 
 export interface Datasets {

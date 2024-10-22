@@ -203,7 +203,7 @@ const Data: React.FC = () => {
     try {
       const [metadataResponse, dataResponse] = await Promise.all([
         fastApiInstance.get(
-          `/api/v1/datasets/${selectedTable.dataset_id}/columns/`,
+          `/api/v1/datasets/${selectedTable.dataset_id}/version-columns/`,
           {
             params: { version_id: datasetVersion.dataset_version_id },
           }
@@ -233,7 +233,7 @@ const Data: React.FC = () => {
     setIsMetadataLoading(true);
     try {
       const columnsResponse = await fastApiInstance.get(
-        `/api/v1/datasets/${selectedTable.dataset_id}/columns/`,
+        `/api/v1/datasets/${selectedTable.dataset_id}/version-columns/`,
         {
           params: { version_id: datasetVersion.dataset_version_id },
         }

@@ -16,27 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Column } from "@/types/databaseTypes";
 import { Plus, Trash } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-interface Column {
-  dataset_version_column_id?: number;
-  dataset_version_id: number;
-  column_order: number;
-  code: string;
-  label: string;
-  description: string;
-  role: string;
-  dimension_type: string;
-  datatype: string;
-  datatype_format: string;
-  is_mandatory: boolean;
-  is_key: boolean;
-  value_statement: string;
-  is_filter: boolean;
-  is_report_snapshot_field: boolean;
-  is_system_generated: boolean;
-}
+
 
 interface EditableColumnTableProps {
   columns: Column[];
@@ -64,25 +48,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     onColumnsChange(updatedColumns);
   };
 
-  interface Column {
-    dataset_version_column_id?: number;
-    dataset_version_id: number;
-    column_order: number;
-    code: string;
-    label: string;
-    description: string;
-    role: string;
-    dimension_type: string;
-    datatype: string;
-    datatype_format: string;
-    is_mandatory: boolean;
-    is_key: boolean;
-    value_statement: string;
-    is_filter: boolean;
-    is_report_snapshot_field: boolean;
-    is_system_generated: boolean;
-  }
-
   const handleAddColumn = () => {
     const newColumn: Column = {
       dataset_version_column_id: 0,
@@ -101,6 +66,8 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
       is_filter: false,
       is_report_snapshot_field: false,
       is_system_generated: false,
+      is_visible: true,
+      historization_type: 1, // Default value as specified
     };
     setLocalColumns([...localColumns, newColumn]);
     onColumnsChange([...localColumns, newColumn]);
@@ -112,6 +79,19 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     onColumnsChange(updatedColumns);
   };
 
+  // const getHistorizationLabel = (type: number) => {
+  //   switch (type) {
+  //     case 0:
+  //       return "No historization";
+  //     case 1:
+  //       return "Always latest";
+  //     case 2:
+  //       return "Versioning";
+  //     default:
+  //       return "Unknown";
+  //   }
+  // };
+
   return (
     <div className="space-y-4">
       <Table>
@@ -121,6 +101,8 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
             <TableHead>Label</TableHead>
             <TableHead>Data Type</TableHead>
             <TableHead>Role</TableHead>
+            <TableHead>Visible</TableHead>
+            <TableHead>Historization</TableHead>
             <TableHead>Mandatory</TableHead>
             <TableHead>Key</TableHead>
             <TableHead>Actions</TableHead>
@@ -131,8 +113,8 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
             <TableRow key={column.dataset_version_column_id || index}>
               <TableCell>
                 <Input
-                  disabled={column?.is_system_generated}
                   value={column.code}
+                  disabled={column.is_system_generated}
                   onChange={(e) =>
                     handleInputChange(index, "code", e.target.value)
                   }
@@ -141,7 +123,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Input
                   value={column.label}
-                  disabled={column?.is_system_generated}
+                  disabled={column.is_system_generated}
                   onChange={(e) =>
                     handleInputChange(index, "label", e.target.value)
                   }
@@ -150,12 +132,12 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Select
                   value={column.datatype}
-                  disabled={column?.is_system_generated}
+                  disabled={column.is_system_generated}
                   onValueChange={(value) =>
                     handleInputChange(index, "datatype", value)
                   }
                 >
-                  <SelectTrigger disabled={column?.is_system_generated}>
+                  <SelectTrigger>
                     <SelectValue placeholder="Select data type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -170,12 +152,12 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Select
                   value={column.role}
-                  disabled={column?.is_system_generated}
+                  disabled={column.is_system_generated}
                   onValueChange={(value) =>
                     handleInputChange(index, "role", value)
                   }
                 >
-                  <SelectTrigger disabled={column?.is_system_generated}>
+                  <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,8 +169,38 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               </TableCell>
               <TableCell>
                 <Switch
-                  disabled={column?.is_system_generated}
+                  checked={column.is_visible}
+                  onCheckedChange={(checked) =>
+                    handleInputChange(index, "is_visible", checked)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <Select
+                  value={column.historization_type.toString()}
+                  disabled={column.is_system_generated}
+                  onValueChange={(value) =>
+                    handleInputChange(
+                      index,
+                      "historization_type",
+                      parseInt(value)
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select historization type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">No historization</SelectItem>
+                    <SelectItem value="1">Always latest</SelectItem>
+                    <SelectItem value="2">Versioning</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell>
+                <Switch
                   checked={column.is_mandatory}
+                  disabled={column.is_system_generated}
                   onCheckedChange={(checked) =>
                     handleInputChange(index, "is_mandatory", checked)
                   }
@@ -197,7 +209,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableCell>
                 <Switch
                   checked={column.is_key}
-                  disabled={column?.is_system_generated}
+                  disabled={column.is_system_generated}
                   onCheckedChange={(checked) =>
                     handleInputChange(index, "is_key", checked)
                   }
@@ -207,7 +219,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={column?.is_system_generated}
+                  disabled={column.is_system_generated}
                   onClick={() => handleDeleteColumn(index)}
                 >
                   <Trash className="h-4 w-4" />
@@ -224,3 +236,5 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     </div>
   );
 };
+
+export default EditableColumnTable;

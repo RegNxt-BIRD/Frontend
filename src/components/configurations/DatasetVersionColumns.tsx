@@ -1,27 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
+import { Column } from "@/types/databaseTypes";
 import React, { useEffect, useState } from "react";
 import { EditableColumnTable } from "./EditableColumnTable";
-
-interface Column {
-  dataset_version_column_id?: number;
-  dataset_version_id: number;
-  column_order: number;
-  code: string;
-  label: string;
-  description: string;
-  role: string;
-  dimension_type: string;
-  datatype: string;
-  datatype_format: string;
-  is_mandatory: boolean;
-  is_key: boolean;
-  value_statement: string;
-  is_filter: boolean;
-  is_report_snapshot_field: boolean;
-  is_system_generated: boolean;
-}
 
 interface DatasetVersionColumnsProps {
   datasetId: number;
