@@ -23,6 +23,12 @@ interface FrameworkAccordionProps {
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
   isLoadingVersions: boolean;
+  selectedVersionId: number | null;
+  getDatasetActions: (dataset: Dataset) => React.ReactNode;
+  getVersionActions: (
+    dataset: Dataset,
+    version: DatasetVersion
+  ) => React.ReactNode;
 }
 
 export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
@@ -36,6 +42,8 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
   handleDeleteVersion,
   handleEditDataset,
   handleDeleteDataset,
+  getDatasetActions,
+  getVersionActions,
 }) => {
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -61,6 +69,8 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
               handleDeleteVersion={handleDeleteVersion}
               handleEditDataset={handleEditDataset}
               handleDeleteDataset={handleDeleteDataset}
+              getDatasetActions={getDatasetActions}
+              getVersionActions={getVersionActions}
             />
           </AccordionContent>
         </AccordionItem>
