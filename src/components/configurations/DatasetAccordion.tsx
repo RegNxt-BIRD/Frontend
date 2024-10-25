@@ -47,6 +47,8 @@ interface DatasetAccordionProps {
   versionColumns?: Column[];
   onUpdateColumns?: (columns: Column[]) => Promise<void>;
   isLoadingColumns?: boolean;
+  isVersionModalOpen: boolean;
+  setIsVersionModalOpen: (open: boolean) => void;
 }
 
 const DATASETS_PER_PAGE = 10;
@@ -55,7 +57,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   datasets,
   handleDatasetClick,
   datasetVersions,
-  handleCreateVersion,
+  setIsVersionModalOpen,
   handleDeleteVersion,
   handleEditDataset,
   versionColumns,
@@ -313,7 +315,10 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                   <h3 className="text-lg font-semibold">Versions</h3>
                   {!dataset.is_system_generated && (
                     <Button
-                      onClick={() => handleCreateVersion(dataset)}
+                      onClick={() => {
+                        setIsVersionModalOpen(true); // Now this will work
+                        handleDatasetClick(dataset);
+                      }}
                       size="sm"
                     >
                       <Plus className="h-4 w-4 mr-2" />

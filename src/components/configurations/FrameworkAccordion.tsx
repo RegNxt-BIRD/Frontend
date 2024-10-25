@@ -16,6 +16,8 @@ interface FrameworkAccordionProps {
   groupedDatasets: Record<string, Dataset[]>;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions?: DatasetVersions;
+  isVersionModalOpen: boolean;
+  setIsVersionModalOpen: (open: boolean) => void;
   selectedDataset: Dataset | null;
   handleCreateVersion: (dataset: Dataset) => void;
   handleUpdateVersion: (version: DatasetVersion) => void;
@@ -37,6 +39,8 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
   datasetVersions,
   selectedDataset,
   isLoadingVersions,
+  isVersionModalOpen,
+  setIsVersionModalOpen,
   handleUpdateVersion,
   handleCreateVersion,
   handleDeleteVersion,
@@ -65,6 +69,8 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
               isLoadingVersions={isLoadingVersions}
               selectedDataset={selectedDataset}
               handleUpdateVersion={handleUpdateVersion}
+              isVersionModalOpen={isVersionModalOpen}
+              setIsVersionModalOpen={setIsVersionModalOpen}
               handleCreateVersion={handleCreateVersion}
               handleDeleteVersion={handleDeleteVersion}
               handleEditDataset={handleEditDataset}

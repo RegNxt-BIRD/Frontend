@@ -53,9 +53,13 @@ const HISTORIZATION_OPTIONS = [
   { value: "2", label: "Versioning" },
 ];
 
-export const DatasetConfigurationModal: React.FC<
-  DatasetConfigurationModalProps
-> = ({ isOpen, onClose, onSubmit, initialData, isSystemGenerated = false }) => {
+export default function DatasetConfigurationModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData,
+  isSystemGenerated = false,
+}: DatasetConfigurationModalProps) {
   const form = useForm<ConfigFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -147,4 +151,4 @@ export const DatasetConfigurationModal: React.FC<
       </DialogContent>
     </Dialog>
   );
-};
+}

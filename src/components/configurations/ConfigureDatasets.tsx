@@ -31,6 +31,7 @@ import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
 import { DatasetAccordion } from "./DatasetAccordion";
 import { DatasetFormModal } from "./DatasetFormModal";
+import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
@@ -244,20 +245,23 @@ export const ConfigureDatasets: React.FC = () => {
   };
 
   // Version handlers
-  const handleCreateVersion = async (dataset: Dataset) => {
+  const handleCreateVersion = async (
+    dataset: Dataset & Partial<DatasetVersion>
+  ) => {
     if (dataset.is_system_generated) return;
     try {
+      const payload = {
+        version_code: dataset.version_code,
+        code: dataset.code,
+        label: dataset.label,
+        description: dataset.description,
+        valid_from: dataset.valid_from,
+        valid_to: dataset.valid_to,
+      };
+
       await fastApiInstance.post(
         `/api/v1/datasets/${dataset.dataset_id}/create_version/`,
-        {
-          version_nr: dataset.version_nr,
-          version_code: dataset.version_code,
-          code: dataset.code,
-          label: dataset.label,
-          description: dataset.description,
-          valid_to: dataset.valid_to,
-          valid_from: dataset.valid_from,
-        }
+        payload
       );
       await mutateVersions();
       toast({
@@ -471,6 +475,8 @@ export const ConfigureDatasets: React.FC = () => {
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
           isLoadingColumns={!versionColumns && !!selectedVersionId}
+          isVersionModalOpen={isVersionModalOpen} // Add this
+          setIsVersionModalOpen={setIsVersionModalOpen} // Add this
         />
       ) : (
         <DatasetAccordion
@@ -495,6 +501,8 @@ export const ConfigureDatasets: React.FC = () => {
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
           isLoadingColumns={!versionColumns && !!selectedVersionId}
+          isVersionModalOpen={isVersionModalOpen} // Add this
+          setIsVersionModalOpen={setIsVersionModalOpen} // Add this
         />
       )}
 
@@ -562,6 +570,23 @@ export const ConfigureDatasets: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <DatasetVersionFormModal
+        isOpen={isVersionModalOpen}
+        onClose={() => {
+          setIsVersionModalOpen(false);
+          setEditingVersion(null);
+        }}
+        onSubmit={(version) => {
+          if (selectedDataset) {
+            handleCreateVersion({
+              ...selectedDataset,
+              ...version,
+            });
+          }
+        }}
+        currentVersion={datasetVersions?.data[0]} // Pass current version info
+        datasetCode={selectedDataset?.code || ""} // Pass dataset code
+      />
     </div>
   );
 };
