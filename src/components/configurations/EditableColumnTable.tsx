@@ -121,6 +121,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
       is_report_snapshot_field: false,
       is_system_generated: false,
       historization_type: 1,
+      is_visible: false,
     };
     setColumns((prev) => [...prev, newColumn]);
   }, [columns.length, versionId]);
@@ -256,6 +257,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableHead>Historization</TableHead>
               <TableHead>Mandatory</TableHead>
               <TableHead>Key</TableHead>
+              <TableHead>Visible</TableHead>
               <TableHead>Filter</TableHead>
               <TableHead>Description</TableHead>
             </TableRow>
@@ -377,6 +379,15 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                     checked={column.is_key}
                     onCheckedChange={(checked) =>
                       handleColumnChange(index, "is_key", checked)
+                    }
+                    disabled={column.is_system_generated}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={column.is_visible}
+                    onCheckedChange={(checked) =>
+                      handleColumnChange(index, "is_visible", checked)
                     }
                     disabled={column.is_system_generated}
                   />
