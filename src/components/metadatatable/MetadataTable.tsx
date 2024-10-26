@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ExcelOperations } from "../ExcelOperations";
 import { MetadataTableBody } from "./MetadataTableBody";
 import { MetadataTableHeader } from "./MetadataTableHeader";
 
@@ -114,20 +115,29 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold">
-        Data for table {selectedTable.code} | {selectedTable.label}{" "}
-        {datasetVersion && `| Version ${datasetVersion.version_nr}`}
-      </h3>
+      <div className="flex justify-between flex-end">
+        <h3 className="text-xl font-semibold">
+          Data for table {selectedTable.code} | {selectedTable.label}{" "}
+          {datasetVersion && `| Version ${datasetVersion.version_nr}`}
+        </h3>
+        <ExcelOperations
+          objectCode={selectedTable.code.toLowerCase()}
+          columns={metadata}
+          onUpload={handleSave}
+          currentData={localTableData}
+        />
+      </div>
       <MetadataTableHeader
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
-        isSaving={isSaving}
-        isValidating={isValidating}
         onValidate={handleValidate}
         isDataModified={isDataModified}
+        isSaving={isSaving}
+        isValidating={isValidating}
       />
+
       <MetadataTableBody
         filteredMetadata={filteredMetadata}
         localTableData={localTableData}
