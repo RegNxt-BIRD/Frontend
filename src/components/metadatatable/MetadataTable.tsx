@@ -1,3 +1,4 @@
+// MetadataTable.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,7 +10,7 @@ interface MetadataTableProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
   isLoading: boolean;
-  onSave: (updatedData: Record<string, string | null>[]) => void;
+  onSave: (updatedData: Record<string, string | null>[]) => Promise<void>;
   onValidate: (tableData: Record<string, string | null>[]) => void;
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
@@ -67,12 +68,22 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(true);
   }, [metadata]);
 
-  const handleDeleteRow = useCallback((rowIndex: number) => {
-    setLocalTableData((prevData) =>
-      prevData.filter((_, index) => index !== rowIndex)
-    );
-    setIsDataModified(true);
-  }, []);
+  const handleBulkDataUpdate = useCallback(
+    (data: Record<string, string | null>[]) => {
+      // Map Excel data to match table structure
+      const formattedData = data.map((row) => {
+        const formattedRow: Record<string, string | null> = {};
+        metadata?.forEach((column) => {
+          formattedRow[column.code] = row[column.code] || null;
+        });
+        return formattedRow;
+      });
+
+      setLocalTableData(formattedData);
+      setIsDataModified(true);
+    },
+    [metadata]
+  );
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -84,14 +95,13 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     }
   }, [localTableData, onSave]);
 
-  const handleValidate = useCallback(async () => {
-    setIsValidating(true);
-    try {
-      await onValidate(localTableData);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [onValidate, localTableData]);
+  const handleExcelUpload = useCallback(
+    async (data: Record<string, string | null>[]) => {
+      handleBulkDataUpdate(data);
+      setIsDataModified(true);
+    },
+    [handleBulkDataUpdate]
+  );
 
   const filteredMetadata = useMemo(() => {
     return (
@@ -100,18 +110,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
       ) || []
     );
   }, [metadata, searchTerm]);
-
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
-
-  if (!metadata || metadata.length === 0) {
-    return (
-      <p className="text-gray-500 italic">
-        No data available for the selected table.
-      </p>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -122,17 +120,19 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         </h3>
         <ExcelOperations
           objectCode={selectedTable.code.toLowerCase()}
-          columns={metadata}
-          onUpload={handleSave}
+          columns={metadata || []}
+          onUpload={handleExcelUpload}
           currentData={localTableData}
+          isLoading={isSaving || isLoading}
         />
       </div>
+
       <MetadataTableHeader
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
-        onValidate={handleValidate}
+        onValidate={() => onValidate(localTableData)}
         isDataModified={isDataModified}
         isSaving={isSaving}
         isValidating={isValidating}
@@ -142,7 +142,12 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         filteredMetadata={filteredMetadata}
         localTableData={localTableData}
         handleCellChange={handleCellChange}
-        handleDeleteRow={handleDeleteRow}
+        handleDeleteRow={(rowIndex) => {
+          setLocalTableData((prevData) =>
+            prevData.filter((_, index) => index !== rowIndex)
+          );
+          setIsDataModified(true);
+        }}
         validationResults={validationResults}
       />
     </div>
@@ -163,5 +168,3 @@ const LoadingSkeleton: React.FC = () => (
     </div>
   </div>
 );
-
-export default MetadataTable;

@@ -26,6 +26,18 @@ export interface Dataset {
   groups: { code: string | null; label: string | null; order: number | null }[];
 }
 
+export interface ExcelUploadData {
+  [key: string]: string | null;
+}
+
+export interface MetadataColumn {
+  code: string;
+  label: string;
+  datatype: string;
+  is_mandatory: boolean;
+  [key: string]: any;
+}
+
 export interface Column {
   dataset_version_column_id: number;
   dataset_version_id: number;

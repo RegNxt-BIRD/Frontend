@@ -6,7 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TableCell } from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
@@ -17,8 +16,9 @@ import { cn } from "@/lib/utils";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import { format } from "date-fns";
 import { AlertTriangle } from "lucide-react";
-import React from "react";
+import React, { useMemo } from "react";
 import { DatePicker } from "../GDate";
+import { TableCell } from "../ui/table";
 
 interface MetadataTableCellProps {
   item: MetadataItem;
@@ -30,6 +30,11 @@ interface MetadataTableCellProps {
     value: string | null
   ) => void;
   validationResults: ValidationResult[];
+}
+
+interface NormalizedOption {
+  value: string;
+  label: string;
 }
 
 const getInputType = (datatype: string): string => {
@@ -46,6 +51,57 @@ const getInputType = (datatype: string): string => {
     default:
       return "text";
   }
+};
+
+const normalizeValueOptions = (
+  valueOptions: any[] | undefined
+): NormalizedOption[] => {
+  if (!valueOptions || !Array.isArray(valueOptions)) return [];
+
+  return valueOptions
+    .map((option) => {
+      // Handle LOV format
+      if (option.item_code && option.item_name) {
+        return {
+          value: option.item_code,
+          label: option.item_name,
+        };
+      }
+
+      // Handle date format
+      if (option.reporting_date) {
+        const formattedDate = option.reporting_date.toString();
+        // Convert YYYYMMDD to YYYY-MM-DD if needed
+        const dateValue =
+          formattedDate.length === 8
+            ? `${formattedDate.slice(0, 4)}-${formattedDate.slice(
+                4,
+                6
+              )}-${formattedDate.slice(6, 8)}`
+            : formattedDate;
+        return {
+          value: dateValue,
+          label: dateValue,
+        };
+      }
+
+      // Handle any other key-value pair
+      const entries = Object.entries(option);
+      if (entries.length > 0) {
+        const [key, value] = entries[0]; // Take first key-value pair
+        const stringValue = value?.toString() || "";
+        return {
+          value: stringValue,
+          label: stringValue,
+        };
+      }
+
+      return {
+        value: "",
+        label: "",
+      };
+    })
+    .filter((option) => option.value !== ""); // Filter out empty options
 };
 
 const getValidationErrors = (
@@ -77,6 +133,11 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
     validationResults
   );
   const hasError = validationErrors.length > 0;
+  const currentValue = row[item.code]?.toString() || "";
+
+  const normalizedOptions = useMemo(() => {
+    return normalizeValueOptions(item.value_options);
+  }, [item.value_options]);
 
   const commonInputProps = {
     className: cn(
@@ -84,37 +145,39 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
       hasError && "border-red-500 pr-8"
     ),
   };
+
   const isValidDate = (dateString: string, pattern: string): boolean => {
+    if (!pattern) return true;
     const regex = new RegExp(`^${pattern}$`);
     return regex.test(dateString);
   };
 
   const renderInput = () => {
-    if (item.value_options && Array.isArray(item.value_options)) {
-      const currentValue = row[item.code]?.toString() || "";
+    // Handle Select for value_options
+    if (normalizedOptions.length > 0) {
       return (
         <Select
           value={currentValue}
           onValueChange={(value) =>
             handleCellChange(rowIndex, item.code, value)
           }
+          // disabled={item.is_system_generated}
         >
           <SelectTrigger className={cn(commonInputProps.className, "h-10")}>
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
           <SelectContent>
-            {item.value_options.map((option) => (
-              <SelectItem
-                key={option?.item_code}
-                value={option?.item_code?.toString()}
-              >
-                {option.item_name}
+            {normalizedOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       );
     }
+
+    // Handle Date inputs
     if (inputType === "date" && item.datatype === "GregorianDay") {
       const dateValue = row[item.code];
       const datePattern =
@@ -130,17 +193,20 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
             isValidDate(format(date, "yyyy-MM-dd"), datePattern)
           }
           className={commonInputProps.className}
+          // disabled={item.is_system_generated}
         />
       );
     }
 
+    // Default Input
     return (
       <Input
         type={inputType}
-        value={row[item.code] || ""}
+        value={currentValue}
         onChange={(e) =>
           handleCellChange(rowIndex, item.code, e.target.value || null)
         }
+        // disabled={item.is_system_generated}
         {...commonInputProps}
       />
     );
