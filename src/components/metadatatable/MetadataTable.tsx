@@ -1,5 +1,5 @@
-// MetadataTable.tsx
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ExcelOperations } from "../ExcelOperations";
@@ -27,6 +27,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   datasetVersion,
   validationResults,
 }) => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -68,21 +69,38 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(true);
   }, [metadata]);
 
-  const handleBulkDataUpdate = useCallback(
-    (data: Record<string, string | null>[]) => {
-      // Map Excel data to match table structure
-      const formattedData = data.map((row) => {
-        const formattedRow: Record<string, string | null> = {};
-        metadata?.forEach((column) => {
-          formattedRow[column.code] = row[column.code] || null;
-        });
-        return formattedRow;
+  const handleExcelDataLoad = useCallback(
+    (excelData: Record<string, string | null>[]) => {
+      // Map column codes to match your table structure and add any missing columns
+      const mappedData = excelData.map((row) => {
+        const mappedRow: Record<string, string | null> = {};
+        if (metadata) {
+          metadata.forEach((column) => {
+            mappedRow[column.code] = row[column.code] || null;
+          });
+        }
+        return mappedRow;
       });
 
-      setLocalTableData(formattedData);
+      // Append new data to existing data
+      setLocalTableData((prevData) => {
+        const combinedData = [...prevData, ...mappedData];
+
+        // Log the number of rows added
+        const newRowsCount = mappedData.length;
+        toast({
+          title: "Data Appended",
+          description: `Added ${newRowsCount} new row${
+            newRowsCount !== 1 ? "s" : ""
+          } to the table`,
+        });
+
+        return combinedData;
+      });
+
       setIsDataModified(true);
     },
-    [metadata]
+    [metadata, toast]
   );
 
   const handleSave = useCallback(async () => {
@@ -90,18 +108,29 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     try {
       await onSave(localTableData);
       setIsDataModified(false);
+      toast({
+        title: "Success",
+        description: "All changes saved successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [localTableData, onSave]);
+  }, [localTableData, onSave, toast]);
 
-  const handleExcelUpload = useCallback(
-    async (data: Record<string, string | null>[]) => {
-      handleBulkDataUpdate(data);
-      setIsDataModified(true);
-    },
-    [handleBulkDataUpdate]
-  );
+  const handleValidate = useCallback(async () => {
+    setIsValidating(true);
+    try {
+      await onValidate(localTableData);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [onValidate, localTableData]);
 
   const filteredMetadata = useMemo(() => {
     return (
@@ -111,6 +140,18 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     );
   }, [metadata, searchTerm]);
 
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (!metadata || metadata.length === 0) {
+    return (
+      <p className="text-gray-500 italic">
+        No data available for the selected table.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between flex-end">
@@ -118,13 +159,19 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
           Data for table {selectedTable.code} | {selectedTable.label}{" "}
           {datasetVersion && `| Version ${datasetVersion.version_nr}`}
         </h3>
-        <ExcelOperations
-          objectCode={selectedTable.code.toLowerCase()}
-          columns={metadata || []}
-          onUpload={handleExcelUpload}
-          currentData={localTableData}
-          isLoading={isSaving || isLoading}
-        />
+        <div className="flex items-center space-x-2">
+          <div className="text-sm text-gray-500">
+            {localTableData.length} rows
+          </div>
+          <ExcelOperations
+            objectCode={selectedTable.code.toLowerCase()}
+            columns={metadata}
+            onUpload={onSave}
+            currentData={localTableData}
+            isLoading={isSaving || isLoading}
+            onDataLoad={handleExcelDataLoad}
+          />
+        </div>
       </div>
 
       <MetadataTableHeader
@@ -132,7 +179,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
-        onValidate={() => onValidate(localTableData)}
+        onValidate={handleValidate}
         isDataModified={isDataModified}
         isSaving={isSaving}
         isValidating={isValidating}
@@ -154,7 +201,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   );
 };
 
-const LoadingSkeleton: React.FC = () => (
+const LoadingSkeleton = () => (
   <div className="space-y-4">
     <Skeleton className="h-8 w-3/4" />
     <div className="flex justify-between">
@@ -168,3 +215,5 @@ const LoadingSkeleton: React.FC = () => (
     </div>
   </div>
 );
+
+export default MetadataTable;

@@ -17,12 +17,13 @@ interface ExcelOperationsProps {
   onUpload: (data: any[]) => Promise<void>;
   currentData?: any[];
   isLoading?: boolean;
+  onDataLoad?: (data: Record<string, string | null>[]) => void; // New callback for data loading
 }
 
 export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   objectCode,
   columns,
-  onUpload,
+  onDataLoad,
   currentData,
   isLoading,
 }) => {
@@ -79,6 +80,45 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     }
   };
 
+  const processExcelData = (
+    data: Record<string, any>[]
+  ): Record<string, string | null>[] => {
+    return data.map((row) => {
+      const processedRow: Record<string, string | null> = {};
+
+      columns.forEach((column) => {
+        let value = row[column.code];
+
+        // Handle different data types
+        if (value !== undefined && value !== null) {
+          if (column.datatype.toLowerCase() === "gregorianday") {
+            // Convert date formats if needed
+            try {
+              const dateStr = value.toString();
+              if (dateStr.length === 8) {
+                // Format YYYYMMDD
+                value = `${dateStr.slice(0, 4)}-${dateStr.slice(
+                  4,
+                  6
+                )}-${dateStr.slice(6, 8)}`;
+              }
+            } catch (e) {
+              console.warn(
+                `Failed to format date for column ${column.code}:`,
+                e
+              );
+            }
+          }
+          processedRow[column.code] = value.toString();
+        } else {
+          processedRow[column.code] = null;
+        }
+      });
+
+      return processedRow;
+    });
+  };
+
   // Download current data
   const downloadData = () => {
     try {
@@ -122,61 +162,6 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const validateRow = (row: Record<string, any>, index: number) => {
-    const processedRow: Record<string, string | null> = {};
-
-    columns.forEach((col) => {
-      const colCode = col.code;
-      let value = row[colCode];
-
-      // Convert empty strings to null
-      value = value === "" ? null : value?.toString() ?? null;
-
-      // Validate mandatory fields
-      if (col.is_mandatory && value === null) {
-        throw new Error(
-          `Row ${index + 1}: Missing required value for ${
-            col.label || col.code
-          }`
-        );
-      }
-
-      // Validate data types based on column configuration
-      if (value !== null) {
-        switch (col.datatype.toLowerCase()) {
-          case "number":
-          case "decimal":
-            if (isNaN(Number(value))) {
-              throw new Error(
-                `Row ${index + 1}: Invalid number format for ${
-                  col.label || col.code
-                }`
-              );
-            }
-            break;
-          case "date":
-            if (isNaN(Date.parse(value))) {
-              throw new Error(
-                `Row ${index + 1}: Invalid date format for ${
-                  col.label || col.code
-                }`
-              );
-            }
-            break;
-          // Add more data type validations as needed
-        }
-      }
-
-      processedRow[colCode] = value;
-    });
-
-    return processedRow;
-  };
-
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
@@ -194,55 +179,44 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = read(data, { type: "array" });
 
-          // Validate file structure
-          const infoSheet = workbook.Sheets["info"];
-          if (
-            !infoSheet ||
-            infoSheet?.A1?.v !== "object_code" ||
-            infoSheet?.A2?.v !== objectCode
-          ) {
-            throw new Error("Invalid file format or wrong dataset selected");
+          // Get first sheet
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          if (!firstSheet) {
+            throw new Error("No data sheet found in file");
           }
 
-          // Get data sheet
-          const dataSheet = workbook.Sheets[workbook.SheetNames[0]];
-          if (!dataSheet) {
-            throw new Error("No data found in file");
-          }
-
-          // Convert to JSON and validate
-          const jsonData = utils.sheet_to_json(dataSheet, {
+          // Convert to JSON with header row mapping
+          const jsonData = utils.sheet_to_json(firstSheet, {
             raw: false,
             defval: null,
+            header: columns.map((col) => col.code), // Map headers to column codes
           });
 
-          // Process and validate each row
-          const processedData = jsonData.map((row: any, index: number) =>
-            validateRow(row, index)
-          );
-          console.log("processedData: ", processedData);
-
-          if (processedData.length === 0) {
-            throw new Error("No valid data found in file");
+          // Remove header row if it was included
+          if (
+            jsonData.length > 0 &&
+            Object.keys(jsonData[0]).every((key) => key === jsonData[0][key])
+          ) {
+            jsonData.shift();
           }
 
-          // Upload processed data
-          await onUpload(processedData);
+          // Process the data
+          const processedData = processExcelData(jsonData);
+
+          // Send to MetadataTable to append
+          if (onDataLoad) {
+            onDataLoad(processedData);
+          }
 
           // Clear file input
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
           }
-
-          toast({
-            title: "Success",
-            description: `Processed ${processedData.length} rows successfully`,
-          });
         } catch (error: any) {
           console.error("File processing error:", error);
           toast({
             title: "Error",
-            description: error.message || "Failed to process file",
+            description: "Failed to process file. Please check the format.",
             variant: "destructive",
           });
         }
@@ -261,7 +235,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       console.error("Upload error:", error);
       toast({
         title: "Error",
-        description: "Failed to upload file",
+        description: "Failed to process file",
         variant: "destructive",
       });
     }
@@ -277,10 +251,10 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
               disabled={isLoading}
             >
               <Download className="h-4 w-4 mr-2" />
-              Template
+              Download Template
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Download empty Excel template</TooltipContent>
+          <TooltipContent>Download empty template</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -293,7 +267,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
               disabled={isLoading || !currentData?.length}
             >
               <Download className="h-4 w-4 mr-2" />
-              Data
+              Save Data
             </Button>
           </TooltipTrigger>
           <TooltipContent>Download current data as Excel</TooltipContent>
@@ -309,7 +283,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
               disabled={isLoading}
             >
               <Upload className="h-4 w-4 mr-2" />
-              Upload
+              Upload Data
             </Button>
           </TooltipTrigger>
           <TooltipContent>Upload Excel file</TooltipContent>
