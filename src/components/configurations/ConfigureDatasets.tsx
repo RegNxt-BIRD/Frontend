@@ -17,6 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import {
+  Column,
   Dataset,
   DatasetResponse,
   DatasetVersion,
@@ -475,8 +476,8 @@ export const ConfigureDatasets: React.FC = () => {
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
           isLoadingColumns={!versionColumns && !!selectedVersionId}
-          isVersionModalOpen={isVersionModalOpen} // Add this
-          setIsVersionModalOpen={setIsVersionModalOpen} // Add this
+          isVersionModalOpen={isVersionModalOpen}
+          setIsVersionModalOpen={setIsVersionModalOpen}
         />
       ) : (
         <DatasetAccordion
@@ -584,8 +585,8 @@ export const ConfigureDatasets: React.FC = () => {
             });
           }
         }}
-        currentVersion={datasetVersions?.data[0]} // Pass current version info
-        datasetCode={selectedDataset?.code || ""} // Pass dataset code
+        currentVersion={datasetVersions?.data[0]}
+        datasetCode={selectedDataset?.code || ""}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { DatasetVersion } from "@/types/databaseTypes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -24,16 +25,14 @@ interface DatasetVersionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: FormData) => void;
-  currentVersion?: {
-    version_nr: number;
-    code: string;
-  };
+  currentVersion?: DatasetVersion;
   datasetCode: string;
 }
 
 const formSchema = z.object({
   label: z.string().min(1, "Label is required"),
   description: z.string().optional(),
+  code: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -50,6 +49,7 @@ export function DatasetVersionFormModal({
     defaultValues: {
       label: "",
       description: "",
+      code: "",
     },
   });
 
@@ -59,7 +59,7 @@ export function DatasetVersionFormModal({
   const handleSubmit = (data: FormData) => {
     onSubmit({
       ...data,
-      code: datasetCode, // We'll let backend generate the full version code
+      code: datasetCode,
     });
     onClose();
   };

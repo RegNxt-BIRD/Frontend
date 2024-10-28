@@ -6,14 +6,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Column } from "@/types/databaseTypes";
+import { MetadataItem } from "@/types/databaseTypes";
 import { Download, Upload } from "lucide-react";
 import { useRef } from "react";
 import { read, utils, writeFile } from "xlsx";
 
 interface ExcelOperationsProps {
   objectCode: string;
-  columns: Column[];
+  columns: MetadataItem[];
   onUpload: (data: any[]) => Promise<void>;
   currentData?: any[];
   isLoading?: boolean;
@@ -190,11 +190,11 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
             raw: false,
             defval: null,
             header: columns.map((col) => col.code), // Map headers to column codes
-          });
+          }) as Record<string, any>[];
 
           // Remove header row if it was included
           if (
-            jsonData.length > 0 &&
+            jsonData?.length > 0 &&
             Object.keys(jsonData[0]).every((key) => key === jsonData[0][key])
           ) {
             jsonData.shift();

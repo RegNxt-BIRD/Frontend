@@ -29,7 +29,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 interface EditableColumnTableProps {
   initialColumns: Column[];
-  onSave: (columns: Column[]) => Promise<void>;
+  onSave: any;
   isLoading?: boolean;
   versionId: string | number;
 }

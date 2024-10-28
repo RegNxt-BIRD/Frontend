@@ -112,6 +112,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         title: "Success",
         description: "All changes saved successfully",
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       toast({
         title: "Error",
