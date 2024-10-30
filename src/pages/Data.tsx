@@ -5,6 +5,7 @@ import useSWR from "swr";
 
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
+import DatasetFilter from "@/components/DatasetFilter";
 import DatePicker from "@/components/DatePicker";
 import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
@@ -418,7 +419,6 @@ const Data: React.FC = () => {
           onRowClick={handleTableClick}
         />
       )}
-
       {dataTableJson && (
         <div className="mt-4 flex justify-between items-center">
           <div>
@@ -454,16 +454,55 @@ const Data: React.FC = () => {
                 Valid from: {datasetVersion.valid_from} to{" "}
                 {datasetVersion.valid_to || "Present"}
               </p>
-              <MetadataTable
-                metadata={metadata}
-                tableData={metadataTableData}
-                isLoading={isMetadataLoading}
-                onSave={handleSaveMetadata}
-                onValidate={handleValidate}
-                selectedTable={selectedTable}
-                datasetVersion={datasetVersion}
-                validationResults={validationResults}
+
+              <DatasetFilter
+                datasetId={selectedTable.dataset_id}
+                versionId={datasetVersion.dataset_version_id}
+                onFilterApply={async (filterValues) => {
+                  try {
+                    // Set loading state
+                    setIsMetadataLoading(true);
+
+                    // Build query params
+                    const params = new URLSearchParams({
+                      version_id: datasetVersion.dataset_version_id.toString(),
+                      ...filterValues,
+                    });
+
+                    // Fetch filtered data
+                    const response = await fastApiInstance.get(
+                      `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
+                    );
+
+                    // Update table data
+                    setMetadataTableData(response.data);
+                  } catch (error) {
+                    console.error("Error fetching filtered data:", error);
+                    toast({
+                      title: "Error",
+                      description:
+                        "Failed to fetch data with the selected filters",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsMetadataLoading(false);
+                  }
+                }}
               />
+
+              {/* Only show MetadataTable after initial filter application */}
+              {metadataTableData.length > 0 && (
+                <MetadataTable
+                  metadata={metadata}
+                  tableData={metadataTableData}
+                  isLoading={isMetadataLoading}
+                  onSave={handleSaveMetadata}
+                  onValidate={handleValidate}
+                  selectedTable={selectedTable}
+                  datasetVersion={datasetVersion}
+                  validationResults={validationResults}
+                />
+              )}
             </>
           ) : (
             <p className="text-gray-500 italic">

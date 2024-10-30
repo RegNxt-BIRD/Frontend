@@ -161,9 +161,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
           {datasetVersion && `| Version ${datasetVersion.version_nr}`}
         </h3>
         <div className="flex items-center space-x-2">
-          <div className="text-sm text-gray-500">
-            {localTableData.length} rows
-          </div>
           <ExcelOperations
             objectCode={selectedTable.code.toLowerCase()}
             columns={metadata}
