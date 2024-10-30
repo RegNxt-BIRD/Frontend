@@ -5,7 +5,6 @@ import useSWR from "swr";
 
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
-import DatasetFilter from "@/components/DatasetFilter";
 import DatePicker from "@/components/DatePicker";
 import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
@@ -29,6 +28,7 @@ import {
   Layers,
   ValidationResult,
 } from "@/types/databaseTypes";
+import FilterPanel from "@/components/FilterPanel";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -455,26 +455,21 @@ const Data: React.FC = () => {
                 {datasetVersion.valid_to || "Present"}
               </p>
 
-              <DatasetFilter
+              <FilterPanel
                 datasetId={selectedTable.dataset_id}
                 versionId={datasetVersion.dataset_version_id}
                 onFilterApply={async (filterValues) => {
                   try {
-                    // Set loading state
                     setIsMetadataLoading(true);
-
-                    // Build query params
                     const params = new URLSearchParams({
                       version_id: datasetVersion.dataset_version_id.toString(),
                       ...filterValues,
                     });
 
-                    // Fetch filtered data
                     const response = await fastApiInstance.get(
                       `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
                     );
 
-                    // Update table data
                     setMetadataTableData(response.data);
                   } catch (error) {
                     console.error("Error fetching filtered data:", error);
@@ -488,9 +483,10 @@ const Data: React.FC = () => {
                     setIsMetadataLoading(false);
                   }
                 }}
+                disabled={isMetadataLoading}
               />
 
-              {/* Only show MetadataTable after initial filter application */}
+              {/* Show MetadataTable when data is available */}
               {metadataTableData.length > 0 && (
                 <MetadataTable
                   metadata={metadata}
