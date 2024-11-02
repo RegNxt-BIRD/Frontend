@@ -90,6 +90,27 @@ export interface DataItem {
   type: string;
 }
 
+export interface FilterValue {
+  value: string;
+  label: string;
+}
+
+export interface FilterState {
+  [key: string]: string | null;
+}
+
+export interface FilterOption {
+  code: string;
+  value: string;
+  label: string;
+  datatype: string;
+  isSelected?: boolean;
+}
+
+export interface DropdownState {
+  [key: string]: FilterOption[];
+}
+
 export interface DatasetVersions {
   data: DatasetVersion[];
 }

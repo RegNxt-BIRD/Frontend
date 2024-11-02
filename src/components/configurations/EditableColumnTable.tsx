@@ -72,7 +72,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     setColumns(initialColumns);
     setModifiedColumns(new Set());
   }, [initialColumns]);
-  console.log("initialColumns: ", initialColumns);
   // Filtered columns based on search
   const filteredColumns = useMemo(() => {
     return columns.filter(

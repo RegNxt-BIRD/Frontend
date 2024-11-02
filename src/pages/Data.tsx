@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
 import DatePicker from "@/components/DatePicker";
+import FilterPanel from "@/components/FilterPanel";
 import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
 import { SharedColumnFilters } from "@/components/SharedFilters";
@@ -28,7 +29,6 @@ import {
   Layers,
   ValidationResult,
 } from "@/types/databaseTypes";
-import FilterPanel from "@/components/FilterPanel";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -36,6 +36,7 @@ const Data: React.FC = () => {
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
   const [selectedTable, setSelectedTable] = useState<any | null>(null);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [metadata, setMetadata] = useState<any[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
@@ -98,6 +99,59 @@ const Data: React.FC = () => {
       return acc;
     }, {});
   }, [dataTableJson]);
+
+  const handleFilterApply = useCallback(
+    async (filterValues: Record<string, any>) => {
+      if (!selectedTable || !datasetVersion) return;
+
+      setIsFilterLoading(true);
+      setIsMetadataLoading(true);
+
+      try {
+        // Check if all values are null or empty strings
+        const allFiltersEmpty = Object.values(filterValues).every(
+          (v) => v === null || v === ""
+        );
+
+        if (allFiltersEmpty) {
+          // Instead of immediately clearing, fetch default data
+          const response = await fastApiInstance.get(
+            `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion.dataset_version_id}`
+          );
+          setMetadataTableData(response.data);
+        } else {
+          const params = new URLSearchParams();
+          params.append(
+            "version_id",
+            datasetVersion.dataset_version_id.toString()
+          );
+
+          // Only add non-null filter values
+          Object.entries(filterValues).forEach(([key, value]) => {
+            if (value !== null && value !== "") {
+              params.append(key, value.toString());
+            }
+          });
+
+          const response = await fastApiInstance.get(
+            `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
+          );
+          setMetadataTableData(response.data);
+        }
+      } catch (error) {
+        console.error("Error applying filters:", error);
+        toast({
+          title: "Error",
+          description: "Failed to apply filters. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsFilterLoading(false);
+        setIsMetadataLoading(false);
+      }
+    },
+    [selectedTable, datasetVersion, toast]
+  );
 
   const filteredData = useMemo(() => {
     const filtered: Record<string, Record<string, DatasetItem[]>> = {};
@@ -231,21 +285,32 @@ const Data: React.FC = () => {
 
   const fetchMetadata = useCallback(async () => {
     if (!selectedTable || !datasetVersion) return;
+
     setIsMetadataLoading(true);
     try {
-      const columnsResponse = await fastApiInstance.get(
-        `/api/v1/datasets/${selectedTable.dataset_id}/version-columns/`,
-        {
-          params: { version_id: datasetVersion.dataset_version_id },
-        }
-      );
+      const [columnsResponse, dataResponse] = await Promise.all([
+        fastApiInstance.get(
+          `/api/v1/datasets/${selectedTable.dataset_id}/version-columns/`,
+          { params: { version_id: datasetVersion.dataset_version_id } }
+        ),
+        fastApiInstance.get(
+          `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion.dataset_version_id}`
+        ),
+      ]);
+
       setMetadata(
         Array.isArray(columnsResponse.data) ? columnsResponse.data : null
       );
+      setMetadataTableData(dataResponse.data);
     } catch (error) {
       console.error("Error fetching metadata:", error);
       setMetadata(null);
       setMetadataTableData([]);
+      toast({
+        title: "Error",
+        description: "Failed to fetch metadata. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsMetadataLoading(false);
     }
@@ -442,6 +507,7 @@ const Data: React.FC = () => {
           </div>
         </div>
       )}
+
       {selectedTable && (
         <div className="mt-8">
           <TableInfoHeader
@@ -458,36 +524,12 @@ const Data: React.FC = () => {
               <FilterPanel
                 datasetId={selectedTable.dataset_id}
                 versionId={datasetVersion.dataset_version_id}
-                onFilterApply={async (filterValues) => {
-                  try {
-                    setIsMetadataLoading(true);
-                    const params = new URLSearchParams({
-                      version_id: datasetVersion.dataset_version_id.toString(),
-                      ...filterValues,
-                    });
-
-                    const response = await fastApiInstance.get(
-                      `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
-                    );
-
-                    setMetadataTableData(response.data);
-                  } catch (error) {
-                    console.error("Error fetching filtered data:", error);
-                    toast({
-                      title: "Error",
-                      description:
-                        "Failed to fetch data with the selected filters",
-                      variant: "destructive",
-                    });
-                  } finally {
-                    setIsMetadataLoading(false);
-                  }
-                }}
+                onFilterApply={handleFilterApply}
                 disabled={isMetadataLoading}
+                isDataLoading={isFilterLoading || isMetadataLoading}
               />
 
-              {/* Show MetadataTable when data is available */}
-              {metadataTableData.length > 0 && (
+              {(metadataTableData.length > 0 || isFilterLoading) && (
                 <MetadataTable
                   metadata={metadata}
                   tableData={metadataTableData}
