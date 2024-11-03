@@ -124,7 +124,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
                     {Object.values(data[framework]).reduce(
                       (acc, items) => acc + items.length,
                       0
-                    )}{" "}
+                    )}
                     item(s)
                   </span>
                 </div>

@@ -68,6 +68,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   handleViewHistory,
   handleConfigureDataset,
 }) => {
+  console.log("datasets: ", datasets);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedDatasetId, setExpandedDatasetId] = useState<number | null>(
     null
@@ -76,13 +77,26 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
     null
   );
 
-  // Pagination
-  const totalPages = Math.ceil(datasets.length / DATASETS_PER_PAGE);
+  const flattenedDatasets = useMemo(() => {
+    if (!Array.isArray(datasets)) {
+      const flattened: Dataset[] = [];
+      Object.entries(datasets).forEach(([groupName, groupItems]) => {
+        if (Array.isArray(groupItems)) {
+          flattened.push(...groupItems);
+        }
+      });
+
+      return flattened;
+    }
+    return datasets;
+  }, [datasets]);
+
+  const totalPages = Math.ceil(flattenedDatasets.length / DATASETS_PER_PAGE);
   const paginatedDatasets = useMemo(() => {
     const start = (currentPage - 1) * DATASETS_PER_PAGE;
     const end = start + DATASETS_PER_PAGE;
-    return datasets.slice(start, end);
-  }, [datasets, currentPage]);
+    return flattenedDatasets.slice(start, end);
+  }, [flattenedDatasets, currentPage]);
 
   const handleAccordionChange = (datasetId: string) => {
     const id = parseInt(datasetId);
@@ -91,7 +105,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
       setSelectedVersionId(null);
     } else {
       setExpandedDatasetId(id);
-      const dataset = datasets.find((d) => d.dataset_id === id);
+      const dataset = flattenedDatasets.find((d) => d.dataset_id === id);
       if (dataset) {
         handleDatasetClick(dataset);
       }
@@ -230,17 +244,19 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
             <AccordionTrigger className="hover:no-underline">
               <div className="flex flex-1 items-center justify-between px-4">
                 <div className="flex items-center space-x-4">
-                  <div>
+                  <div className="text-left">
                     <h3 className="text-sm font-medium">{dataset.label}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {dataset.code}
-                    </p>
+                    <div className="flex gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        {dataset.code}
+                      </p>
+                      <Badge>{dataset.framework}</Badge>
+                      <Badge variant="outline">{dataset.type}</Badge>
+                      {!dataset.is_visible && (
+                        <Badge variant="secondary">Hidden</Badge>
+                      )}
+                    </div>
                   </div>
-                  <Badge>{dataset.framework}</Badge>
-                  <Badge variant="outline">{dataset.type}</Badge>
-                  {!dataset.is_visible && (
-                    <Badge variant="secondary">Hidden</Badge>
-                  )}
                 </div>
 
                 <div

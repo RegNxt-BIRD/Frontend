@@ -19,15 +19,15 @@ import { fastApiInstance } from "@/lib/axios";
 import {
   Column,
   Dataset,
+  DatasetItem,
   DatasetResponse,
   DatasetVersion,
   DatasetVersions,
-  Framework,
   Frameworks,
   Layers,
 } from "@/types/databaseTypes";
 import { Plus } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
 import { DatasetAccordion } from "./DatasetAccordion";
@@ -45,6 +45,8 @@ export const ConfigureDatasets: React.FC = () => {
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10000);
+
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
 
   // Modal states
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
@@ -96,6 +98,16 @@ export const ConfigureDatasets: React.FC = () => {
       fastApiInstance
     );
 
+  const { data: dataTableJson } = useSWR<DatasetResponse>(
+    `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
+    fastApiInstance,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 3600000,
+    }
+  );
+
   const { data: versionColumns, mutate: mutateVersionColumns } = useSWR(
     selectedVersionId
       ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
@@ -141,40 +153,94 @@ export const ConfigureDatasets: React.FC = () => {
     fastApiInstance
   );
 
-  // Filtered datasets
-  const filteredDatasets = useMemo(() => {
-    return (
-      (datasetsResponse?.data?.results &&
-        datasetsResponse.data.results.filter((dataset) => {
-          const frameworkMatch =
-            selectedFramework === NO_FILTER ||
-            dataset.framework === selectedFramework;
-          const layerMatch =
-            selectedLayer === NO_FILTER || dataset.type === selectedLayer;
-          const columnFilterMatch = Object.entries(columnFilters).every(
-            ([key, value]) =>
-              value === "" ||
-              dataset?.[key as keyof Dataset]
-                ?.toString()
-                .toLowerCase()
-                .includes(value.toLowerCase())
-          );
-          return frameworkMatch && layerMatch && columnFilterMatch;
-        })) ||
-      []
-    );
-  }, [datasetsResponse, selectedFramework, selectedLayer, columnFilters]);
+  const handleFrameworkChange = useCallback((value: string) => {
+    setSelectedFramework(value);
+    setSelectedTable(null);
+  }, []);
 
-  // Grouped datasets for framework view
-  const groupedDatasets = useMemo(() => {
-    return filteredDatasets.reduce((acc, dataset) => {
-      if (!acc[dataset.framework]) {
-        acc[dataset.framework] = [];
+  const handleLayerChange = useCallback((value: string) => {
+    setSelectedLayer(value);
+    setSelectedTable(null);
+  }, []);
+
+
+  const groupedData = useMemo(() => {
+    if (!dataTableJson?.data?.results) return {};
+    return dataTableJson.data.results.reduce<
+      Record<string, Record<string, DatasetItem[]>>
+    >((acc, item) => {
+      const framework = item.framework;
+      const group =
+        item.groups && item.groups.length > 0 && item.groups[0].label
+          ? item.groups[0].label
+          : "Ungrouped Datasets";
+
+      if (!acc[framework]) {
+        acc[framework] = {};
       }
-      acc[dataset.framework].push(dataset);
+      if (!acc[framework][group]) {
+        acc[framework][group] = [];
+      }
+      acc[framework][group].push(item as any);
+
       return acc;
-    }, {} as Record<string, Dataset[]>);
-  }, [filteredDatasets]);
+    }, {});
+  }, [dataTableJson]);
+
+  const filteredData = useMemo(() => {
+    const filtered: Record<string, Record<string, DatasetItem[]>> = {};
+
+    Object.entries(groupedData).forEach(([framework, groups]) => {
+      if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
+        return;
+      }
+
+      filtered[framework] = {};
+
+      Object.entries(groups as Record<string, DatasetItem[]>).forEach(
+        ([group, items]) => {
+          const filteredItems = items.filter((item: DatasetItem) => {
+            const layerMatch =
+              selectedLayer === NO_FILTER || item.type === selectedLayer;
+            const columnFilterMatch = Object.entries(columnFilters).every(
+              ([key, value]) => {
+                if (key === "group") {
+                  return (
+                    value === "" ||
+                    (item.groups &&
+                      item.groups.some(
+                        (g: any) =>
+                          g.code.toLowerCase().includes(value.toLowerCase()) ||
+                          g.label.toLowerCase().includes(value.toLowerCase())
+                      ))
+                  );
+                }
+                return (
+                  value === "" ||
+                  (item[key as keyof DatasetItem] &&
+                    item[key as keyof DatasetItem]
+                      .toString()
+                      .toLowerCase()
+                      .includes(value.toLowerCase()))
+                );
+              }
+            );
+            return layerMatch && columnFilterMatch;
+          });
+
+          if (filteredItems.length > 0) {
+            filtered[framework][group] = filteredItems;
+          }
+        }
+      );
+
+      if (Object.keys(filtered[framework]).length === 0) {
+        delete filtered[framework];
+      }
+    });
+
+    return filtered;
+  }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
   // Dataset handlers
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
@@ -400,6 +466,21 @@ export const ConfigureDatasets: React.FC = () => {
     setCurrentPage(newPage);
   };
 
+  const layersWithNoFilter = useMemo(
+    () => [
+      { code: NO_FILTER, name: "No Layer Selected" },
+      ...(layers?.data || []),
+    ],
+    [layers]
+  );
+  const frameworksWithNoFilter = useMemo(
+    () => [
+      { code: NO_FILTER, name: "No Framework Selected" },
+      ...(frameworks?.data || []),
+    ],
+    [frameworks]
+  );
+
   if (!layers || !frameworks || !datasetsResponse) return <DataSkeleton />;
 
   return (
@@ -408,33 +489,30 @@ export const ConfigureDatasets: React.FC = () => {
 
       {/* Filters */}
       <div className="flex space-x-4 mb-4">
-        <Select onValueChange={setSelectedFramework} value={selectedFramework}>
+        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
           <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select Framework" />
+            <SelectValue placeholder="Select a Framework" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_FILTER}>All Frameworks</SelectItem>
-            {frameworks.data?.map((framework: Framework) => (
+            {frameworksWithNoFilter.map((framework) => (
               <SelectItem key={framework.code} value={framework.code}>
                 {framework.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        <Select onValueChange={setSelectedLayer} value={selectedLayer}>
+        <Select onValueChange={handleLayerChange} value={selectedLayer}>
           <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select Layer" />
+            <SelectValue placeholder="Select a Layer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_FILTER}>All Layers</SelectItem>
-            {layers.data?.map((layer) => (
+            {layersWithNoFilter.map((layer) => (
               <SelectItem key={layer.code} value={layer.code}>
                 {layer.name}
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select>{" "}
       </div>
 
       <SharedColumnFilters
@@ -444,7 +522,6 @@ export const ConfigureDatasets: React.FC = () => {
         }
       />
 
-      {/* Create Dataset Button */}
       <div className="mt-4 flex flex-row-reverse">
         <Button onClick={() => setIsDatasetModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -455,9 +532,11 @@ export const ConfigureDatasets: React.FC = () => {
       {/* Dataset List */}
       {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
         <FrameworkAccordion
-          groupedDatasets={groupedDatasets}
+          // groupedDatasets={groupedDatasets}
+          groupedDatasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
+          selectedFramework={selectedFramework}
           selectedDataset={selectedDataset}
           handleEditDataset={(dataset) => {
             setEditingDataset(dataset);
@@ -481,7 +560,7 @@ export const ConfigureDatasets: React.FC = () => {
         />
       ) : (
         <DatasetAccordion
-          datasets={filteredDatasets}
+          datasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
           handleEditDataset={(dataset) => {
@@ -507,12 +586,12 @@ export const ConfigureDatasets: React.FC = () => {
         />
       )}
 
-      {datasetsResponse && (
+      {dataTableJson && (
         <div className="mt-4 flex justify-between items-center">
           <div>
             Showing {(currentPage - 1) * pageSize + 1} to{" "}
-            {Math.min(currentPage * pageSize, datasetsResponse.data.count)} of{" "}
-            {datasetsResponse.data.count} entries
+            {Math.min(currentPage * pageSize, dataTableJson.data.count)} of{" "}
+            {dataTableJson.data.count} entries
           </div>
           <div className="flex space-x-2">
             <Button
@@ -523,7 +602,7 @@ export const ConfigureDatasets: React.FC = () => {
             </Button>
             <Button
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === datasetsResponse.data.num_pages}
+              disabled={currentPage === dataTableJson.data.num_pages}
             >
               Next
             </Button>
