@@ -77,6 +77,8 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
   selectedDataset,
   isVersionModalOpen,
   handleUpdateVersion,
+  onVersionSelect,
+  versionColumns,
   handleCreateVersion,
   handleDeleteVersion,
   handleEditDataset,
@@ -190,7 +192,9 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
                           datasetVersions={datasetVersions}
                           isLoadingVersions={isLoadingVersions}
                           selectedDataset={selectedDataset}
+                          onVersionSelect={onVersionSelect}
                           handleUpdateVersion={handleUpdateVersion}
+                          versionColumns={versionColumns}
                           isVersionModalOpen={isVersionModalOpen}
                           setIsVersionModalOpen={setIsVersionModalOpen}
                           handleCreateVersion={handleCreateVersion}

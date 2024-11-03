@@ -30,11 +30,10 @@ import { Plus } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
-import { DatasetAccordion } from "./DatasetAccordion";
+import { ConfigurationAccordion } from "./ConfigAccord";
 import { DatasetFormModal } from "./DatasetFormModal";
 import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
-import { ConfigurationAccordion } from "./ConfigAccord";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -109,12 +108,6 @@ export const ConfigureDatasets: React.FC = () => {
     }
   );
 
-  const { data: versionColumns, mutate: mutateVersionColumns } = useSWR(
-    selectedVersionId
-      ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
-      : null,
-    fastApiInstance
-  );
   const handleUpdateColumns = async (updatedColumns: Column[]) => {
     if (!selectedDataset || !selectedVersionId) return;
 
@@ -154,6 +147,13 @@ export const ConfigureDatasets: React.FC = () => {
     fastApiInstance
   );
 
+  const { data: versionColumns, mutate: mutateVersionColumns } = useSWR(
+    selectedVersionId
+      ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
+      : null,
+    fastApiInstance
+  );
+
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
     setSelectedTable(null);
@@ -163,7 +163,6 @@ export const ConfigureDatasets: React.FC = () => {
     setSelectedLayer(value);
     setSelectedTable(null);
   }, []);
-
 
   const groupedData = useMemo(() => {
     if (!dataTableJson?.data?.results) return {};

@@ -65,10 +65,10 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
   isLoadingColumns,
   handleDeleteDataset,
   isLoadingVersions,
+  onVersionSelect,
   handleViewHistory,
   handleConfigureDataset,
 }) => {
-  console.log("datasets: ", datasets);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedDatasetId, setExpandedDatasetId] = useState<number | null>(
     null
@@ -173,13 +173,18 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
+                  onClick={() => {
+                    onVersionSelect(
+                      selectedVersionId === version.dataset_version_id
+                        ? null
+                        : version.dataset_version_id
+                    );
                     setSelectedVersionId(
                       selectedVersionId === version.dataset_version_id
                         ? null
                         : version.dataset_version_id
-                    )
-                  }
+                    );
+                  }}
                 >
                   View Columns
                 </Button>
