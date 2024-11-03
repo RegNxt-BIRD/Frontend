@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -71,17 +70,6 @@ const NoResults: React.FC<{ title?: string; message?: string }> = ({
     <FileQuestion className="h-16 w-16 text-muted-foreground mb-4" />
     <h3 className="text-lg font-semibold mb-2">{title}</h3>
     <p className="text-muted-foreground text-center max-w-sm">{message}</p>
-  </div>
-);
-
-const LoadingSkeleton: React.FC = () => (
-  <div className="space-y-4">
-    {[...Array(3)].map((_, index) => (
-      <div key={index} className="space-y-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    ))}
   </div>
 );
 
@@ -368,10 +356,6 @@ export default function FilterPanel({
 
   const isLoading = isFieldsLoading || isOptionsLoading || isDataLoading;
   const isDisabled = disabled || isLoading;
-
-  // if (isFieldsLoading) {
-  //   return <LoadingSkeleton />;
-  // }
 
   if (
     !filterFields?.data ||

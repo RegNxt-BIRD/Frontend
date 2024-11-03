@@ -32,7 +32,7 @@ import React, { useMemo, useState } from "react";
 import { DatasetVersionColumns } from "./DatasetVersionColumns";
 
 interface DatasetAccordionProps {
-  datasets: Dataset[];
+  datasets: Dataset[] | any;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions?: DatasetVersions;
   selectedDataset: Dataset | null;
@@ -42,6 +42,8 @@ interface DatasetAccordionProps {
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
   isLoadingVersions: boolean;
+  onVersionSelect: any;
+  showPagination?: boolean;
   handleViewHistory?: (dataset: Dataset, version: DatasetVersion) => void;
   handleConfigureDataset?: (dataset: Dataset) => void;
   versionColumns?: Column[];

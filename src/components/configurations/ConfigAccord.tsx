@@ -16,6 +16,7 @@ import React, { useState } from "react";
 import { DatasetAccordion } from "./DatasetAccordion";
 
 interface ConfigurationDataTableProps {
+  datasets: Record<string, Record<string, DatasetItem[]>>;
   groupedDatasets: Record<string, Dataset[]>;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions?: DatasetVersions;
@@ -28,6 +29,8 @@ interface ConfigurationDataTableProps {
   handleEditDataset: (dataset: Dataset) => void;
   handleDeleteDataset: (datasetId: number) => void;
   isLoadingVersions: boolean;
+  onVersionSelect: any;
+  versionColumns: any;
   selectedVersionId: number | null;
   getDatasetActions: (dataset: Dataset) => React.ReactNode;
   getVersionActions: (
@@ -84,7 +87,6 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
   handleEditDataset,
   getDatasetActions,
   getVersionActions,
-  onRowClick,
 }) => {
   const [expandedFramework, setExpandedFramework] = useState<
     string | undefined

@@ -242,7 +242,6 @@ export const ConfigureDatasets: React.FC = () => {
     return filtered;
   }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
-  // Dataset handlers
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
     try {
       await fastApiInstance.post("/api/v1/datasets/", {
@@ -311,7 +310,6 @@ export const ConfigureDatasets: React.FC = () => {
     }
   };
 
-  // Version handlers
   const handleCreateVersion = async (
     dataset: Dataset & Partial<DatasetVersion>
   ) => {
@@ -529,10 +527,8 @@ export const ConfigureDatasets: React.FC = () => {
         </Button>
       </div>
 
-      {/* Dataset List */}
       {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
         <FrameworkAccordion
-          // groupedDatasets={groupedDatasets}
           groupedDatasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
@@ -581,8 +577,8 @@ export const ConfigureDatasets: React.FC = () => {
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
           isLoadingColumns={!versionColumns && !!selectedVersionId}
-          isVersionModalOpen={isVersionModalOpen} // Add this
-          setIsVersionModalOpen={setIsVersionModalOpen} // Add this
+          isVersionModalOpen={isVersionModalOpen}
+          setIsVersionModalOpen={setIsVersionModalOpen}
         />
       )}
 

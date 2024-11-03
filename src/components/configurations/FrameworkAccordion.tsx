@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import {
   Dataset,
+  DatasetItem,
   DatasetVersion,
   DatasetVersions,
 } from "@/types/databaseTypes";
@@ -14,7 +15,7 @@ import { Button } from "../ui/button";
 import { DatasetAccordion } from "./DatasetAccordion";
 
 interface FrameworkAccordionProps {
-  groupedDatasets: Record<string, Dataset[]>;
+  groupedDatasets: Record<string, Record<string, DatasetItem[]>>;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions?: DatasetVersions;
   isVersionModalOpen: boolean;
@@ -27,6 +28,9 @@ interface FrameworkAccordionProps {
   handleDeleteDataset: (datasetId: number) => void;
   isLoadingVersions: boolean;
   selectedVersionId: number | null;
+  versionColumns: any;
+  selectedFramework: string;
+  onVersionSelect: any;
   getDatasetActions: (dataset: Dataset) => React.ReactNode;
   getVersionActions: (
     dataset: Dataset,
@@ -118,7 +122,7 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
                   <span className="font-semibold text-lg">{framework}</span>
                   <span className="text-sm text-gray-600">
                     {Object.values(groupedDatasets[framework]).reduce(
-                      (acc, items) => acc + items.length,
+                      (acc, items: any) => acc + items.length,
                       0
                     )}
                     item(s)

@@ -67,12 +67,11 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  // Reset when initial columns change
   useEffect(() => {
     setColumns(initialColumns);
     setModifiedColumns(new Set());
   }, [initialColumns]);
-  // Filtered columns based on search
+
   const filteredColumns = useMemo(() => {
     return columns.filter(
       (column) =>
@@ -81,7 +80,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     );
   }, [columns, searchTerm]);
 
-  // Handle column updates
   const handleColumnChange = useCallback(
     (index: number, field: keyof Column, value: any) => {
       setColumns((prev) => {
@@ -100,7 +98,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     []
   );
 
-  // Add new column
   const handleAddColumn = useCallback(() => {
     const newColumn: Column = {
       dataset_version_column_id: 0,
@@ -125,7 +122,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     setColumns((prev) => [...prev, newColumn]);
   }, [columns.length, versionId]);
 
-  // Delete column
   const handleDeleteColumn = useCallback(
     (index: number) => {
       const column = columns[index];
@@ -150,12 +146,9 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     [columns, toast]
   );
 
-  // Save changes
   const handleSave = async () => {
     try {
       setIsSaving(true);
-
-      // Validate columns
       const errors = validateColumns(columns);
       if (errors.length > 0) {
         toast({
@@ -210,7 +203,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Header with search and actions */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2 items-center">
           <Input
@@ -242,8 +234,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
           </Button>
         </div>
       </div>
-
-      {/* Column table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -416,7 +406,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         </Table>
       </div>
 
-      {/* No results */}
       {filteredColumns.length === 0 && (
         <div className="text-center py-4 text-muted-foreground">
           No columns found {searchTerm && "matching search criteria"}

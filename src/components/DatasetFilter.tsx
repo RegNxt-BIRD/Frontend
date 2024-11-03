@@ -76,7 +76,6 @@ export default function DatasetFilter({
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [isApplying, setIsApplying] = useState(false);
 
-  // Fetch filter fields configuration
   const { data: filterFields, isLoading } = useSWR<{ data: FilterField[] }>(
     versionId
       ? `/api/v1/datasets/${datasetId}/filters/?version_id=${versionId}`
@@ -84,7 +83,6 @@ export default function DatasetFilter({
     filterFieldsFetcher
   );
 
-  // Sort fields into snapshot and regular filters
   const { snapshotFields, filterFields: regularFilters } = useMemo(() => {
     if (!filterFields?.data) return { snapshotFields: [], filterFields: [] };
 
@@ -100,14 +98,12 @@ export default function DatasetFilter({
     };
   }, [filterFields]);
 
-  // Get fields with value statements
   const fieldsWithStatements = useMemo(() => {
     return [...snapshotFields, ...regularFilters].filter(
       (field) => field.value_statement
     );
   }, [snapshotFields, regularFilters]);
 
-  // Fetch dropdown options for all fields with value statements
   const { data: dropdownOptionsData } = useSWR(
     fieldsWithStatements.length > 0
       ? fieldsWithStatements.map((field) => ({
@@ -119,7 +115,7 @@ export default function DatasetFilter({
     async (requests) => {
       const results = await Promise.all(
         requests.map((req) =>
-          fetchDropdownOptions(req.url, req.statement)
+          fetchDropdownOptions(req.url, req.statement as any)
             .then((options) => ({ code: req.code, options }))
             .catch((error) => {
               console.error(`Error fetching options for ${req.code}:`, error);
@@ -134,11 +130,12 @@ export default function DatasetFilter({
       }, {} as Record<string, Option[]>);
     },
     {
-      dedupingInterval: 60000, // Cache for 1 minute
+      dedupingInterval: 60000,
       revalidateOnFocus: false,
     }
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const dropdownOptions = dropdownOptionsData || {};
 
   const handleFilterChange = useCallback((code: string, value: any) => {
@@ -279,7 +276,6 @@ export default function DatasetFilter({
 
   return (
     <div className="space-y-6">
-      {/* Snapshot Fields Section */}
       {snapshotFields.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-semibold flex items-center gap-2">
@@ -302,7 +298,6 @@ export default function DatasetFilter({
         </div>
       )}
 
-      {/* Regular Filters Section */}
       {regularFilters.length > 0 && (
         <div className="space-y-4">
           <h3 className="font-semibold flex items-center gap-2">
@@ -328,7 +323,6 @@ export default function DatasetFilter({
         </div>
       )}
 
-      {/* Validation Alert */}
       {!canApplyFilters && (
         <Alert variant="destructive">
           <InfoCircledIcon className="h-4 w-4" />
@@ -338,7 +332,6 @@ export default function DatasetFilter({
         </Alert>
       )}
 
-      {/* Action Buttons */}
       <div className="flex justify-end space-x-2">
         <Button
           variant="outline"
