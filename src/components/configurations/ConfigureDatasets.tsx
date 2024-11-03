@@ -34,6 +34,7 @@ import { DatasetAccordion } from "./DatasetAccordion";
 import { DatasetFormModal } from "./DatasetFormModal";
 import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
+import { ConfigurationAccordion } from "./ConfigAccord";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -559,7 +560,7 @@ export const ConfigureDatasets: React.FC = () => {
           setIsVersionModalOpen={setIsVersionModalOpen}
         />
       ) : (
-        <DatasetAccordion
+        <ConfigurationAccordion
           datasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
