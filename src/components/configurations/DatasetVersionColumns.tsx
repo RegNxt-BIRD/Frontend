@@ -7,7 +7,7 @@ interface DatasetVersionColumnsProps {
   datasetId: number;
   versionId: number;
   columns?: Column[];
-  onUpdateColumns?: (columns: Column[]) => Promise<void>;
+  onUpdateColumns: (columns: Column[]) => Promise<void>;
   isLoading?: boolean;
 }
 

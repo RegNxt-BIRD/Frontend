@@ -45,6 +45,7 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
   selectedDataset,
   isLoadingVersions,
   isVersionModalOpen,
+  onUpdateColumns,
   versionColumns,
   setIsVersionModalOpen,
   handleUpdateVersion,
@@ -159,6 +160,7 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
                           isLoadingVersions={isLoadingVersions}
                           selectedDataset={selectedDataset}
                           handleUpdateVersion={handleUpdateVersion}
+                          onUpdateColumns={onUpdateColumns}
                           versionColumns={versionColumns}
                           isVersionModalOpen={isVersionModalOpen}
                           onVersionSelect={onVersionSelect}

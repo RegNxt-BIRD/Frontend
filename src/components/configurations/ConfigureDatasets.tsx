@@ -117,10 +117,7 @@ export const ConfigureDatasets: React.FC = () => {
         { columns: updatedColumns }
       );
 
-      // Revalidate the data
       await mutateVersionColumns();
-      await mutateVersions();
-
       toast({
         title: "Success",
         description: "Columns updated successfully.",
@@ -132,7 +129,7 @@ export const ConfigureDatasets: React.FC = () => {
         description: "Failed to update columns. Please try again.",
         variant: "destructive",
       });
-      throw error;
+      throw error; // Re-throw to be caught by the form handler
     }
   };
 

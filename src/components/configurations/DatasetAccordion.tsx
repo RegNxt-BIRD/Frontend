@@ -47,7 +47,7 @@ interface DatasetAccordionProps {
   handleViewHistory?: (dataset: Dataset, version: DatasetVersion) => void;
   handleConfigureDataset?: (dataset: Dataset) => void;
   versionColumns?: Column[];
-  onUpdateColumns?: (columns: Column[]) => Promise<void>;
+  onUpdateColumns: (columns: Column[]) => Promise<void>;
   isLoadingColumns?: boolean;
   isVersionModalOpen: boolean;
   setIsVersionModalOpen: (open: boolean) => void;
