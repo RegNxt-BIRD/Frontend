@@ -33,9 +33,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { fastApiInstance } from "@/lib/axios";
 import { Column } from "@/types/databaseTypes";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Save, Trash } from "lucide-react";
+import { Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -58,6 +59,27 @@ const columnSchema = z.object({
 });
 
 type ColumnFormData = z.infer<typeof columnSchema>;
+
+const COLUMN_TYPES = [
+  { value: "string", label: "String" },
+  { value: "number", label: "Number" },
+  { value: "integer", label: "Integer" },
+  { value: "date", label: "Date" },
+  { value: "boolean", label: "Boolean" },
+  { value: "decimal", label: "Decimal" },
+];
+
+const ROLES = [
+  { value: "D", label: "Dimension" },
+  { value: "M", label: "Measure" },
+  { value: "A", label: "Attribute" },
+];
+
+const HISTORIZATION_TYPES = [
+  { value: 0, label: "No historization" },
+  { value: 1, label: "Always latest" },
+  { value: 2, label: "Versioning" },
+];
 
 // Column edit modal component
 const ColumnFormModal: React.FC<{
@@ -390,13 +412,21 @@ const DeleteConfirmDialog: React.FC<{
   </Dialog>
 );
 
-// Main EditableColumnTable component
-export const EditableColumnTable: React.FC<{
+interface EditableColumnTableProps {
   initialColumns: Column[];
   onSave: (columns: Column[]) => Promise<void>;
   isLoading?: boolean;
+  datasetId: string | number;
   versionId: string | number;
-}> = ({ initialColumns, onSave, isLoading, versionId }) => {
+}
+
+export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
+  initialColumns,
+  onSave,
+  datasetId,
+  isLoading,
+  versionId,
+}) => {
   const { toast } = useToast();
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -405,53 +435,57 @@ export const EditableColumnTable: React.FC<{
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<Column | null>(null);
 
+  useEffect(() => {
+    setColumns(initialColumns);
+  }, [initialColumns]);
 
-  const handleFormSubmit = async (data: ColumnFormData) => {
+  useEffect(() => {
+    const columnsChanged =
+      JSON.stringify(columns) !== JSON.stringify(initialColumns);
+    setHasChanges(columnsChanged);
+  }, [columns, initialColumns]);
+
+  const handleFormSubmit = async (data: any) => {
     setIsSaving(true);
     try {
-      let updatedColumns: Column[];
-      
       if (selectedColumn) {
-        // Update existing column
-        updatedColumns = columns.map((col) =>
-          col.dataset_version_column_id === selectedColumn.dataset_version_column_id
-            ? {
+        // Editing existing column - send only the updated column
+        await fastApiInstance.post(
+          `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+          {
+            columns: [
+              {
                 ...selectedColumn,
                 ...data,
-              }
-            : col
+              },
+            ],
+          }
         );
       } else {
-        // Add new column
+        // Adding new column - send only the new column
         const newColumn: Column = {
           dataset_version_column_id: 0,
           dataset_version_id: Number(versionId),
           column_order: columns.length + 1,
-          code: data.code,
-          label: data.label,
-          description: data.description || "",
-          role: data.role,
-          dimension_type: data.dimension_type || "",
-          datatype: data.datatype,
-          datatype_format: data.datatype_format || "",
-          is_mandatory: data.is_mandatory,
-          is_key: data.is_key,
-          is_visible: data.is_visible || false,
-          is_filter: data.is_filter || false,
-          value_statement: data.value_statement || "",
-          is_report_snapshot_field: data.is_report_snapshot_field || false,
+          ...data,
           is_system_generated: false,
-          historization_type: data.historization_type,
         };
-        updatedColumns = [...columns, newColumn];
+
+        await fastApiInstance.post(
+          `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+          {
+            columns: [newColumn],
+          }
+        );
       }
 
-      await onSave(updatedColumns);
-      setColumns(updatedColumns);
+      // Refresh column data after successful save
+      await onSave(columns);
       setIsFormModalOpen(false);
       setSelectedColumn(null);
-      
+
       toast({
         title: "Success",
         description: selectedColumn ? "Column updated" : "Column created",
@@ -467,23 +501,59 @@ export const EditableColumnTable: React.FC<{
       setIsSaving(false);
     }
   };
+  const handleEditClick = (column: Column) => {
+    setSelectedColumn(column);
+    setIsFormModalOpen(true);
+  };
 
-  useEffect(() => {
-    const columnsChanged =
-      JSON.stringify(columns) !== JSON.stringify(initialColumns);
-    setHasChanges(columnsChanged);
-  }, [columns, initialColumns]);
+  const handleDeleteClick = (column: Column) => {
+    setColumnToDelete(column);
+    setIsDeleteDialogOpen(true);
+  };
 
-  useEffect(() => {
-    setColumns(initialColumns);
-  }, [initialColumns]);
+  const handleDeleteConfirm = async () => {
+    if (!columnToDelete) return;
+
+    try {
+      // Send delete request with specific format
+      await fastApiInstance.post(
+        `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+        {
+          is_delete_operation: true,
+          columns_to_delete: [columnToDelete.dataset_version_column_id],
+        }
+      );
+
+      // Update local state after successful deletion
+      const updatedColumns = columns.filter(
+        (col) =>
+          col.dataset_version_column_id !==
+          columnToDelete.dataset_version_column_id
+      );
+      setColumns(updatedColumns);
+
+      toast({
+        title: "Success",
+        description: "Column deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting column:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete column",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setColumnToDelete(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!hasChanges) return;
 
     setIsSaving(true);
     try {
-      console.log("Saving columns:", columns);
       await onSave(columns);
       toast({
         title: "Success",
@@ -502,41 +572,6 @@ export const EditableColumnTable: React.FC<{
     }
   };
 
-  const handleAddColumn = () => {
-    // handleSave();
-    setSelectedColumn(null);
-    setIsFormModalOpen(true);
-  };
-
-  const handleEditColumn = (column: Column) => {
-    setSelectedColumn(column);
-    setIsFormModalOpen(true);
-  };
-
-  const handleDeleteClick = (column: Column) => {
-    setSelectedColumn(column);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!selectedColumn) return;
-
-    setColumns((prev) =>
-      prev.filter(
-        (col) =>
-          col.dataset_version_column_id !==
-          selectedColumn.dataset_version_column_id
-      )
-    );
-    setIsDeleteDialogOpen(false);
-    setSelectedColumn(null);
-
-    toast({
-      title: "Success",
-      description: "Column deleted",
-    });
-  };
-
   const filteredColumns = useMemo(() => {
     return columns.filter(
       (column) =>
@@ -544,10 +579,6 @@ export const EditableColumnTable: React.FC<{
         column.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [columns, searchTerm]);
-
-  useEffect(() => {
-    console.log("Columns updated:", columns);
-  }, [columns]);
 
   return (
     <div className="space-y-4">
@@ -559,7 +590,10 @@ export const EditableColumnTable: React.FC<{
           className="max-w-xs"
         />
         <div className="space-x-2">
-          <Button onClick={handleAddColumn} disabled={isLoading || isSaving}>
+          <Button
+            onClick={() => setIsFormModalOpen(true)}
+            disabled={isLoading || isSaving}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Column
           </Button>
@@ -573,7 +607,6 @@ export const EditableColumnTable: React.FC<{
         </div>
       </div>
 
-      {/* Main table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -598,10 +631,10 @@ export const EditableColumnTable: React.FC<{
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleEditColumn(column)}
+                      onClick={() => handleEditClick(column)}
                       disabled={column.is_system_generated}
                     >
-                      Edit
+                      <Pencil className="h-4 w-4 text-blue-500" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -609,56 +642,29 @@ export const EditableColumnTable: React.FC<{
                       onClick={() => handleDeleteClick(column)}
                       disabled={column.is_system_generated}
                     >
-                      <Trash className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
                 </TableCell>
                 <TableCell>{column.code}</TableCell>
                 <TableCell>{column.label}</TableCell>
                 <TableCell>{column.datatype}</TableCell>
+                <TableCell>{column.role}</TableCell>
                 <TableCell>
-                  {ROLES.find((r) => r.value === column.role)?.label ||
-                    column.role}
+                  <Switch checked={column.is_mandatory} disabled />
                 </TableCell>
                 <TableCell>
-                  <Switch
-                    checked={column.is_mandatory}
-                    disabled={true}
-                    className="pointer-events-none"
-                  />
+                  <Switch checked={column.is_key} disabled />
                 </TableCell>
                 <TableCell>
-                  <Switch
-                    checked={column.is_key}
-                    disabled={true}
-                    className="pointer-events-none"
-                  />
+                  <Switch checked={column.is_visible} disabled />
                 </TableCell>
                 <TableCell>
-                  <Switch
-                    checked={column.is_visible}
-                    disabled={column.is_system_generated}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={column.is_filter}
-                    disabled={column.is_system_generated}
-                  />
+                  <Switch checked={column.is_filter} disabled />
                 </TableCell>
                 <TableCell>{column.description}</TableCell>
               </TableRow>
             ))}
-            {filteredColumns.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="text-center py-4 text-muted-foreground"
-                >
-                  No columns found {searchTerm && "matching search criteria"}
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </div>
@@ -674,38 +680,30 @@ export const EditableColumnTable: React.FC<{
         versionId={versionId}
       />
 
-      <DeleteConfirmDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => {
-          setIsDeleteDialogOpen(false);
-          setSelectedColumn(null);
-        }}
-        onConfirm={handleDeleteConfirm}
-        columnName={selectedColumn?.label || selectedColumn?.code || ""}
-      />
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <p>
+            Are you sure you want to delete the column "{columnToDelete?.label}
+            "? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-
-const COLUMN_TYPES = [
-  { value: "string", label: "String" },
-  { value: "number", label: "Number" },
-  { value: "integer", label: "Integer" },
-  { value: "date", label: "Date" },
-  { value: "boolean", label: "Boolean" },
-  { value: "decimal", label: "Decimal" },
-];
-
-const ROLES = [
-  { value: "D", label: "Dimension" },
-  { value: "M", label: "Measure" },
-  { value: "A", label: "Attribute" },
-];
-
-const HISTORIZATION_TYPES = [
-  { value: 0, label: "No historization" },
-  { value: 1, label: "Always latest" },
-  { value: 2, label: "Versioning" },
-];
 
 export default EditableColumnTable;

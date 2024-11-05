@@ -129,7 +129,7 @@ export const ConfigureDatasets: React.FC = () => {
         description: "Failed to update columns. Please try again.",
         variant: "destructive",
       });
-      throw error; // Re-throw to be caught by the form handler
+      throw error;
     }
   };
 
@@ -456,7 +456,6 @@ export const ConfigureDatasets: React.FC = () => {
     }
   };
 
-  // Page handlers
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
@@ -481,8 +480,6 @@ export const ConfigureDatasets: React.FC = () => {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Configure Datasets</h2>
-
-      {/* Filters */}
       <div className="flex space-x-4 mb-4">
         <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
           <SelectTrigger className="w-[250px]">

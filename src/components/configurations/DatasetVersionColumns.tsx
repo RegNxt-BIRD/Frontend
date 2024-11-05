@@ -13,6 +13,7 @@ interface DatasetVersionColumnsProps {
 
 export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
   versionId,
+  datasetId,
   columns = [],
   onUpdateColumns,
   isLoading = false,
@@ -31,6 +32,7 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
       <EditableColumnTable
         initialColumns={columns}
         onSave={onUpdateColumns}
+        datasetId={datasetId}
         isLoading={isLoading}
         versionId={versionId}
       />
