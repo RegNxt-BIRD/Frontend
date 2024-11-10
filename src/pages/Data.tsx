@@ -338,8 +338,7 @@ const Data: React.FC = () => {
   }, []);
 
   const handleSaveMetadata = useCallback(
-    async (updatedData: Record<string, string | null>[]) => {
-      if (!selectedTable) return;
+    async (updatedData: { data: Record<string, string | null>[] }) => {
       try {
         await fastApiInstance.post(
           `/api/v1/datasets/${selectedTable.dataset_id}/save_data/`,

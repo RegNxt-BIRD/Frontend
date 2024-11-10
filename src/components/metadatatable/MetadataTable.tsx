@@ -35,12 +35,18 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     Record<string, string | null>[]
   >([]);
   const [isDataModified, setIsDataModified] = useState(false);
+  const [originalData, setOriginalData] = useState<
+    Record<string, string | null>[]
+  >([]);
 
   useEffect(() => {
     if (tableData && tableData.length > 0) {
-      setLocalTableData(tableData.map((row) => ({ ...row, id: row.id })));
+      const initialData = tableData.map((row) => ({ ...row, id: row.id }));
+      setLocalTableData(initialData);
+      setOriginalData(initialData); // Keep track of original data
     } else {
       setLocalTableData([]);
+      setOriginalData([]);
     }
     setIsDataModified(false);
   }, [tableData]);
@@ -103,17 +109,41 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     [metadata, toast]
   );
 
+  // MetadataTable.tsx
+  // MetadataTable.tsx
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      await onSave(localTableData);
+      // Get IDs of rows in the current localTableData
+      const currentIds = new Set(
+        localTableData.map((row) => row.id).filter(Boolean)
+      );
+
+      // Get IDs from original data
+      const originalIds = new Set(
+        tableData.map((row) => row.id).filter(Boolean)
+      );
+
+      // Find deleted IDs
+      const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
+
+      // Prepare payload with proper structure
+      const savePayload = {
+        data: localTableData,
+        deletions: deletedIds,
+      };
+
+      // Log the payload for debugging
+      console.log("Save payload:", savePayload);
+
+      await onSave(savePayload);
       setIsDataModified(false);
       toast({
         title: "Success",
         description: "All changes saved successfully",
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      console.error("Save error:", error);
       toast({
         title: "Error",
         description: "Failed to save changes",
@@ -122,7 +152,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [localTableData, onSave, toast]);
+  }, [localTableData, tableData, onSave, toast]);
 
   const handleValidate = useCallback(async () => {
     setIsValidating(true);
