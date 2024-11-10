@@ -88,7 +88,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         return mappedRow;
       });
 
-      // Append new data to existing data
       setLocalTableData((prevData) => {
         const combinedData = [...prevData, ...mappedData];
 
@@ -109,8 +108,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     [metadata, toast]
   );
 
-  // MetadataTable.tsx
-  // MetadataTable.tsx
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -119,22 +116,14 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         localTableData.map((row) => row.id).filter(Boolean)
       );
 
-      // Get IDs from original data
       const originalIds = new Set(
         tableData.map((row) => row.id).filter(Boolean)
       );
-
-      // Find deleted IDs
       const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
-
-      // Prepare payload with proper structure
       const savePayload = {
         data: localTableData,
         deletions: deletedIds,
-      };
-
-      // Log the payload for debugging
-      console.log("Save payload:", savePayload);
+      } as any;
 
       await onSave(savePayload);
       setIsDataModified(false);

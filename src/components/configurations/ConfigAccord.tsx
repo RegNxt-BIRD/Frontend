@@ -203,8 +203,6 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
                           handleDeleteVersion={handleDeleteVersion}
                           handleEditDataset={handleEditDataset}
                           handleDeleteDataset={handleDeleteDataset}
-                          getDatasetActions={getDatasetActions}
-                          getVersionActions={getVersionActions}
                         />
                       </AccordionContent>
                     </AccordionItem>

@@ -108,13 +108,11 @@ const Data: React.FC = () => {
       setIsMetadataLoading(true);
 
       try {
-        // Check if all values are null or empty strings
         const allFiltersEmpty = Object.values(filterValues).every(
           (v) => v === null || v === ""
         );
 
         if (allFiltersEmpty) {
-          // Instead of immediately clearing, fetch default data
           const response = await fastApiInstance.get(
             `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion.dataset_version_id}`
           );
@@ -125,8 +123,6 @@ const Data: React.FC = () => {
             "version_id",
             datasetVersion.dataset_version_id.toString()
           );
-
-          // Only add non-null filter values
           Object.entries(filterValues).forEach(([key, value]) => {
             if (value !== null && value !== "") {
               params.append(key, value.toString());
@@ -314,6 +310,7 @@ const Data: React.FC = () => {
     } finally {
       setIsMetadataLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTable, datasetVersion]);
 
   useEffect(() => {
