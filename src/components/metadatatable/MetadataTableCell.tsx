@@ -60,18 +60,17 @@ const normalizeValueOptions = (
 
   return valueOptions
     .map((option) => {
-      // Handle LOV format
-      if (option.item_code && option.item_name) {
+      // If the option has item_code and item_name
+      if (option.item_code !== undefined && option.item_name !== undefined) {
         return {
-          value: option.item_code,
-          label: option.item_name,
+          value: option.item_code?.toString() || "",
+          label: option.item_name || option.item_code?.toString() || "",
         };
       }
 
-      // Handle date format
+      // If option has reporting_date
       if (option.reporting_date) {
         const formattedDate = option.reporting_date.toString();
-        // Convert YYYYMMDD to YYYY-MM-DD if needed
         const dateValue =
           formattedDate.length === 8
             ? `${formattedDate.slice(0, 4)}-${formattedDate.slice(
@@ -85,20 +84,18 @@ const normalizeValueOptions = (
         };
       }
 
-      // Handle any other key-value pair
-      const entries = Object.entries(option);
-      if (entries.length > 0) {
-        const [key, value] = entries[0]; // Take first key-value pair
-        const stringValue = value?.toString() || "";
+      // Handle direct value object
+      if (typeof option === "object" && option !== null) {
+        const value = Object.values(option)[0];
         return {
-          value: stringValue,
-          label: stringValue,
+          value: value?.toString() || "",
+          label: value?.toString() || "",
         };
       }
 
       return {
-        value: "",
-        label: "",
+        value: option?.toString() || "",
+        label: option?.toString() || "",
       };
     })
     .filter((option) => option.value !== ""); // Filter out empty options
@@ -110,12 +107,12 @@ const getValidationErrors = (
   validationResults: ValidationResult[]
 ): ValidationResult[] => {
   return validationResults.filter((result) => {
-    const rowIdMatch = row.id
-      ? result.row_id === row.id
+    const rowMatch = row.id
+      ? result.row_id === row.id.toString()
       : result.row_id === "unsaved";
     const columnMatch =
       result.column_name.toLowerCase() === columnName.toLowerCase();
-    return rowIdMatch && columnMatch;
+    return rowMatch && columnMatch;
   });
 };
 
@@ -163,7 +160,10 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
           }
           // disabled={item.is_system_generated}
         >
-          <SelectTrigger className={cn(commonInputProps.className, "h-10")}>
+          <SelectTrigger
+            className={cn(commonInputProps.className, "h-10")}
+            data-validation-error={hasError}
+          >
             <SelectValue placeholder="Select an option" />
           </SelectTrigger>
           <SelectContent>
@@ -208,26 +208,35 @@ export const MetadataTableCell: React.FC<MetadataTableCellProps> = ({
         }
         // disabled={item.is_system_generated}
         {...commonInputProps}
+        data-validation-error={hasError}
       />
     );
   };
 
   return (
-    <TableCell className="px-4 py-2 text-sm">
+    <TableCell
+      className={cn("px-4 py-2 text-sm relative", hasError && "bg-red-50")}
+      data-validation-error={hasError}
+    >
       <div className="relative w-full">
         {renderInput()}
-        {hasError && (
+        {hasError && validationErrors.length > 0 && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <AlertTriangle className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" />
+                <AlertTriangle
+                  className="h-4 w-4 text-red-500 absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
+                  aria-label="Validation Error"
+                />
               </TooltipTrigger>
               <TooltipContent>
-                {validationErrors.map((error, index) => (
-                  <p key={index} className="text-red-500">
-                    {error.validation_msg}
-                  </p>
-                ))}
+                <div className="max-w-xs p-2">
+                  {validationErrors.map((error, index) => (
+                    <p key={index} className="text-sm text-red-500 mb-1">
+                      {error.validation_msg}
+                    </p>
+                  ))}
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

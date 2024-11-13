@@ -11,7 +11,6 @@ import {
   DatasetVersion,
   DatasetVersions,
 } from "@/types/databaseTypes";
-import { ColumnDef } from "@tanstack/react-table";
 import React, { useState } from "react";
 import { DatasetAccordion } from "./DatasetAccordion";
 
@@ -23,6 +22,7 @@ interface ConfigurationDataTableProps {
   isVersionModalOpen: boolean;
   setIsVersionModalOpen: (open: boolean) => void;
   selectedDataset: Dataset | null;
+  handleUpdateColumns: any;
   handleCreateVersion: (dataset: Dataset) => void;
   handleUpdateVersion: (version: DatasetVersion) => void;
   handleDeleteVersion: (datasetId: number, versionId: number) => void;
@@ -39,34 +39,6 @@ interface ConfigurationDataTableProps {
   ) => React.ReactNode;
 }
 
-const columns: ColumnDef<DatasetItem>[] = [
-  {
-    accessorKey: "framework",
-    header: "Framework",
-    cell: ({ row }) => <div>{row.getValue("framework")}</div>,
-  },
-  {
-    accessorKey: "type",
-    header: "Layer/Type",
-    cell: ({ row }) => <div>{row.getValue("type")}</div>,
-  },
-  {
-    accessorKey: "code",
-    header: "Code",
-    cell: ({ row }) => <div>{row.getValue("code")}</div>,
-  },
-  {
-    accessorKey: "label",
-    header: "Name",
-    cell: ({ row }) => <div>{row.getValue("label")}</div>,
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => <div>{row.getValue("description")}</div>,
-  },
-];
-
 const FRAMEWORKS_PER_PAGE = 15;
 const GROUPS_PER_PAGE = 10;
 
@@ -79,14 +51,13 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
   datasetVersions,
   selectedDataset,
   isVersionModalOpen,
+  handleUpdateColumns,
   handleUpdateVersion,
   onVersionSelect,
   versionColumns,
   handleCreateVersion,
   handleDeleteVersion,
   handleEditDataset,
-  getDatasetActions,
-  getVersionActions,
 }) => {
   const [expandedFramework, setExpandedFramework] = useState<
     string | undefined
@@ -106,12 +77,6 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
     (frameworkPage - 1) * FRAMEWORKS_PER_PAGE,
     frameworkPage * FRAMEWORKS_PER_PAGE
   );
-
-  const getDatasetVersions = (datasetId: number) => {
-    return (
-      datasetVersions?.data.filter((v) => v.dataset_id === datasetId) || []
-    );
-  };
 
   const getPaginatedGroups = (framework: string) => {
     if (!datasets[framework]) return [];
@@ -191,6 +156,7 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
                           datasets={datasets[framework]}
                           showPagination={true}
                           handleDatasetClick={handleDatasetClick}
+                          onUpdateColumns={handleUpdateColumns}
                           datasetVersions={datasetVersions}
                           isLoadingVersions={isLoadingVersions}
                           selectedDataset={selectedDataset}

@@ -544,7 +544,6 @@ export const ConfigureDatasets: React.FC = () => {
           onVersionSelect={handleVersionSelect}
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
-          isLoadingColumns={!versionColumns && !!selectedVersionId}
           isVersionModalOpen={isVersionModalOpen}
           setIsVersionModalOpen={setIsVersionModalOpen}
         />

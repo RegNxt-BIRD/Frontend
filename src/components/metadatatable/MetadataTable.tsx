@@ -10,7 +10,7 @@ interface MetadataTableProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
   isLoading: boolean;
-  onSave: (updatedData: Record<string, string | null>[]) => Promise<void>;
+  onSave: any;
   onValidate: (tableData: Record<string, string | null>[]) => void;
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
@@ -35,18 +35,13 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     Record<string, string | null>[]
   >([]);
   const [isDataModified, setIsDataModified] = useState(false);
-  const [originalData, setOriginalData] = useState<
-    Record<string, string | null>[]
-  >([]);
 
   useEffect(() => {
     if (tableData && tableData.length > 0) {
       const initialData = tableData.map((row) => ({ ...row, id: row.id }));
       setLocalTableData(initialData);
-      setOriginalData(initialData); // Keep track of original data
     } else {
       setLocalTableData([]);
-      setOriginalData([]);
     }
     setIsDataModified(false);
   }, [tableData]);
@@ -146,7 +141,20 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   const handleValidate = useCallback(async () => {
     setIsValidating(true);
     try {
-      await onValidate(localTableData);
+      const validationResults = (await onValidate(localTableData)) as any;
+      if (validationResults && validationResults.length > 0) {
+        const firstErrorElement = document.querySelector(
+          '[data-validation-error="true"]'
+        );
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Validation error:", error);
     } finally {
       setIsValidating(false);
     }

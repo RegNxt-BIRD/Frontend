@@ -1,5 +1,5 @@
 // Data.tsx
-import { format, isValid } from "date-fns";
+import { format } from "date-fns";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -359,39 +359,64 @@ const Data: React.FC = () => {
     async (tableData: Record<string, string | null>[]) => {
       if (!selectedTable || !datasetVersion) return;
 
-      const formattedDate = format(selectedDate, "yyyy-MM-dd");
-      if (!isValid(new Date(formattedDate))) {
-        toast({
-          title: "Invalid Date",
-          description:
-            "The selected date is not valid. Please choose a valid date.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       try {
+        // Transform table data to ensure nested objects are handled correctly
+        const preparedData = tableData.map((row) => {
+          const transformed = { ...row };
+          // Convert all values to strings or null
+          Object.keys(transformed).forEach((key) => {
+            if (transformed[key] === undefined) {
+              transformed[key] = null;
+            } else if (transformed[key] !== null) {
+              transformed[key] = transformed[key]?.toString();
+            }
+          });
+          return transformed;
+        });
+
         const response = await fastApiInstance.post<ValidationResult[]>(
           `/api/v1/datasets/${selectedTable.dataset_id}/validate/`,
           {
-            dataset_version_id: datasetVersion.dataset_version_id,
-            version_code: datasetVersion.version_code,
-            table_data: tableData,
-            columns: metadata,
+            table_data: preparedData,
+            columns: metadata?.map((col) => ({
+              ...col,
+              value_options: col.value_options?.map((opt: any) => ({
+                item_code: opt.item_code?.toString(),
+                item_name: opt.item_name,
+                value: opt.value?.toString(),
+                label: opt.label,
+              })),
+            })),
           }
         );
 
         setValidationResults(response.data);
+
+        // Show validation summary
+        const errorCount = response.data.length;
         toast({
           title: "Validation Complete",
-          description: `Found ${response.data.length} validation issue(s).`,
-          variant: response.data.length > 0 ? "destructive" : "default",
+          description:
+            errorCount > 0
+              ? `Found ${errorCount} validation issue${
+                  errorCount === 1 ? "" : "s"
+                }`
+              : "No validation issues found.",
+          variant: errorCount > 0 ? "destructive" : "default",
         });
+
+        return response.data;
       } catch (error: any) {
         console.error("Validation error:", error);
+        toast({
+          title: "Validation Error",
+          description: error.response?.data?.error || "Failed to validate data",
+          variant: "destructive",
+        });
+        throw error;
       }
     },
-    [selectedTable, datasetVersion, selectedDate, metadata, toast]
+    [selectedTable, datasetVersion, metadata, toast]
   );
 
   const totalFilteredItems = useMemo(() => {
