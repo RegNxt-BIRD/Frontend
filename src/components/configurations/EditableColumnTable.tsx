@@ -451,7 +451,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     setIsSaving(true);
     try {
       if (selectedColumn) {
-        // Editing existing column - send only the updated column
         await fastApiInstance.post(
           `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
           {
@@ -464,7 +463,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
           }
         );
       } else {
-        // Adding new column - send only the new column
         const newColumn: Column = {
           dataset_version_column_id: 0,
           dataset_version_id: Number(versionId),
@@ -481,8 +479,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         );
       }
 
-      // Refresh column data after successful save
-      await onSave(columns);
       setIsFormModalOpen(false);
       setSelectedColumn(null);
 
@@ -515,7 +511,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     if (!columnToDelete) return;
 
     try {
-      // Send delete request with specific format
       await fastApiInstance.post(
         `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
         {
