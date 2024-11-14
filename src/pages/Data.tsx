@@ -360,10 +360,8 @@ const Data: React.FC = () => {
       if (!selectedTable || !datasetVersion) return;
 
       try {
-        // Transform table data to ensure nested objects are handled correctly
         const preparedData = tableData.map((row) => {
           const transformed = { ...row };
-          // Convert all values to strings or null
           Object.keys(transformed).forEach((key) => {
             if (transformed[key] === undefined) {
               transformed[key] = null;

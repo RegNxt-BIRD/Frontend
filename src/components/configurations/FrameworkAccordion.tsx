@@ -32,11 +32,6 @@ interface FrameworkAccordionProps {
   selectedFramework: string;
   onVersionSelect: any;
   onUpdateColumns: any;
-  getDatasetActions: (dataset: Dataset) => React.ReactNode;
-  getVersionActions: (
-    dataset: Dataset,
-    version: DatasetVersion
-  ) => React.ReactNode;
 }
 
 export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({

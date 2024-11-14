@@ -37,6 +37,11 @@ import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
 
+interface VersionColumnsData {
+  data: any; // Adjust this according to the actual shape of your data
+  // other properties if they exist...
+}
+
 export const ConfigureDatasets: React.FC = () => {
   const { toast } = useToast();
 
@@ -144,12 +149,13 @@ export const ConfigureDatasets: React.FC = () => {
     fastApiInstance
   );
 
-  const { data: versionColumns, mutate: mutateVersionColumns } = useSWR(
-    selectedVersionId
-      ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
-      : null,
-    fastApiInstance
-  );
+  const { data: versionColumns, mutate: mutateVersionColumns } =
+    useSWR<VersionColumnsData>(
+      selectedVersionId
+        ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
+        : null,
+      fastApiInstance
+    );
 
   const handleFrameworkChange = useCallback((value: string) => {
     setSelectedFramework(value);
@@ -543,7 +549,7 @@ export const ConfigureDatasets: React.FC = () => {
           selectedVersionId={selectedVersionId}
           onVersionSelect={handleVersionSelect}
           versionColumns={versionColumns?.data}
-          onUpdateColumns={handleUpdateColumns}
+          onUpdateColumns={handleUpdateColumns as any}
           isVersionModalOpen={isVersionModalOpen}
           setIsVersionModalOpen={setIsVersionModalOpen}
         />
@@ -565,11 +571,9 @@ export const ConfigureDatasets: React.FC = () => {
             setDeletingDatasetId(datasetId);
             setIsDeleteDialogOpen(true);
           }}
-          selectedVersionId={selectedVersionId}
           onVersionSelect={handleVersionSelect}
           versionColumns={versionColumns?.data}
           onUpdateColumns={handleUpdateColumns}
-          isLoadingColumns={!versionColumns && !!selectedVersionId}
           isVersionModalOpen={isVersionModalOpen}
           setIsVersionModalOpen={setIsVersionModalOpen}
         />

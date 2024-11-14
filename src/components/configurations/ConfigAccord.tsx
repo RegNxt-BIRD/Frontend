@@ -16,13 +16,13 @@ import { DatasetAccordion } from "./DatasetAccordion";
 
 interface ConfigurationDataTableProps {
   datasets: Record<string, Record<string, DatasetItem[]>>;
-  groupedDatasets: Record<string, Dataset[]>;
+  groupedDatasets?: Record<string, Dataset[]>;
   handleDatasetClick: (dataset: Dataset) => void;
   datasetVersions?: DatasetVersions;
   isVersionModalOpen: boolean;
   setIsVersionModalOpen: (open: boolean) => void;
   selectedDataset: Dataset | null;
-  handleUpdateColumns: any;
+  onUpdateColumns: any;
   handleCreateVersion: (dataset: Dataset) => void;
   handleUpdateVersion: (version: DatasetVersion) => void;
   handleDeleteVersion: (datasetId: number, versionId: number) => void;
@@ -31,12 +31,6 @@ interface ConfigurationDataTableProps {
   isLoadingVersions: boolean;
   onVersionSelect: any;
   versionColumns: any;
-  selectedVersionId: number | null;
-  getDatasetActions: (dataset: Dataset) => React.ReactNode;
-  getVersionActions: (
-    dataset: Dataset,
-    version: DatasetVersion
-  ) => React.ReactNode;
 }
 
 const FRAMEWORKS_PER_PAGE = 15;
@@ -51,7 +45,7 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
   datasetVersions,
   selectedDataset,
   isVersionModalOpen,
-  handleUpdateColumns,
+  onUpdateColumns,
   handleUpdateVersion,
   onVersionSelect,
   versionColumns,
@@ -156,7 +150,7 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
                           datasets={datasets[framework]}
                           showPagination={true}
                           handleDatasetClick={handleDatasetClick}
-                          onUpdateColumns={handleUpdateColumns}
+                          onUpdateColumns={onUpdateColumns}
                           datasetVersions={datasetVersions}
                           isLoadingVersions={isLoadingVersions}
                           selectedDataset={selectedDataset}
