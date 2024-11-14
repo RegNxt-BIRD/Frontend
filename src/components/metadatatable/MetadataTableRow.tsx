@@ -26,7 +26,17 @@ export const MetadataTableRow: React.FC<MetadataTableRowProps> = ({
   handleDeleteRow,
   validationResults,
 }) => (
-  <TableRow className="hover:bg-gray-50 transition-colors">
+  <TableRow
+    key={rowIndex}
+    className={`hover:bg-gray-50 transition-colors ${
+      validationResults.some((result) => result.row_id === rowIndex.toString())
+        ? "bg-red-50"
+        : ""
+    }`}
+    data-validation-error={validationResults.some(
+      (result) => result.row_id === rowIndex.toString()
+    )}
+  >
     <TableCell>
       <Button
         variant="ghost"

@@ -1,6 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ExcelOperations } from "../ExcelOperations";
 import { MetadataTableBody } from "./MetadataTableBody";
 import { MetadataTableHeader } from "./MetadataTableHeader";
 
@@ -8,7 +10,7 @@ interface MetadataTableProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
   isLoading: boolean;
-  onSave: (updatedData: Record<string, string | null>[]) => void;
+  onSave: any;
   onValidate: (tableData: Record<string, string | null>[]) => void;
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
@@ -25,6 +27,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   datasetVersion,
   validationResults,
 }) => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -35,7 +38,8 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
   useEffect(() => {
     if (tableData && tableData.length > 0) {
-      setLocalTableData(tableData.map((row) => ({ ...row, id: row.id })));
+      const initialData = tableData.map((row) => ({ ...row, id: row.id }));
+      setLocalTableData(initialData);
     } else {
       setLocalTableData([]);
     }
@@ -66,27 +70,91 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setIsDataModified(true);
   }, [metadata]);
 
-  const handleDeleteRow = useCallback((rowIndex: number) => {
-    setLocalTableData((prevData) =>
-      prevData.filter((_, index) => index !== rowIndex)
-    );
-    setIsDataModified(true);
-  }, []);
+  const handleExcelDataLoad = useCallback(
+    (excelData: Record<string, string | null>[]) => {
+      // Map column codes to match your table structure and add any missing columns
+      const mappedData = excelData.map((row) => {
+        const mappedRow: Record<string, string | null> = {};
+        if (metadata) {
+          metadata.forEach((column) => {
+            mappedRow[column.code] = row[column.code] || null;
+          });
+        }
+        return mappedRow;
+      });
+
+      setLocalTableData((prevData) => {
+        const combinedData = [...prevData, ...mappedData];
+
+        // Log the number of rows added
+        const newRowsCount = mappedData.length;
+        toast({
+          title: "Data Appended",
+          description: `Added ${newRowsCount} new row${
+            newRowsCount !== 1 ? "s" : ""
+          } to the table`,
+        });
+
+        return combinedData;
+      });
+
+      setIsDataModified(true);
+    },
+    [metadata, toast]
+  );
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      await onSave(localTableData);
+      // Get IDs of rows in the current localTableData
+      const currentIds = new Set(
+        localTableData.map((row) => row.id).filter(Boolean)
+      );
+
+      const originalIds = new Set(
+        tableData.map((row) => row.id).filter(Boolean)
+      );
+      const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
+      const savePayload = {
+        data: localTableData,
+        deletions: deletedIds,
+      } as any;
+
+      await onSave(savePayload);
       setIsDataModified(false);
+      toast({
+        title: "Success",
+        description: "All changes saved successfully",
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [localTableData, onSave]);
+  }, [localTableData, tableData, onSave, toast]);
 
   const handleValidate = useCallback(async () => {
     setIsValidating(true);
     try {
-      await onValidate(localTableData);
+      const validationResults = (await onValidate(localTableData)) as any;
+      if (validationResults && validationResults.length > 0) {
+        const firstErrorElement = document.querySelector(
+          '[data-validation-error="true"]'
+        );
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Validation error:", error);
     } finally {
       setIsValidating(false);
     }
@@ -114,32 +182,51 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold">
-        Data for table {selectedTable.code} | {selectedTable.label}{" "}
-        {datasetVersion && `| Version ${datasetVersion.version_nr}`}
-      </h3>
+      <div className="flex justify-between flex-end">
+        <h3 className="text-xl font-semibold">
+          Data for table {selectedTable.code} | {selectedTable.label}{" "}
+          {datasetVersion && `| Version ${datasetVersion.version_nr}`}
+        </h3>
+        <div className="flex items-center space-x-2">
+          <ExcelOperations
+            objectCode={selectedTable.code.toLowerCase()}
+            columns={metadata}
+            onUpload={onSave}
+            currentData={localTableData}
+            isLoading={isSaving || isLoading}
+            onDataLoad={handleExcelDataLoad}
+          />
+        </div>
+      </div>
+
       <MetadataTableHeader
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         handleAddRow={handleAddRow}
         handleSave={handleSave}
-        isSaving={isSaving}
-        isValidating={isValidating}
         onValidate={handleValidate}
         isDataModified={isDataModified}
+        isSaving={isSaving}
+        isValidating={isValidating}
       />
+
       <MetadataTableBody
         filteredMetadata={filteredMetadata}
         localTableData={localTableData}
         handleCellChange={handleCellChange}
-        handleDeleteRow={handleDeleteRow}
+        handleDeleteRow={(rowIndex) => {
+          setLocalTableData((prevData) =>
+            prevData.filter((_, index) => index !== rowIndex)
+          );
+          setIsDataModified(true);
+        }}
         validationResults={validationResults}
       />
     </div>
   );
 };
 
-const LoadingSkeleton: React.FC = () => (
+const LoadingSkeleton = () => (
   <div className="space-y-4">
     <Skeleton className="h-8 w-3/4" />
     <div className="flex justify-between">

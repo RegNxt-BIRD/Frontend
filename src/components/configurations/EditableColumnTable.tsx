@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -16,211 +9,311 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash } from "lucide-react";
-import React, { useEffect, useState } from "react";
-
-interface Column {
-  dataset_version_column_id?: number;
-  dataset_version_id: number;
-  column_order: number;
-  code: string;
-  label: string;
-  description: string;
-  role: string;
-  dimension_type: string;
-  datatype: string;
-  datatype_format: string;
-  is_mandatory: boolean;
-  is_key: boolean;
-  value_statement: string;
-  is_filter: boolean;
-  is_report_snapshot_field: boolean;
-  is_system_generated: boolean;
-}
+import { useToast } from "@/hooks/use-toast";
+import { fastApiInstance } from "@/lib/axios";
+import { Column } from "@/types/databaseTypes";
+import { Plus, Save } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import ColumnFormModal from "./ColumnFormModal";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface EditableColumnTableProps {
-  columns: Column[];
-  onColumnsChange: (columns: Column[]) => void;
+  initialColumns: Column[];
+  onSave: (columns: Column[]) => Promise<void>;
+  isLoading?: boolean;
+  datasetId: string | number;
+  versionId: string | number;
 }
 
 export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
-  columns,
-  onColumnsChange,
+  initialColumns,
+  onSave,
+  datasetId,
+  isLoading,
+  versionId,
 }) => {
-  const [localColumns, setLocalColumns] = useState<Column[]>(columns);
+  const { toast } = useToast();
+  const [columns, setColumns] = useState<Column[]>([]);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [columnToDelete, setColumnToDelete] = useState<Column | null>(null);
 
   useEffect(() => {
-    setLocalColumns(columns);
-  }, [columns]);
+    setColumns(initialColumns);
+  }, [initialColumns]);
 
-  const handleInputChange = (
-    index: number,
-    field: keyof Column,
-    value: any
-  ) => {
-    const updatedColumns = [...localColumns];
-    updatedColumns[index] = { ...updatedColumns[index], [field]: value };
-    setLocalColumns(updatedColumns);
-    onColumnsChange(updatedColumns);
-  };
+  // Track changes
+  useEffect(() => {
+    const columnsChanged =
+      JSON.stringify(columns) !== JSON.stringify(initialColumns);
+    setHasChanges(columnsChanged);
+  }, [columns, initialColumns]);
 
-  interface Column {
-    dataset_version_column_id?: number;
-    dataset_version_id: number;
-    column_order: number;
-    code: string;
-    label: string;
-    description: string;
-    role: string;
-    dimension_type: string;
-    datatype: string;
-    datatype_format: string;
-    is_mandatory: boolean;
-    is_key: boolean;
-    value_statement: string;
-    is_filter: boolean;
-    is_report_snapshot_field: boolean;
-    is_system_generated: boolean;
-  }
+  const handleFormSubmit = useCallback(
+    async (data: any) => {
+      setIsSaving(true);
+      try {
+        if (selectedColumn) {
+          // Update existing column
+          await fastApiInstance.post(
+            `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+            {
+              columns: [
+                {
+                  ...selectedColumn,
+                  ...data,
+                },
+              ],
+            }
+          );
 
-  const handleAddColumn = () => {
-    const newColumn: Column = {
-      dataset_version_column_id: 0,
-      dataset_version_id: 0,
-      column_order: localColumns.length + 1,
-      code: "",
-      label: "",
-      description: "",
-      role: "",
-      dimension_type: "",
-      datatype: "",
-      datatype_format: "",
-      is_mandatory: false,
-      is_key: false,
-      value_statement: "",
-      is_filter: false,
-      is_report_snapshot_field: false,
-      is_system_generated: false,
-    };
-    setLocalColumns([...localColumns, newColumn]);
-    onColumnsChange([...localColumns, newColumn]);
-  };
+          // Update local state
+          setColumns((prevColumns) =>
+            prevColumns.map((col) =>
+              col.dataset_version_column_id ===
+              selectedColumn.dataset_version_column_id
+                ? { ...col, ...data }
+                : col
+            )
+          );
+        } else {
+          // Create new column
+          const newColumn: Column = {
+            dataset_version_column_id: 0,
+            dataset_version_id: Number(versionId),
+            column_order: columns.length + 1,
+            ...data,
+            is_system_generated: false,
+          };
 
-  const handleDeleteColumn = (index: number) => {
-    const updatedColumns = localColumns.filter((_, i) => i !== index);
-    setLocalColumns(updatedColumns);
-    onColumnsChange(updatedColumns);
-  };
+          const response = await fastApiInstance.post(
+            `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+            {
+              columns: [newColumn],
+            }
+          );
+
+          if (response.data?.updated_columns?.[0]) {
+            setColumns((prevColumns) => [
+              ...prevColumns,
+              response.data.updated_columns[0],
+            ]);
+          }
+        }
+
+        setIsFormModalOpen(false);
+        setSelectedColumn(null);
+
+        toast({
+          title: "Success",
+          description: selectedColumn ? "Column updated" : "Column created",
+        });
+      } catch (error) {
+        console.error("Error saving column:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save column. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [datasetId, versionId, selectedColumn, columns.length, toast]
+  );
+
+  const handleEditClick = useCallback((column: Column) => {
+    setSelectedColumn(column);
+    setIsFormModalOpen(true);
+  }, []);
+
+  const handleDeleteClick = useCallback((column: Column) => {
+    setColumnToDelete(column);
+    setIsDeleteDialogOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!columnToDelete) return;
+
+    try {
+      await fastApiInstance.post(
+        `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+        {
+          is_delete_operation: true,
+          columns_to_delete: [columnToDelete.dataset_version_column_id],
+        }
+      );
+
+      // Update local state
+      setColumns((prevColumns) =>
+        prevColumns.filter(
+          (col) =>
+            col.dataset_version_column_id !==
+            columnToDelete.dataset_version_column_id
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Column deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting column:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete column",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setColumnToDelete(null);
+    }
+  }, [columnToDelete, datasetId, versionId, toast]);
+
+  const handleSave = useCallback(async () => {
+    if (!hasChanges) return;
+
+    setIsSaving(true);
+    try {
+      await onSave(columns);
+      toast({
+        title: "Success",
+        description: "Columns updated successfully",
+      });
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [columns, hasChanges, onSave, toast]);
+
+  const filteredColumns = useMemo(() => {
+    return columns.filter(
+      (column) =>
+        column.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        column.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [columns, searchTerm]);
+
+  const handleModalClose = useCallback(() => {
+    setIsFormModalOpen(false);
+    setSelectedColumn(null);
+  }, []);
 
   return (
     <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Label</TableHead>
-            <TableHead>Data Type</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Mandatory</TableHead>
-            <TableHead>Key</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {localColumns.map((column, index) => (
-            <TableRow key={column.dataset_version_column_id || index}>
-              <TableCell>
-                <Input
-                  disabled={column?.is_system_generated}
-                  value={column.code}
-                  onChange={(e) =>
-                    handleInputChange(index, "code", e.target.value)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Input
-                  value={column.label}
-                  disabled={column?.is_system_generated}
-                  onChange={(e) =>
-                    handleInputChange(index, "label", e.target.value)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Select
-                  value={column.datatype}
-                  disabled={column?.is_system_generated}
-                  onValueChange={(value) =>
-                    handleInputChange(index, "datatype", value)
-                  }
-                >
-                  <SelectTrigger disabled={column?.is_system_generated}>
-                    <SelectValue placeholder="Select data type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="string">String</SelectItem>
-                    <SelectItem value="integer">Integer</SelectItem>
-                    <SelectItem value="decimal">Decimal</SelectItem>
-                    <SelectItem value="date">Date</SelectItem>
-                    <SelectItem value="boolean">Boolean</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell>
-                <Select
-                  value={column.role}
-                  disabled={column?.is_system_generated}
-                  onValueChange={(value) =>
-                    handleInputChange(index, "role", value)
-                  }
-                >
-                  <SelectTrigger disabled={column?.is_system_generated}>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="D">Dimension</SelectItem>
-                    <SelectItem value="M">Measure</SelectItem>
-                    <SelectItem value="A">Attribute</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell>
-                <Switch
-                  disabled={column?.is_system_generated}
-                  checked={column.is_mandatory}
-                  onCheckedChange={(checked) =>
-                    handleInputChange(index, "is_mandatory", checked)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={column.is_key}
-                  disabled={column?.is_system_generated}
-                  onCheckedChange={(checked) =>
-                    handleInputChange(index, "is_key", checked)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={column?.is_system_generated}
-                  onClick={() => handleDeleteColumn(index)}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </TableCell>
+      <div className="flex justify-between items-center">
+        <Input
+          placeholder="Search columns..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-xs"
+        />
+        <div className="space-x-2">
+          <Button
+            onClick={() => setIsFormModalOpen(true)}
+            disabled={isLoading || isSaving}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Column
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isLoading || isSaving || !hasChanges}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Changes
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code</TableHead>
+              <TableHead>Label</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Mandatory</TableHead>
+              <TableHead>Key</TableHead>
+              <TableHead>Visible</TableHead>
+              <TableHead>Filter</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Button onClick={handleAddColumn}>
-        <Plus className="h-4 w-4 mr-2" />
-        Add Column
-      </Button>
+          </TableHeader>
+          <TableBody>
+            {filteredColumns.map((column) => (
+              <TableRow key={column.dataset_version_column_id}>
+                <TableCell>{column.code}</TableCell>
+                <TableCell>{column.label}</TableCell>
+                <TableCell>{column.datatype}</TableCell>
+                <TableCell>{column.role}</TableCell>
+                <TableCell>
+                  <Switch checked={column.is_mandatory} disabled />
+                </TableCell>
+                <TableCell>
+                  <Switch checked={column.is_key} disabled />
+                </TableCell>
+                <TableCell>
+                  <Switch checked={column.is_visible} disabled />
+                </TableCell>
+                <TableCell>
+                  <Switch checked={column.is_filter} disabled />
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(column)}
+                      disabled={column.is_system_generated}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClick(column)}
+                      disabled={column.is_system_generated}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <ColumnFormModal
+        isOpen={isFormModalOpen}
+        onClose={handleModalClose}
+        onSubmit={handleFormSubmit}
+        initialData={selectedColumn || undefined}
+        versionId={versionId}
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Column"
+        message={`Are you sure you want to delete the column "${columnToDelete?.label}"? This action cannot be undone.`}
+      />
     </div>
   );
 };
+
+export default EditableColumnTable;

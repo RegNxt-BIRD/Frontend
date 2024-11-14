@@ -21,8 +21,42 @@ export interface Dataset {
   version_code?: string;
   valid_to?: string;
   valid_from?: string;
+  is_visible?: boolean;
   latest_version_id?: number;
   groups: { code: string | null; label: string | null; order: number | null }[];
+}
+
+export interface ExcelUploadData {
+  [key: string]: string | null;
+}
+
+export interface MetadataColumn {
+  code: string;
+  label: string;
+  datatype: string;
+  is_mandatory: boolean;
+  [key: string]: any;
+}
+
+export interface Column {
+  dataset_version_column_id: number;
+  dataset_version_id: number;
+  column_order: number;
+  code: string;
+  label: string;
+  description: string;
+  role: string;
+  dimension_type: string;
+  datatype: string;
+  datatype_format: string;
+  is_mandatory: boolean;
+  is_key: boolean;
+  value_statement: string;
+  is_filter: boolean;
+  is_report_snapshot_field: boolean;
+  is_system_generated: boolean;
+  historization_type: number;
+  is_visible: boolean;
 }
 
 export interface Datasets {
@@ -45,6 +79,36 @@ export interface DatasetVersion {
   code: string;
   label: string;
   description: string;
+}
+
+export interface DataItem {
+  dataset_id: number;
+  code: string;
+  label: string;
+  description: string;
+  framework: string;
+  type: string;
+}
+
+export interface FilterValue {
+  value: string;
+  label: string;
+}
+
+export interface FilterState {
+  [key: string]: string | null;
+}
+
+export interface FilterOption {
+  code: string;
+  value: string;
+  label: string;
+  datatype: string;
+  isSelected?: boolean;
+}
+
+export interface DropdownState {
+  [key: string]: FilterOption[];
 }
 
 export interface DatasetVersions {

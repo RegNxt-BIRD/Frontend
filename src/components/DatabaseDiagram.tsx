@@ -26,6 +26,7 @@ interface DatabaseDiagramProps {
   nodes: CustomNode[];
   edges: CustomEdge[];
   loading: boolean;
+  onReset: () => void;
   selectedDatasetVersions: any[];
   onSelectionChange: (selectedVersions: any[]) => void;
   setNodes: React.Dispatch<React.SetStateAction<CustomNode[]>>;
@@ -50,6 +51,7 @@ export default function DatabaseDiagram({
   edges,
   loading,
   setNodes,
+  onReset,
   setEdges,
   getLayoutedElements,
   onNodeInfoLog,
@@ -144,12 +146,18 @@ export default function DatabaseDiagram({
       >
         <Controls />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <Panel position="top-right">
+        <Panel position="top-right" className="flex gap-2">
           <button
             onClick={onLayout}
             className="px-4 py-2 font-semibold text-sm bg-primary text-white rounded-lg shadow-sm"
           >
             Layout
+          </button>
+          <button
+            onClick={onReset}
+            className="px-4 py-2 font-semibold text-sm bg-red-500 text-white rounded-lg shadow-sm"
+          >
+            Reset
           </button>
         </Panel>
         {isModalOpen && pendingConnection && (

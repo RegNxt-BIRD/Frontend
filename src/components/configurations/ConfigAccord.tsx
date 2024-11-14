@@ -1,4 +1,3 @@
-import { SharedDataTable } from "@/components/SharedDataTable";
 import {
   Accordion,
   AccordionContent,
@@ -6,54 +5,53 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
+import {
+  Dataset,
+  DatasetItem,
+  DatasetVersion,
+  DatasetVersions,
+} from "@/types/databaseTypes";
 import React, { useState } from "react";
+import { DatasetAccordion } from "./DatasetAccordion";
 
-interface DataItem {
-  dataset_id: number;
-  code: string;
-  label: string;
-  description: string;
-  framework: string;
-  type: string;
+interface ConfigurationDataTableProps {
+  datasets: Record<string, Record<string, DatasetItem[]>>;
+  groupedDatasets?: Record<string, Dataset[]>;
+  handleDatasetClick: (dataset: Dataset) => void;
+  datasetVersions?: DatasetVersions;
+  isVersionModalOpen: boolean;
+  setIsVersionModalOpen: (open: boolean) => void;
+  selectedDataset: Dataset | null;
+  onUpdateColumns: any;
+  handleCreateVersion: (dataset: Dataset) => void;
+  handleUpdateVersion: (version: DatasetVersion) => void;
+  handleDeleteVersion: (datasetId: number, versionId: number) => void;
+  handleEditDataset: (dataset: Dataset) => void;
+  handleDeleteDataset: (datasetId: number) => void;
+  isLoadingVersions: boolean;
+  onVersionSelect: any;
+  versionColumns: any;
 }
-
-interface DataAccordionProps {
-  data: Record<string, Record<string, DataItem[]>>;
-  onTableClick: (item: DataItem) => void;
-  selectedFramework: string;
-}
-
-const columns: ColumnDef<DataItem>[] = [
-  {
-    accessorKey: "code",
-    header: "Code",
-    cell: ({ row }) => <div>{row.getValue("code")}</div>,
-  },
-  {
-    accessorKey: "label",
-    header: "Name",
-    cell: ({ row }) => <div>{row.getValue("label")}</div>,
-  },
-  {
-    accessorKey: "type",
-    header: "Entity Type",
-    cell: ({ row }) => <div>{row.getValue("type")}</div>,
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => <div>{row.getValue("description")}</div>,
-  },
-];
 
 const FRAMEWORKS_PER_PAGE = 15;
 const GROUPS_PER_PAGE = 10;
 
-export const DataAccordion: React.FC<DataAccordionProps> = ({
-  data,
-  onTableClick,
-  selectedFramework,
+export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
+  datasets,
+  setIsVersionModalOpen,
+  handleDeleteDataset,
+  isLoadingVersions,
+  handleDatasetClick,
+  datasetVersions,
+  selectedDataset,
+  isVersionModalOpen,
+  onUpdateColumns,
+  handleUpdateVersion,
+  onVersionSelect,
+  versionColumns,
+  handleCreateVersion,
+  handleDeleteVersion,
+  handleEditDataset,
 }) => {
   const [expandedFramework, setExpandedFramework] = useState<
     string | undefined
@@ -61,10 +59,11 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
   const [expandedGroup, setExpandedGroup] = useState<string | undefined>(
     undefined
   );
+
   const [frameworkPage, setFrameworkPage] = useState(1);
   const [groupPages, setGroupPages] = useState<Record<string, number>>({});
 
-  const frameworks = Object.keys(data);
+  const frameworks = Object.keys(datasets);
   const totalFrameworkPages = Math.ceil(
     frameworks.length / FRAMEWORKS_PER_PAGE
   );
@@ -73,21 +72,16 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
     frameworkPage * FRAMEWORKS_PER_PAGE
   );
 
-  const renderFrameworks =
-    selectedFramework !== "NO_FILTER"
-      ? [selectedFramework]
-      : paginatedFrameworks;
-
   const getPaginatedGroups = (framework: string) => {
-    if (!data[framework]) return [];
-    const groups = Object.keys(data[framework]);
+    if (!datasets[framework]) return [];
+    const groups = Object.keys(datasets[framework]);
     const page = groupPages[framework] || 1;
     return groups.slice((page - 1) * GROUPS_PER_PAGE, page * GROUPS_PER_PAGE);
   };
 
   const getGroupPageCount = (framework: string) => {
-    if (!data[framework]) return 0;
-    const groups = Object.keys(data[framework]);
+    if (!datasets[framework]) return 0;
+    const groups = Object.keys(datasets[framework]);
     return Math.ceil(groups.length / GROUPS_PER_PAGE);
   };
 
@@ -102,10 +96,10 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
         collapsible
         value={expandedFramework}
         onValueChange={setExpandedFramework}
-        className="w-full space-y-2"
+        className="border border-gray-200 rounded-lg overflow-hidden shadow-sm"
       >
-        {renderFrameworks.map((framework) => {
-          if (!data[framework]) return null;
+        {paginatedFrameworks.map((framework) => {
+          if (!datasets[framework]) return null;
 
           const paginatedGroups = getPaginatedGroups(framework);
           const totalGroupPages = getGroupPageCount(framework);
@@ -121,7 +115,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
                 <div className="flex items-center justify-between w-full">
                   <span className="font-semibold text-lg">{framework}</span>
                   <span className="text-sm text-gray-600">
-                    {Object.values(data[framework]).reduce(
+                    {Object.values(datasets[framework]).reduce(
                       (acc, items) => acc + items.length,
                       0
                     )}
@@ -147,16 +141,28 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
                         <div className="flex items-center justify-between w-full">
                           <span className="font-medium">{group}</span>
                           <span className="text-sm text-gray-600">
-                            {data[framework][group].length} item(s)
+                            {datasets[framework][group].length} item(s)
                           </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="py-2">
-                        <SharedDataTable
-                          data={data[framework][group]}
-                          columns={columns}
-                          onRowClick={onTableClick}
+                        <DatasetAccordion
+                          datasets={datasets[framework]}
                           showPagination={true}
+                          handleDatasetClick={handleDatasetClick}
+                          onUpdateColumns={onUpdateColumns}
+                          datasetVersions={datasetVersions}
+                          isLoadingVersions={isLoadingVersions}
+                          selectedDataset={selectedDataset}
+                          onVersionSelect={onVersionSelect}
+                          handleUpdateVersion={handleUpdateVersion}
+                          versionColumns={versionColumns}
+                          isVersionModalOpen={isVersionModalOpen}
+                          setIsVersionModalOpen={setIsVersionModalOpen}
+                          handleCreateVersion={handleCreateVersion}
+                          handleDeleteVersion={handleDeleteVersion}
+                          handleEditDataset={handleEditDataset}
+                          handleDeleteDataset={handleDeleteDataset}
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -204,7 +210,7 @@ export const DataAccordion: React.FC<DataAccordionProps> = ({
         })}
       </Accordion>
 
-      {selectedFramework === "NO_FILTER" && totalFrameworkPages > 1 && (
+      {totalFrameworkPages > 1 && (
         <div className="flex justify-center items-center space-x-2 mt-4">
           <Button
             onClick={() => setFrameworkPage((prev) => Math.max(prev - 1, 1))}

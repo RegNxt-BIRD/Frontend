@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dataset } from "@/types/databaseTypes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useEffect } from "react";
@@ -37,6 +38,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   framework: z.string().min(1, "Framework is required"),
   type: z.string().min(1, "Layer is required"),
+  is_visible: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -60,13 +62,19 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
 }) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {},
+    defaultValues: {
+      ...initialData,
+      is_visible: initialData?.is_visible ?? true,
+    },
   });
 
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        form.reset(initialData);
+        form.reset({
+          ...initialData,
+          is_visible: initialData.is_visible ?? true,
+        });
       } else {
         form.reset({
           code: "",
@@ -74,21 +82,10 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
           description: "",
           framework: "",
           type: "",
+          is_visible: true,
         });
       }
     }
-
-    return () => {
-      if (!isOpen) {
-        form.reset({
-          code: "",
-          label: "",
-          description: "",
-          framework: "",
-          type: "",
-        });
-      }
-    };
   }, [isOpen, initialData, form]);
 
   const handleSubmit = (data: FormValues) => {
@@ -98,7 +95,7 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Edit Dataset" : "Create Dataset"}
@@ -116,7 +113,11 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
                 <FormItem>
                   <FormLabel>Code</FormLabel>
                   <FormControl>
-                    <Input placeholder="Code" {...field} />
+                    <Input
+                      placeholder="Code"
+                      {...field}
+                      disabled={initialData?.is_system_generated}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -126,10 +127,14 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
               control={form.control}
               name="label"
               render={({ field }) => (
-                <FormItem id="form-label">
+                <FormItem>
                   <FormLabel>Label</FormLabel>
                   <FormControl>
-                    <Input placeholder="Label" {...field} />
+                    <Input
+                      placeholder="Label"
+                      {...field}
+                      disabled={initialData?.is_system_generated}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,7 +147,11 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input placeholder="Description" {...field} />
+                    <Input
+                      placeholder="Description"
+                      {...field}
+                      disabled={initialData?.is_system_generated}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,6 +166,7 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    disabled={initialData?.is_system_generated}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -184,6 +194,7 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    disabled={initialData?.is_system_generated}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -202,11 +213,35 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="is_visible"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Visible</FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Make this dataset visible in data and diagram sections
+                    </div>
+                    <FormMessage />
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={initialData?.is_system_generated}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <Button type="button" onClick={onClose} variant="outline">
                 Cancel
               </Button>
-              <Button type="submit">Save</Button>
+              <Button type="submit" disabled={initialData?.is_system_generated}>
+                {initialData ? "Update" : "Create"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
@@ -214,3 +249,5 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
     </Dialog>
   );
 };
+
+export default DatasetFormModal;

@@ -17,48 +17,81 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import {
+  Column,
   Dataset,
+  DatasetItem,
   DatasetResponse,
   DatasetVersion,
   DatasetVersions,
-  Framework,
   Frameworks,
   Layers,
 } from "@/types/databaseTypes";
 import { Plus } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import DataSkeleton from "../skeletons/DataSkeleton";
-import { DatasetAccordion } from "./DatasetAccordion";
+import { ConfigurationAccordion } from "./ConfigAccord";
 import { DatasetFormModal } from "./DatasetFormModal";
+import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
 
 const NO_FILTER = "NO_FILTER";
 
+interface VersionColumnsData {
+  data: any; // Adjust this according to the actual shape of your data
+  // other properties if they exist...
+}
+
 export const ConfigureDatasets: React.FC = () => {
   const { toast } = useToast();
+
+  // Basic state
   const [selectedFramework, setSelectedFramework] = useState<string>(NO_FILTER);
   const [selectedLayer, setSelectedLayer] = useState<string>(NO_FILTER);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10000);
+
+  const [selectedTable, setSelectedTable] = useState<any | null>(null);
+
+  // Modal states
+  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(
+    null
+  );
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Selected item states
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<DatasetVersion | null>(
+    null
+  );
+  const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
+  const [editingVersion, setEditingVersion] = useState<DatasetVersion | null>(
+    null
+  );
+  const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
+    null
+  );
+
+  // Column filters
   const [columnFilters, setColumnFilters] = useState({
     code: "",
     label: "",
     framework: "",
+    group: "",
     type: "",
     description: "",
   });
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [pageSize, _] = useState(10000);
-
-  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
-  const [editingDataset, setEditingDataset] = useState<Dataset | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingDatasetId, setDeletingDatasetId] = useState<number | null>(
-    null
-  );
-  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
-
+  // History data
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const handleVersionSelect = (versionId: number) => {
+    setSelectedVersionId((prev) => (prev === versionId ? null : versionId));
+  };
+  // Data fetching
   const { data: layers } = useSWR<Layers>("/api/v1/layers/", fastApiInstance);
   const { data: frameworks } = useSWR<Frameworks>(
     "/api/v1/frameworks/",
@@ -69,6 +102,41 @@ export const ConfigureDatasets: React.FC = () => {
       `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
       fastApiInstance
     );
+
+  const { data: dataTableJson } = useSWR<DatasetResponse>(
+    `/api/v1/datasets/?page=${currentPage}&page_size=${pageSize}`,
+    fastApiInstance,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 3600000,
+    }
+  );
+
+  const handleUpdateColumns = async (updatedColumns: Column[]) => {
+    if (!selectedDataset || !selectedVersionId) return;
+
+    try {
+      await fastApiInstance.post(
+        `/api/v1/datasets/${selectedDataset.dataset_id}/update-columns/?version_id=${selectedVersionId}`,
+        { columns: updatedColumns }
+      );
+
+      await mutateVersionColumns();
+      toast({
+        title: "Success",
+        description: "Columns updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating columns:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update columns. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
 
   const {
     data: datasetVersions,
@@ -81,40 +149,101 @@ export const ConfigureDatasets: React.FC = () => {
     fastApiInstance
   );
 
-  const isLoading = !layers || !frameworks || !datasetsResponse;
-
-  const filteredDatasets = useMemo(() => {
-    return (
-      (datasetsResponse?.data?.results &&
-        datasetsResponse.data.results.filter((dataset) => {
-          const frameworkMatch =
-            selectedFramework === NO_FILTER ||
-            dataset.framework === selectedFramework;
-          const layerMatch =
-            selectedLayer === NO_FILTER || dataset.type === selectedLayer;
-          const columnFilterMatch = Object.entries(columnFilters).every(
-            ([key, value]) =>
-              value === "" ||
-              dataset?.[key as keyof Dataset]
-                ?.toString()
-                .toLowerCase()
-                .includes(value.toLowerCase())
-          );
-          return frameworkMatch && layerMatch && columnFilterMatch;
-        })) ||
-      []
+  const { data: versionColumns, mutate: mutateVersionColumns } =
+    useSWR<VersionColumnsData>(
+      selectedVersionId
+        ? `/api/v1/datasets/${selectedDataset?.dataset_id}/version-columns/?version_id=${selectedVersionId}`
+        : null,
+      fastApiInstance
     );
-  }, [datasetsResponse, selectedFramework, selectedLayer, columnFilters]);
 
-  const groupedDatasets = useMemo(() => {
-    return filteredDatasets.reduce((acc, dataset) => {
-      if (!acc[dataset.framework]) {
-        acc[dataset.framework] = [];
+  const handleFrameworkChange = useCallback((value: string) => {
+    setSelectedFramework(value);
+    setSelectedTable(null);
+  }, []);
+
+  const handleLayerChange = useCallback((value: string) => {
+    setSelectedLayer(value);
+    setSelectedTable(null);
+  }, []);
+
+  const groupedData = useMemo(() => {
+    if (!dataTableJson?.data?.results) return {};
+    return dataTableJson.data.results.reduce<
+      Record<string, Record<string, DatasetItem[]>>
+    >((acc, item) => {
+      const framework = item.framework;
+      const group =
+        item.groups && item.groups.length > 0 && item.groups[0].label
+          ? item.groups[0].label
+          : "Ungrouped Datasets";
+
+      if (!acc[framework]) {
+        acc[framework] = {};
       }
-      acc[dataset.framework].push(dataset);
+      if (!acc[framework][group]) {
+        acc[framework][group] = [];
+      }
+      acc[framework][group].push(item as any);
+
       return acc;
-    }, {} as Record<string, Dataset[]>);
-  }, [filteredDatasets]);
+    }, {});
+  }, [dataTableJson]);
+
+  const filteredData = useMemo(() => {
+    const filtered: Record<string, Record<string, DatasetItem[]>> = {};
+
+    Object.entries(groupedData).forEach(([framework, groups]) => {
+      if (selectedFramework !== NO_FILTER && framework !== selectedFramework) {
+        return;
+      }
+
+      filtered[framework] = {};
+
+      Object.entries(groups as Record<string, DatasetItem[]>).forEach(
+        ([group, items]) => {
+          const filteredItems = items.filter((item: DatasetItem) => {
+            const layerMatch =
+              selectedLayer === NO_FILTER || item.type === selectedLayer;
+            const columnFilterMatch = Object.entries(columnFilters).every(
+              ([key, value]) => {
+                if (key === "group") {
+                  return (
+                    value === "" ||
+                    (item.groups &&
+                      item.groups.some(
+                        (g: any) =>
+                          g.code.toLowerCase().includes(value.toLowerCase()) ||
+                          g.label.toLowerCase().includes(value.toLowerCase())
+                      ))
+                  );
+                }
+                return (
+                  value === "" ||
+                  (item[key as keyof DatasetItem] &&
+                    item[key as keyof DatasetItem]
+                      .toString()
+                      .toLowerCase()
+                      .includes(value.toLowerCase()))
+                );
+              }
+            );
+            return layerMatch && columnFilterMatch;
+          });
+
+          if (filteredItems.length > 0) {
+            filtered[framework][group] = filteredItems;
+          }
+        }
+      );
+
+      if (Object.keys(filtered[framework]).length === 0) {
+        delete filtered[framework];
+      }
+    });
+
+    return filtered;
+  }, [groupedData, selectedFramework, selectedLayer, columnFilters]);
 
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
     try {
@@ -123,7 +252,10 @@ export const ConfigureDatasets: React.FC = () => {
         is_system_generated: false,
       });
       await mutateDatasets();
-      toast({ title: "Success", description: "Dataset created successfully." });
+      toast({
+        title: "Success",
+        description: "Dataset created successfully.",
+      });
       setIsDatasetModalOpen(false);
     } catch (error) {
       console.error("Error creating dataset:", error);
@@ -143,7 +275,10 @@ export const ConfigureDatasets: React.FC = () => {
         updatedDataset
       );
       await mutateDatasets();
-      toast({ title: "Success", description: "Dataset updated successfully." });
+      toast({
+        title: "Success",
+        description: "Dataset updated successfully.",
+      });
       setIsDatasetModalOpen(false);
       setEditingDataset(null);
     } catch (error) {
@@ -161,7 +296,10 @@ export const ConfigureDatasets: React.FC = () => {
     try {
       await fastApiInstance.delete(`/api/v1/datasets/${deletingDatasetId}/`);
       await mutateDatasets();
-      toast({ title: "Success", description: "Dataset deleted successfully." });
+      toast({
+        title: "Success",
+        description: "Dataset deleted successfully.",
+      });
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting dataset:", error);
@@ -175,23 +313,30 @@ export const ConfigureDatasets: React.FC = () => {
     }
   };
 
-  const handleCreateVersion = async (dataset: Dataset) => {
+  const handleCreateVersion = async (
+    dataset: Dataset & Partial<DatasetVersion>
+  ) => {
     if (dataset.is_system_generated) return;
     try {
+      const payload = {
+        version_code: dataset.version_code,
+        code: dataset.code,
+        label: dataset.label,
+        description: dataset.description,
+        valid_from: dataset.valid_from,
+        valid_to: dataset.valid_to,
+      };
+
       await fastApiInstance.post(
         `/api/v1/datasets/${dataset.dataset_id}/create_version/`,
-        {
-          version_nr: dataset.version_nr,
-          version_code: dataset.version_code,
-          code: dataset.code,
-          label: dataset.label,
-          description: dataset.description,
-          valid_to: dataset.valid_to,
-          valid_from: dataset.valid_from,
-        }
+        payload
       );
       await mutateVersions();
-      toast({ title: "Success", description: "Version created successfully." });
+      toast({
+        title: "Success",
+        description: "Version created successfully.",
+      });
+      setIsVersionModalOpen(false);
     } catch (error) {
       console.error("Error creating version:", error);
       toast({
@@ -209,7 +354,12 @@ export const ConfigureDatasets: React.FC = () => {
         version
       );
       await mutateVersions();
-      toast({ title: "Success", description: "Version updated successfully." });
+      toast({
+        title: "Success",
+        description: "Version updated successfully.",
+      });
+      setIsVersionModalOpen(false);
+      setEditingVersion(null);
     } catch (error) {
       console.error("Error updating version:", error);
       toast({
@@ -226,7 +376,10 @@ export const ConfigureDatasets: React.FC = () => {
         `/api/v1/datasets/${datasetId}/delete_version/?version_id=${versionId}`
       );
       await mutateVersions();
-      toast({ title: "Success", description: "Version deleted successfully." });
+      toast({
+        title: "Success",
+        description: "Version deleted successfully.",
+      });
     } catch (error) {
       console.error("Error deleting version:", error);
       toast({
@@ -237,48 +390,127 @@ export const ConfigureDatasets: React.FC = () => {
     }
   };
 
-  const handleEditDataset = (dataset: Dataset) => {
-    setEditingDataset(dataset);
-    setIsDatasetModalOpen(true);
+  // Configuration and History handlers
+  const handleConfigurationSave = async (configData: {
+    is_visible: boolean;
+    historization_type: string;
+  }) => {
+    if (!selectedDataset) return;
+
+    try {
+      await fastApiInstance.put(
+        `/api/v1/datasets/${selectedDataset.dataset_id}/`,
+        {
+          ...selectedDataset,
+          is_visible: configData.is_visible,
+        }
+      );
+
+      if (selectedVersion) {
+        await fastApiInstance.put(
+          `/api/v1/datasets/${selectedDataset.dataset_id}/update-columns/`,
+          {
+            dataset_version_id: selectedVersion.dataset_version_id,
+            historization_type: parseInt(configData.historization_type),
+          }
+        );
+      }
+
+      await mutateDatasets();
+      await mutateVersions();
+
+      toast({
+        title: "Success",
+        description: "Configuration updated successfully.",
+      });
+      setIsConfigModalOpen(false);
+    } catch (error) {
+      console.error("Error updating configuration:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update configuration.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewHistory = async (
+    dataset: Dataset,
+    version: DatasetVersion
+  ) => {
+    try {
+      const response = await fastApiInstance.get(
+        `/api/v1/datasets/${dataset.dataset_id}/get_history/`,
+        {
+          params: {
+            version_id: version.dataset_version_id,
+          },
+        }
+      );
+
+      setHistoryData(response.data);
+      setSelectedDataset(dataset);
+      setSelectedVersion(version);
+      setIsHistoryModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch history data.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
 
-  if (isLoading) return <DataSkeleton />;
+  const layersWithNoFilter = useMemo(
+    () => [
+      { code: NO_FILTER, name: "No Layer Selected" },
+      ...(layers?.data || []),
+    ],
+    [layers]
+  );
+  const frameworksWithNoFilter = useMemo(
+    () => [
+      { code: NO_FILTER, name: "No Framework Selected" },
+      ...(frameworks?.data || []),
+    ],
+    [frameworks]
+  );
+
+  if (!layers || !frameworks || !datasetsResponse) return <DataSkeleton />;
 
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Configure Datasets</h2>
-
       <div className="flex space-x-4 mb-4">
-        <Select onValueChange={setSelectedFramework} value={selectedFramework}>
+        <Select onValueChange={handleFrameworkChange} value={selectedFramework}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="Select a Framework" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_FILTER}>No Framework Selected</SelectItem>
-            {frameworks?.data?.map((framework: Framework) => (
+            {frameworksWithNoFilter.map((framework) => (
               <SelectItem key={framework.code} value={framework.code}>
                 {framework.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select onValueChange={setSelectedLayer} value={selectedLayer}>
+        <Select onValueChange={handleLayerChange} value={selectedLayer}>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="Select a Layer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_FILTER}>No Layer Selected</SelectItem>
-            {layers?.data?.map((layer) => (
+            {layersWithNoFilter.map((layer) => (
               <SelectItem key={layer.code} value={layer.code}>
                 {layer.name}
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select>{" "}
       </div>
 
       <SharedColumnFilters
@@ -297,11 +529,15 @@ export const ConfigureDatasets: React.FC = () => {
 
       {selectedFramework === NO_FILTER && selectedLayer === NO_FILTER ? (
         <FrameworkAccordion
-          groupedDatasets={groupedDatasets}
+          groupedDatasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
+          selectedFramework={selectedFramework}
           selectedDataset={selectedDataset}
-          handleEditDataset={handleEditDataset}
+          handleEditDataset={(dataset) => {
+            setEditingDataset(dataset);
+            setIsDatasetModalOpen(true);
+          }}
           handleUpdateVersion={handleUpdateVersion}
           isLoadingVersions={isLoadingVersions}
           handleCreateVersion={handleCreateVersion}
@@ -310,13 +546,22 @@ export const ConfigureDatasets: React.FC = () => {
             setDeletingDatasetId(datasetId);
             setIsDeleteDialogOpen(true);
           }}
+          selectedVersionId={selectedVersionId}
+          onVersionSelect={handleVersionSelect}
+          versionColumns={versionColumns?.data}
+          onUpdateColumns={handleUpdateColumns as any}
+          isVersionModalOpen={isVersionModalOpen}
+          setIsVersionModalOpen={setIsVersionModalOpen}
         />
       ) : (
-        <DatasetAccordion
-          datasets={filteredDatasets}
+        <ConfigurationAccordion
+          datasets={filteredData}
           handleDatasetClick={setSelectedDataset}
           datasetVersions={datasetVersions}
-          handleEditDataset={handleEditDataset}
+          handleEditDataset={(dataset) => {
+            setEditingDataset(dataset);
+            setIsDatasetModalOpen(true);
+          }}
           isLoadingVersions={isLoadingVersions}
           selectedDataset={selectedDataset}
           handleCreateVersion={handleCreateVersion}
@@ -326,15 +571,20 @@ export const ConfigureDatasets: React.FC = () => {
             setDeletingDatasetId(datasetId);
             setIsDeleteDialogOpen(true);
           }}
+          onVersionSelect={handleVersionSelect}
+          versionColumns={versionColumns?.data}
+          onUpdateColumns={handleUpdateColumns}
+          isVersionModalOpen={isVersionModalOpen}
+          setIsVersionModalOpen={setIsVersionModalOpen}
         />
       )}
 
-      {datasetsResponse && (
+      {dataTableJson && (
         <div className="mt-4 flex justify-between items-center">
           <div>
             Showing {(currentPage - 1) * pageSize + 1} to{" "}
-            {Math.min(currentPage * pageSize, datasetsResponse.data.count)} of{" "}
-            {datasetsResponse.data.count} entries
+            {Math.min(currentPage * pageSize, dataTableJson.data.count)} of{" "}
+            {dataTableJson.data.count} entries
           </div>
           <div className="flex space-x-2">
             <Button
@@ -345,7 +595,7 @@ export const ConfigureDatasets: React.FC = () => {
             </Button>
             <Button
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === datasetsResponse.data.num_pages}
+              disabled={currentPage === dataTableJson.data.num_pages}
             >
               Next
             </Button>
@@ -393,6 +643,23 @@ export const ConfigureDatasets: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <DatasetVersionFormModal
+        isOpen={isVersionModalOpen}
+        onClose={() => {
+          setIsVersionModalOpen(false);
+          setEditingVersion(null);
+        }}
+        onSubmit={(version) => {
+          if (selectedDataset) {
+            handleCreateVersion({
+              ...selectedDataset,
+              ...version,
+            });
+          }
+        }}
+        currentVersion={datasetVersions?.data[0]}
+        datasetCode={selectedDataset?.code || ""}
+      />
     </div>
   );
 };

@@ -185,6 +185,13 @@ export default function Relationship() {
     setSelectedDatasetVersions(selectedNodes);
   }, []);
 
+  const handleReset = useCallback(() => {
+    setSelectedDatasetVersions([]);
+    setPendingSelections([]);
+    setNodes([]);
+    setEdges([]);
+  }, []);
+
   useEffect(() => {
     if (dataTableJson && currentPage < dataTableJson.data.num_pages) {
       setCurrentPage(currentPage + 1);
@@ -368,6 +375,7 @@ export default function Relationship() {
             nodes={nodes}
             edges={edges}
             loading={loading}
+            onReset={handleReset}
             selectedDatasetVersions={selectedDatasetVersions}
             onSelectionChange={handleDiagramSelectionChange}
             setNodes={setNodes}
