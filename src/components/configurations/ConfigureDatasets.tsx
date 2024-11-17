@@ -257,11 +257,13 @@ export const ConfigureDatasets: React.FC = () => {
         description: "Dataset created successfully.",
       });
       setIsDatasetModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating dataset:", error);
       toast({
         title: "Error",
-        description: "Failed to create dataset. Please try again.",
+        description:
+          error?.response?.data?.error ||
+          "Failed to create dataset. Please try again.",
         variant: "destructive",
       });
     }

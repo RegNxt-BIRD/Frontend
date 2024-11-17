@@ -558,8 +558,6 @@ const Data: React.FC = () => {
                 disabled={isMetadataLoading}
                 isDataLoading={isFilterLoading || isMetadataLoading}
               />
-
-              {/* Conditional rendering based on filter and data state */}
               <div className="mt-6">
                 {!hasAppliedFilters ? (
                   <EmptyState

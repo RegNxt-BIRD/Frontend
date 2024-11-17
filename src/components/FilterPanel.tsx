@@ -25,6 +25,7 @@ import {
   FileQuestion,
   InfoIcon,
   Loader,
+  Loader2,
   X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -332,6 +333,7 @@ export default function FilterPanel({
     } finally {
       setIsClearing(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterValues, onFilterApply, toast]);
 
   const handleApplyFilters = useCallback(async () => {
@@ -451,8 +453,6 @@ export default function FilterPanel({
           </div>
         </div>
       )}
-
-      {/* Validation Warning */}
       {!canApplyFilters && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -461,8 +461,6 @@ export default function FilterPanel({
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Action Buttons */}
       <div className="flex space-x-4 mt-6">
         <Button
           variant="outline"
@@ -507,9 +505,9 @@ export default function FilterPanel({
       />
 
       {isDataLoading && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-lg">
-          <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-            <Loader className="h-5 w-5 animate-spin text-primary" />
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-lg">
+          <div className="flex items-center gap-3 bg-background p-4 rounded-lg shadow-lg">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-sm font-medium">Loading data...</span>
           </div>
         </div>
