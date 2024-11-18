@@ -10,6 +10,7 @@ interface MetadataTableProps {
   metadata: MetadataItem[] | null;
   tableData: Record<string, string | null>[];
   isLoading: boolean;
+  hasAppliedFilters: boolean;
   onSave: any;
   onValidate: (tableData: Record<string, string | null>[]) => void;
   selectedTable: { code: string; label: string };
@@ -24,6 +25,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   onSave,
   onValidate,
   selectedTable,
+  hasAppliedFilters,
   datasetVersion,
   validationResults,
 }) => {
@@ -198,30 +200,33 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
           />
         </div>
       </div>
+      {hasAppliedFilters && (
+        <>
+          <MetadataTableHeader
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            handleAddRow={handleAddRow}
+            handleSave={handleSave}
+            onValidate={handleValidate}
+            isDataModified={isDataModified}
+            isSaving={isSaving}
+            isValidating={isValidating}
+          />
 
-      <MetadataTableHeader
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        handleAddRow={handleAddRow}
-        handleSave={handleSave}
-        onValidate={handleValidate}
-        isDataModified={isDataModified}
-        isSaving={isSaving}
-        isValidating={isValidating}
-      />
-
-      <MetadataTableBody
-        filteredMetadata={filteredMetadata}
-        localTableData={localTableData}
-        handleCellChange={handleCellChange}
-        handleDeleteRow={(rowIndex) => {
-          setLocalTableData((prevData) =>
-            prevData.filter((_, index) => index !== rowIndex)
-          );
-          setIsDataModified(true);
-        }}
-        validationResults={validationResults}
-      />
+          <MetadataTableBody
+            filteredMetadata={filteredMetadata}
+            localTableData={localTableData}
+            handleCellChange={handleCellChange}
+            handleDeleteRow={(rowIndex) => {
+              setLocalTableData((prevData) =>
+                prevData.filter((_, index) => index !== rowIndex)
+              );
+              setIsDataModified(true);
+            }}
+            validationResults={validationResults}
+          />
+        </>
+      )}
     </div>
   );
 };

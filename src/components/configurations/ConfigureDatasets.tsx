@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
+
 import {
   Column,
   Dataset,
@@ -34,6 +35,7 @@ import { ConfigurationAccordion } from "./ConfigAccord";
 import { DatasetFormModal } from "./DatasetFormModal";
 import { DatasetVersionFormModal } from "./DatasetVersionFormModal";
 import { FrameworkAccordion } from "./FrameworkAccordion";
+import { VersionHistoryModal } from "./VersionHistoryModal";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -442,12 +444,7 @@ export const ConfigureDatasets: React.FC = () => {
   ) => {
     try {
       const response = await fastApiInstance.get(
-        `/api/v1/datasets/${dataset.dataset_id}/get_history/`,
-        {
-          params: {
-            version_id: version.dataset_version_id,
-          },
-        }
+        `/api/v1/datasets/${dataset.dataset_id}/version_history/?version_id=${version.dataset_version_id}`
       );
 
       setHistoryData(response.data);
@@ -455,10 +452,10 @@ export const ConfigureDatasets: React.FC = () => {
       setSelectedVersion(version);
       setIsHistoryModalOpen(true);
     } catch (error) {
-      console.error("Error fetching history:", error);
+      console.error("Error fetching version history:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch history data.",
+        description: "Failed to fetch version history. Please try again.",
         variant: "destructive",
       });
     }
@@ -554,6 +551,7 @@ export const ConfigureDatasets: React.FC = () => {
           onUpdateColumns={handleUpdateColumns as any}
           isVersionModalOpen={isVersionModalOpen}
           setIsVersionModalOpen={setIsVersionModalOpen}
+          handleViewHistory={handleViewHistory}
         />
       ) : (
         <ConfigurationAccordion
@@ -578,6 +576,7 @@ export const ConfigureDatasets: React.FC = () => {
           onUpdateColumns={handleUpdateColumns}
           isVersionModalOpen={isVersionModalOpen}
           setIsVersionModalOpen={setIsVersionModalOpen}
+          handleViewHistory={handleViewHistory}
         />
       )}
 
@@ -645,6 +644,13 @@ export const ConfigureDatasets: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <VersionHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        dataset={selectedDataset}
+        version={selectedVersion}
+        historyData={historyData}
+      />
       <DatasetVersionFormModal
         isOpen={isVersionModalOpen}
         onClose={() => {

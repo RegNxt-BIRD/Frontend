@@ -67,6 +67,7 @@ const columnSchema = z.object({
   is_mandatory_filter: z.boolean().default(false), // Added new field
   value_statement: z.string().optional(),
   historization_type: z.number(),
+  is_mandatory_filter: z.boolean().default(false),
 });
 
 type ColumnFormData = z.infer<typeof columnSchema>;

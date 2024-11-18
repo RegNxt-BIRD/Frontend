@@ -194,19 +194,21 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleDeleteVersion(
-                            dataset.dataset_id,
-                            version.dataset_version_id
-                          )
-                        }
-                        disabled={dataset.is_system_generated}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
+                      <span className="inline-flex">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDeleteVersion(
+                              dataset.dataset_id,
+                              version.dataset_version_id
+                            )
+                          }
+                          disabled={dataset.is_system_generated}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent>
                       {dataset.is_system_generated
@@ -284,14 +286,16 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditDataset(dataset)}
-                          disabled={dataset.is_system_generated}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <span className="inline-flex">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditDataset(dataset)}
+                            disabled={dataset.is_system_generated}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent>
                         {dataset.is_system_generated
@@ -304,16 +308,18 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleDeleteDataset(dataset.dataset_id)
-                          }
-                          disabled={dataset.is_system_generated}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
+                        <span className="inline-flex">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleDeleteDataset(dataset.dataset_id)
+                            }
+                            disabled={dataset.is_system_generated}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent>
                         {dataset.is_system_generated
@@ -339,7 +345,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                   {!dataset.is_system_generated && (
                     <Button
                       onClick={() => {
-                        setIsVersionModalOpen(true); // Now this will work
+                        setIsVersionModalOpen(true);
                         handleDatasetClick(dataset);
                       }}
                       size="sm"

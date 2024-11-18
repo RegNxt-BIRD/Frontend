@@ -6,7 +6,6 @@ import useSWR from "swr";
 import { ConfigurationDataTable } from "@/components/ConfigurationDataTable";
 import { DataAccordion } from "@/components/DataAccordion";
 import DatePicker from "@/components/DatePicker";
-import EmptyState from "@/components/EmptyState";
 import FilterPanel from "@/components/FilterPanel";
 import { MetadataTable } from "@/components/metadatatable/MetadataTable";
 import { SelectionDisplay } from "@/components/SelectionDisplay";
@@ -30,7 +29,6 @@ import {
   Layers,
   ValidationResult,
 } from "@/types/databaseTypes";
-import { Filter, SearchX } from "lucide-react";
 
 const NO_FILTER = "NO_FILTER";
 
@@ -559,40 +557,17 @@ const Data: React.FC = () => {
                 isDataLoading={isFilterLoading || isMetadataLoading}
               />
               <div className="mt-6">
-                {!hasAppliedFilters ? (
-                  <EmptyState
-                    title="Select Filters to View Data"
-                    description="Use the filters above to retrieve and display the dataset content. Mandatory fields are marked with an asterisk (*)."
-                    icon={Filter}
-                  />
-                ) : hasAppliedFilters &&
-                  !isFilterLoading &&
-                  metadataTableData.length === 0 ? (
-                  <EmptyState
-                    title="No Results Found"
-                    description="No data matches your selected filters. Try adjusting your filter criteria to see more results."
-                    icon={SearchX}
-                    action={{
-                      label: "Clear Filters",
-                      onClick: handleClearFilters,
-                    }}
-                  />
-                ) : (
-                  hasAppliedFilters &&
-                  !isFilterLoading &&
-                  metadataTableData.length > 0 && (
-                    <MetadataTable
-                      metadata={metadata}
-                      tableData={metadataTableData}
-                      isLoading={isMetadataLoading}
-                      onSave={handleSaveMetadata}
-                      onValidate={handleValidate}
-                      selectedTable={selectedTable}
-                      datasetVersion={datasetVersion}
-                      validationResults={validationResults}
-                    />
-                  )
-                )}
+                <MetadataTable
+                  metadata={metadata}
+                  tableData={metadataTableData}
+                  isLoading={isMetadataLoading}
+                  onSave={handleSaveMetadata}
+                  hasAppliedFilters={hasAppliedFilters}
+                  onValidate={handleValidate}
+                  selectedTable={selectedTable}
+                  datasetVersion={datasetVersion}
+                  validationResults={validationResults}
+                />
               </div>
             </>
           ) : (
