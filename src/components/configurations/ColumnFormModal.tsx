@@ -62,12 +62,11 @@ const columnSchema = z.object({
   datatype_format: z.string().optional(),
   is_mandatory: z.boolean(),
   is_key: z.boolean(),
-  is_visible: z.boolean().default(true), // Changed default to true
+  is_visible: z.boolean().default(true),
   is_filter: z.boolean().default(false),
-  is_mandatory_filter: z.boolean().default(false), // Added new field
+  is_mandatory_filter: z.boolean().default(false),
   value_statement: z.string().optional(),
   historization_type: z.number(),
-  is_mandatory_filter: z.boolean().default(false),
 });
 
 type ColumnFormData = z.infer<typeof columnSchema>;
@@ -100,9 +99,9 @@ export default function ColumnFormModal({
       datatype_format: "",
       is_mandatory: false,
       is_key: false,
-      is_visible: true, // Set default to true
-      is_filter: false,
-      is_mandatory_filter: false, // Initialize new field
+      is_visible: true,
+      is_filter: true,
+      is_mandatory_filter: false,
       value_statement: "",
       historization_type: 1,
     },
@@ -128,7 +127,7 @@ export default function ColumnFormModal({
           is_mandatory: false,
           is_key: false,
           is_visible: true,
-          is_filter: false,
+          is_filter: true,
           is_mandatory_filter: false,
           value_statement: "",
           historization_type: 1,
@@ -304,6 +303,25 @@ export default function ColumnFormModal({
                   <FormItem className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
                       <FormLabel>Mandatory</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={initialData?.is_system_generated}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_key"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Is Key</FormLabel>
                     </div>
                     <FormControl>
                       <Switch

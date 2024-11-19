@@ -13,8 +13,8 @@ import { format } from "date-fns";
 interface VersionHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  dataset: Dataset;
-  version: DatasetVersion | undefined;
+  dataset: Dataset | null;
+  version: DatasetVersion | null;
   historyData: any[];
 }
 

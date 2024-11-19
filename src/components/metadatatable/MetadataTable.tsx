@@ -196,7 +196,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             onUpload={onSave}
             currentData={localTableData}
             isLoading={isSaving || isLoading}
-            onDataLoad={handleExcelDataLoad}
+            // onDataLoad={handleExcelDataLoad}
           />
         </div>
       </div>

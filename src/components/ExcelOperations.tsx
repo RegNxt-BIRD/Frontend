@@ -15,16 +15,16 @@ import ExcelPreviewModal from "./ExcelPreviewModal";
 interface ExcelOperationsProps {
   objectCode: string;
   columns: MetadataItem[];
-  onUpload: (data: any[]) => Promise<void>;
+  onUpload: any;
   currentData?: any[];
   isLoading?: boolean;
-  onDataLoad?: (data: Record<string, string | null>[]) => void; // New callback for data loading
+  // onDataLoad?: (data: Record<string, string | null>[]) => void; // New callback for data loading
 }
 
 export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   objectCode,
   columns,
-  onDataLoad,
+  // onDataLoad,
   onUpload,
   currentData,
   isLoading,
