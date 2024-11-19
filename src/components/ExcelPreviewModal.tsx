@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -17,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ExcelPreviewModalProps {
   isOpen: boolean;
@@ -38,8 +37,8 @@ const ExcelPreviewModal = ({
     Record<string, string | null>[]
   >([]);
   const [isSaving, setIsSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Update previewData when data prop changes
   useEffect(() => {
     if (data && data.length > 0) {
       setPreviewData(data);
@@ -73,94 +72,105 @@ const ExcelPreviewModal = ({
     }
   };
 
-  // Debug logging
-  console.log("Preview Data:", previewData);
-  console.log("Incoming Data:", data);
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+    <Dialog open={isOpen} onOpenChange={onClose} modal={false}>
+      <DialogContent
+        ref={dialogRef}
+        className="max-w-[95vw] h-[90vh] flex flex-col overflow-hidden p-0"
+      >
+        <DialogHeader className="px-4 py-2">
           <DialogTitle>
             Preview Excel Data ({previewData.length} rows)
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0">
-          <ScrollArea className="h-[60vh]">
+        <div className="flex-1 overflow-hidden px-4">
+          <div className="h-full overflow-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Row #</TableHead>
+                <TableRow className="bg-gray-50">
+                  <TableHead
+                    className="sticky left-0 z-20 bg-gray-50 w-[50px]"
+                    style={{ position: "sticky" }}
+                  >
+                    Row #
+                  </TableHead>
                   {columns.map((column) => (
-                    <TableHead key={column.code}>{column.label}</TableHead>
+                    <TableHead
+                      key={column.code}
+                      className="px-4 py-3 text-left min-w-[200px]"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{column.label}</span>
+                        {/* ... tooltips remain the same ... */}
+                      </div>
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {previewData.length > 0 ? (
-                  previewData.map((row, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      <TableCell className="font-medium">
-                        {rowIndex + 1}
-                      </TableCell>
-                      {columns.map((column) => (
-                        <TableCell key={column.code} className="p-0">
-                          <Input
-                            type="text"
-                            value={row[column.code] || ""}
-                            onChange={(e) =>
-                              handleCellChange(
-                                rowIndex,
-                                column.code,
-                                e.target.value
-                              )
-                            }
-                            className="border-0 h-8 focus:ring-offset-0"
-                          />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
+                {previewData.map((row, rowIndex) => (
+                  <TableRow
+                    key={rowIndex}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <TableCell
-                      colSpan={columns.length + 1}
-                      className="text-center py-4"
+                      className="sticky left-0 z-20 bg-white border-r"
+                      style={{ position: "sticky" }}
                     >
-                      No data to display
+                      {rowIndex + 1}
                     </TableCell>
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.code}
+                        className="p-0 min-w-[200px]"
+                      >
+                        <Input
+                          type="text"
+                          value={row[column.code] || ""}
+                          onChange={(e) =>
+                            handleCellChange(
+                              rowIndex,
+                              column.code,
+                              e.target.value
+                            )
+                          }
+                          className="border-0 h-8 focus:ring-0 focus:ring-offset-0 bg-transparent"
+                        />
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
+                ))}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </div>
 
-        <DialogFooter className="space-x-2">
-          <div className="flex-1 text-sm text-gray-500">
+        <DialogFooter className="p-4 bg-gray-50 border-t mt-auto">
+          <div className="text-sm text-gray-500">
             {previewData.length} row(s) loaded
           </div>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || previewData.length === 0}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || previewData.length === 0}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
 export default ExcelPreviewModal;
