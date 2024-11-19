@@ -36,51 +36,97 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     Record<string, string | null>[]
   >([]);
 
-  // Download empty template
   const downloadTemplate = () => {
     try {
-      // Create workbook with just the column headers
       const wb = utils.book_new();
 
-      // Create main data sheet
-      const headers = columns.map((col) => col.code);
-      const ws = utils.aoa_to_sheet([headers]);
+      // Create validation sheet
+      const validationData = new Map();
+      let maxLength = 0;
 
-      // Add configuration info in hidden sheet
-      const infoWs = utils.aoa_to_sheet([["object_code"], [objectCode]]);
-
-      // Style mandatory columns
-      const mandatoryCols = columns.reduce((acc: any, col, idx) => {
-        if (col.is_mandatory) {
-          acc[utils.encode_col(idx)] = {
-            fill: { fgColor: { rgb: "CCCCCC" } },
-          };
+      // Transform data to vertical format
+      columns.forEach((col) => {
+        if (col.value_options?.length) {
+          const values = col.value_options.map((opt) => ({
+            code: (
+              opt.item_code ||
+              opt.reporting_date ||
+              opt.entity ||
+              ""
+            ).toString(),
+            label: (
+              opt.item_name ||
+              opt.label ||
+              opt.reporting_date ||
+              opt.entity ||
+              ""
+            ).toString(),
+          }));
+          validationData.set(col.code, values);
+          maxLength = Math.max(maxLength, values.length);
         }
-        return acc;
-      }, {});
+      });
 
-      // Set column widths and styles
-      ws["!cols"] = columns.map(() => ({ wch: 15 }));
-      if (Object.keys(mandatoryCols).length) {
-        ws["!cols"] = { ...ws["!cols"], ...mandatoryCols };
+      // Create vertical validation arrays
+      const validationHeaders = Array.from(validationData.keys());
+      const validationArrays = [validationHeaders];
+
+      // Fill values vertically
+      for (let i = 0; i < maxLength; i++) {
+        const row = validationHeaders.map((header) => {
+          const values = validationData.get(header);
+          return values && values[i] ? values[i].code : "";
+        });
+        validationArrays.push(row);
       }
 
+      const validationWs = utils.aoa_to_sheet(validationArrays);
+
+      // Create data sheet with validation
+      const dataHeaders = columns.map((col) => col.code);
+      const dataWs = utils.aoa_to_sheet([dataHeaders]);
+
+      // Apply validation to columns
+      validationHeaders.forEach((header, colIndex) => {
+        const dataColIndex = dataHeaders.indexOf(header);
+        if (dataColIndex !== -1) {
+          const colLetter = utils.encode_col(dataColIndex);
+          const validationColLetter = utils.encode_col(colIndex);
+
+          dataWs[`${colLetter}2:${colLetter}1000`] = {
+            t: "s",
+            v: "",
+            dataValidation: {
+              type: "list",
+              allowBlank: true,
+              showDropDown: true,
+              formula1: `=Validation!$${validationColLetter}$2:$${validationColLetter}$${
+                maxLength + 1
+              }`,
+            },
+          };
+        }
+      });
+
       // Add sheets
-      utils.book_append_sheet(wb, ws, "Data");
-      utils.book_append_sheet(wb, infoWs, "info");
+      utils.book_append_sheet(wb, dataWs, "Data");
+      utils.book_append_sheet(wb, validationWs, "Validation");
+      utils.book_append_sheet(
+        wb,
+        utils.aoa_to_sheet([["object_code"], [objectCode]]),
+        "Info"
+      );
 
-      // Download file
       writeFile(wb, `${objectCode}_template.xlsx`);
-
       toast({
         title: "Success",
         description: "Template downloaded successfully",
       });
     } catch (error) {
-      console.error("Template download error:", error);
+      console.error("Template creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to download template",
+        description: "Failed to create template",
         variant: "destructive",
       });
     }
