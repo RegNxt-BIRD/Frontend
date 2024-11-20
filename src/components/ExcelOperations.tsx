@@ -44,79 +44,58 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   const downloadTemplate = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
+      const dataSheet = workbook.addWorksheet("Data");
+      const headers = columns.map((col) => col.code);
 
-      // Create Validation Sheet first
+      // Create Validation sheet
       const validationSheet = workbook.addWorksheet("Validation");
-
-      // Get all columns that have value_options
       const columnsWithValidation = columns.filter(
         (col) => col.value_options?.length
       );
 
-      // Add headers in Validation sheet
-      validationSheet.addRow(columnsWithValidation.map((col) => col.code));
+      // Add validation data vertically for each column
+      let currentCol = 1;
+      for (const col of columnsWithValidation) {
+        // Add column header
+        validationSheet.getCell(1, currentCol).value = col.code;
 
-      // Find the maximum length of value_options across all columns
-      const maxOptions = Math.max(
-        ...columnsWithValidation.map((col) => col.value_options?.length || 0)
-      );
-
-      // Add validation values in columns
-      for (let i = 0; i < maxOptions; i++) {
-        const rowValues = columnsWithValidation.map((col) => {
-          const option = col.value_options?.[i];
-          return (
+        // Add validation values
+        col.value_options?.forEach((option, index) => {
+          const value =
             option?.item_code ||
             option?.value ||
             option?.reporting_date ||
             option?.entity ||
-            ""
-          );
+            "";
+          validationSheet.getCell(index + 2, currentCol).value = value;
         });
-        validationSheet.addRow(rowValues);
+        currentCol++;
       }
 
-      // Create Data Sheet
-      const dataSheet = workbook.addWorksheet("Data");
-
-      // Add headers
-      const headers = columns.map((col) => col.label);
       dataSheet.addRow(headers);
-
-      // Set column widths and add data validation where applicable
-      columns.forEach((col, index) => {
-        const column = dataSheet.getColumn(index + 1);
-        column.width = 15;
-
+      columns.forEach((col, colIndex) => {
         if (col.value_options?.length) {
-          // Find the column letter in validation sheet
-          const validationColumnIndex = columnsWithValidation.findIndex(
+          // Find the validation column index
+          const validationColIndex = columnsWithValidation.findIndex(
             (vc) => vc.code === col.code
           );
-          if (validationColumnIndex !== -1) {
-            const validationColumnLetter = getExcelColumn(
-              validationColumnIndex + 1
+
+          if (validationColIndex !== -1) {
+            const validationColLetter = getExcelColumn(validationColIndex + 1);
+            const maxOptions = col.value_options?.length || 0;
+            const dataColLetter = getExcelColumn(colIndex + 1);
+            dataSheet?.dataValidations.add(
+              `${dataColLetter}2:${dataColLetter}1000`,
+              {
+                type: "list",
+                allowBlank: true,
+                formulae: [
+                  `Validation!$${validationColLetter}$2:$${validationColLetter}$${
+                    maxOptions + 1
+                  }`,
+                ],
+              }
             );
-
-            // Create validation referencing the Validation sheet
-            const dataValidation = {
-              type: "list" as const,
-              allowBlank: true,
-              formulae: [
-                `Validation!$${validationColumnLetter}$2:$${validationColumnLetter}$${
-                  maxOptions + 1
-                }`,
-              ],
-            };
-
-            // Apply validation to all cells in the column (except header)
-            dataSheet
-              .getColumn(index + 1)
-              .eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-                if (rowNumber > 1) {
-                  cell.dataValidation = dataValidation;
-                }
-              });
           }
         }
       });
@@ -125,7 +104,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       const infoSheet = workbook.addWorksheet("Info");
       infoSheet.addRow(["object_code", objectCode]);
 
-      // Generate buffer and download
+      // Generate and download the file
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -219,6 +198,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     try {
       const file = event.target.files?.[0];
       if (!file) return;
+      console.log("file: ", file);
 
       setIsUploading(true);
       toast({
@@ -264,6 +244,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
           processedData.push(rowData);
         }
       });
+      console.log("processedData: ", processedData);
 
       if (processedData.length === 0) {
         toast({
