@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import * as ExcelJS from "exceljs";
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import ExcelPreviewModal from "./ExcelPreviewModal";
 
 interface MetadataItem {
   code: string;
@@ -40,11 +41,15 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<
+    Record<string, string | null>[]
+  >([]);
 
   const downloadTemplate = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
-      const dataSheet = workbook.addWorksheet("Data");
+      const dataSheet = workbook.addWorksheet("Data") as any;
       const headers = columns.map((col) => col.code);
 
       // Create Validation sheet
@@ -75,7 +80,6 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       dataSheet.addRow(headers);
       columns.forEach((col, colIndex) => {
         if (col.value_options?.length) {
-          // Find the validation column index
           const validationColIndex = columnsWithValidation.findIndex(
             (vc) => vc.code === col.code
           );
@@ -84,7 +88,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
             const validationColLetter = getExcelColumn(validationColIndex + 1);
             const maxOptions = col.value_options?.length || 0;
             const dataColLetter = getExcelColumn(colIndex + 1);
-            dataSheet?.dataValidations.add(
+            dataSheet?.dataValidations?.add(
               `${dataColLetter}2:${dataColLetter}1000`,
               {
                 type: "list",
@@ -100,11 +104,8 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         }
       });
 
-      // Create Info sheet
       const infoSheet = workbook.addWorksheet("Info");
       infoSheet.addRow(["object_code", objectCode]);
-
-      // Generate and download the file
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -158,17 +159,11 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Data");
-
-      // Add headers
       worksheet.addRow(columns.map((col) => col.label));
-
-      // Add data
       currentData.forEach((row) => {
         const rowData = columns.map((col) => row[col.code]);
         worksheet.addRow(rowData);
       });
-
-      // Generate buffer and download
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -179,7 +174,6 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       link.download = `${objectCode}_data.xlsx`;
       link.click();
       window.URL.revokeObjectURL(url);
-
       toast({
         title: "Success",
         description: "Data downloaded successfully",
@@ -198,7 +192,6 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-      console.log("file: ", file);
 
       setIsUploading(true);
       toast({
@@ -209,62 +202,52 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
 
-      const worksheet = workbook.worksheets[0];
+      const worksheet = workbook.getWorksheet("Data");
       if (!worksheet) {
-        throw new Error("No worksheet found in the uploaded file");
+        throw new Error("Data worksheet not found");
       }
 
       const headers = worksheet.getRow(1).values as string[];
-      headers.shift(); // Remove the first empty value
+      headers.shift();
 
-      // Create a mapping of Excel columns to our column codes
       const columnMapping = new Map<number, string>();
       headers.forEach((header, index) => {
-        const matchingColumn = columns.find((col) => col.label === header);
+        const matchingColumn = columns.find((col) => col.code === header);
         if (matchingColumn) {
           columnMapping.set(index + 1, matchingColumn.code);
         }
       });
 
-      // Process rows
-      const processedData: any[] = [];
+      const processedData: Record<string, string | null>[] = [];
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip header row
+        if (rowNumber === 1) return;
 
-        const rowData: any = {};
+        const rowData: Record<string, string | null> = {};
         columnMapping.forEach((code, index) => {
           const cellValue = row.getCell(index).value;
-          if (cellValue !== null && cellValue !== undefined) {
-            rowData[code] = cellValue;
-          }
+          rowData[code] =
+            cellValue !== null && cellValue !== undefined && cellValue !== ""
+              ? cellValue.toString()
+              : null;
         });
 
-        // Only add rows that have at least one non-empty value
-        if (Object.keys(rowData).length > 0) {
+        if (Object.values(rowData).some((value) => value !== null)) {
           processedData.push(rowData);
         }
       });
-      console.log("processedData: ", processedData);
 
       if (processedData.length === 0) {
-        toast({
-          title: "Warning",
-          description: "No valid data found in the file",
-          variant: "destructive",
-        });
-        return;
+        throw new Error("No valid data found in the file");
       }
 
-      await onUpload({ data: processedData });
-      toast({
-        title: "Success",
-        description: `Successfully uploaded ${processedData.length} rows of data`,
-      });
+      setPreviewData(processedData);
+      setIsPreviewModalOpen(true);
     } catch (error) {
       console.error("Upload error:", error);
       toast({
         title: "Error",
-        description: "Failed to process file",
+        description:
+          error instanceof Error ? error.message : "Failed to process file",
         variant: "destructive",
       });
     } finally {
@@ -272,6 +255,24 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handlePreviewSave = async (data: Record<string, string | null>[]) => {
+    try {
+      await onUpload({ data });
+      setIsPreviewModalOpen(false);
+      toast({
+        title: "Success",
+        description: `Successfully uploaded ${data.length} rows of data`,
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save data",
+        variant: "destructive",
+      });
     }
   };
 
@@ -332,6 +333,13 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         accept=".xlsx,.xls"
         onChange={handleUpload}
         disabled={isLoading || isUploading}
+      />
+      <ExcelPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        data={previewData}
+        columns={columns}
+        onSave={handlePreviewSave}
       />
     </div>
   );
