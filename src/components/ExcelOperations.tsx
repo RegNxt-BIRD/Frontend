@@ -6,121 +6,147 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { MetadataItem } from "@/types/databaseTypes";
+import * as ExcelJS from "exceljs";
 import { Download, Upload } from "lucide-react";
-import { useRef } from "react";
-import { read, utils, writeFile } from "xlsx";
+import { useRef, useState } from "react";
+import ExcelPreviewModal from "./ExcelPreviewModal";
+
+interface MetadataItem {
+  code: string;
+  datatype?: string;
+  value_options?: Array<{
+    value?: string;
+    item_code?: string;
+    reporting_date?: string;
+    entity?: string;
+  }>;
+  label: string;
+}
 
 interface ExcelOperationsProps {
   objectCode: string;
   columns: MetadataItem[];
-  onUpload: (data: any[]) => Promise<void>;
+  onUpload: (data: any) => Promise<void>;
   currentData?: any[];
   isLoading?: boolean;
-  onDataLoad?: (data: Record<string, string | null>[]) => void; // New callback for data loading
 }
 
 export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   objectCode,
   columns,
-  onDataLoad,
+  onUpload,
   currentData,
   isLoading,
 }) => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null); // Added ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<
+    Record<string, string | null>[]
+  >([]);
 
-  // Download empty template
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     try {
-      // Create workbook with just the column headers
-      const wb = utils.book_new();
-
-      // Create main data sheet
+      const workbook = new ExcelJS.Workbook();
+      const dataSheet = workbook.addWorksheet("Data") as any;
       const headers = columns.map((col) => col.code);
-      const ws = utils.aoa_to_sheet([headers]);
 
-      // Add configuration info in hidden sheet
-      const infoWs = utils.aoa_to_sheet([["object_code"], [objectCode]]);
+      // Create Validation sheet
+      const validationSheet = workbook.addWorksheet("Validation");
+      const columnsWithValidation = columns.filter(
+        (col) => col.value_options?.length
+      );
 
-      // Style mandatory columns
-      const mandatoryCols = columns.reduce((acc: any, col, idx) => {
-        if (col.is_mandatory) {
-          acc[utils.encode_col(idx)] = {
-            fill: { fgColor: { rgb: "CCCCCC" } },
-          };
-        }
-        return acc;
-      }, {});
+      // Add validation data vertically for each column
+      let currentCol = 1;
+      for (const col of columnsWithValidation) {
+        // Add column header
+        validationSheet.getCell(1, currentCol).value = col.code;
 
-      // Set column widths and styles
-      ws["!cols"] = columns.map(() => ({ wch: 15 }));
-      if (Object.keys(mandatoryCols).length) {
-        ws["!cols"] = { ...ws["!cols"], ...mandatoryCols };
+        // Add validation values
+        col.value_options?.forEach((option, index) => {
+          const value =
+            option?.item_code ||
+            option?.value ||
+            option?.reporting_date ||
+            option?.entity ||
+            "";
+          validationSheet.getCell(index + 2, currentCol).value = value;
+        });
+        currentCol++;
       }
 
-      // Add sheets
-      utils.book_append_sheet(wb, ws, "Data");
-      utils.book_append_sheet(wb, infoWs, "info");
+      dataSheet.addRow(headers);
+      columns.forEach((col, colIndex) => {
+        if (col.value_options?.length) {
+          const validationColIndex = columnsWithValidation.findIndex(
+            (vc) => vc.code === col.code
+          );
 
-      // Download file
-      writeFile(wb, `${objectCode}_template.xlsx`);
+          if (validationColIndex !== -1) {
+            const validationColLetter = getExcelColumn(validationColIndex + 1);
+            const maxOptions = col.value_options?.length || 0;
+            const dataColLetter = getExcelColumn(colIndex + 1);
+            dataSheet?.dataValidations?.add(
+              `${dataColLetter}2:${dataColLetter}1000`,
+              {
+                type: "list",
+                allowBlank: true,
+                formulae: [
+                  `Validation!$${validationColLetter}$2:$${validationColLetter}$${
+                    maxOptions + 1
+                  }`,
+                ],
+              }
+            );
+          }
+        }
+      });
+
+      const infoSheet = workbook.addWorksheet("Info");
+      infoSheet.addRow(["object_code", objectCode]);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${objectCode}_template.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
 
       toast({
         title: "Success",
         description: "Template downloaded successfully",
       });
     } catch (error) {
-      console.error("Template download error:", error);
+      console.error("Template creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to download template",
+        description: "Failed to create template",
         variant: "destructive",
       });
     }
   };
 
-  const processExcelData = (
-    data: Record<string, any>[]
-  ): Record<string, string | null>[] => {
-    return data.map((row) => {
-      const processedRow: Record<string, string | null> = {};
+  // Helper function to convert column index to Excel column letter
+  function getExcelColumn(columnNumber: number): string {
+    let dividend = columnNumber;
+    let columnName = "";
+    let modulo;
 
-      columns.forEach((column) => {
-        let value = row[column.code];
+    while (dividend > 0) {
+      modulo = (dividend - 1) % 26;
+      columnName = String.fromCharCode(65 + modulo) + columnName;
+      dividend = Math.floor((dividend - modulo) / 26);
+    }
 
-        // Handle different data types
-        if (value !== undefined && value !== null) {
-          if (column.datatype.toLowerCase() === "gregorianday") {
-            // Convert date formats if needed
-            try {
-              const dateStr = value.toString();
-              if (dateStr.length === 8) {
-                // Format YYYYMMDD
-                value = `${dateStr.slice(0, 4)}-${dateStr.slice(
-                  4,
-                  6
-                )}-${dateStr.slice(6, 8)}`;
-              }
-            } catch (e) {
-              console.warn(
-                `Failed to format date for column ${column.code}:`,
-                e
-              );
-            }
-          }
-          processedRow[column.code] = value.toString();
-        } else {
-          processedRow[column.code] = null;
-        }
-      });
+    return columnName;
+  }
 
-      return processedRow;
-    });
-  };
-
-  // Download current data
-  const downloadData = () => {
+  const downloadData = async () => {
     try {
       if (!currentData?.length) {
         toast({
@@ -131,23 +157,23 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         return;
       }
 
-      const wb = utils.book_new();
-
-      // Convert data with headers
-      const wsData = [
-        columns.map((col) => col.code),
-        ...currentData.map((row) => columns.map((col) => row[col.code])),
-      ];
-
-      // Create sheets
-      const ws = utils.aoa_to_sheet(wsData);
-      const infoWs = utils.aoa_to_sheet([["object_code"], [objectCode]]);
-
-      utils.book_append_sheet(wb, ws, "Data");
-      utils.book_append_sheet(wb, infoWs, "info");
-
-      writeFile(wb, `${objectCode}_data.xlsx`);
-
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Data");
+      worksheet.addRow(columns.map((col) => col.label));
+      currentData.forEach((row) => {
+        const rowData = columns.map((col) => row[col.code]);
+        worksheet.addRow(rowData);
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${objectCode}_data.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
       toast({
         title: "Success",
         description: "Data downloaded successfully",
@@ -167,79 +193,89 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       const file = event.target.files?.[0];
       if (!file) return;
 
+      setIsUploading(true);
       toast({
         title: "Processing",
         description: "Reading file data...",
       });
 
-      const reader = new FileReader();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
 
-      reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = read(data, { type: "array" });
+      const worksheet = workbook.getWorksheet("Data");
+      if (!worksheet) {
+        throw new Error("Data worksheet not found");
+      }
 
-          // Get first sheet
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          if (!firstSheet) {
-            throw new Error("No data sheet found in file");
-          }
+      const headers = worksheet.getRow(1).values as string[];
+      headers.shift();
 
-          // Convert to JSON with header row mapping
-          const jsonData = utils.sheet_to_json(firstSheet, {
-            raw: false,
-            defval: null,
-            header: columns.map((col) => col.code), // Map headers to column codes
-          }) as Record<string, any>[];
-
-          // Remove header row if it was included
-          if (
-            jsonData?.length > 0 &&
-            Object.keys(jsonData[0]).every((key) => key === jsonData[0][key])
-          ) {
-            jsonData.shift();
-          }
-
-          // Process the data
-          const processedData = processExcelData(jsonData);
-
-          // Send to MetadataTable to append
-          if (onDataLoad) {
-            onDataLoad(processedData);
-          }
-
-          // Clear file input
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
-        } catch (error: any) {
-          console.error("File processing error:", error);
-          toast({
-            title: "Error",
-            description: "Failed to process file. Please check the format.",
-            variant: "destructive",
-          });
+      const columnMapping = new Map<number, string>();
+      headers.forEach((header, index) => {
+        const matchingColumn = columns.find((col) => col.code === header);
+        if (matchingColumn) {
+          columnMapping.set(index + 1, matchingColumn.code);
         }
-      };
+      });
 
-      reader.onerror = () => {
-        toast({
-          title: "Error",
-          description: "Failed to read file",
-          variant: "destructive",
+      const processedData: Record<string, string | null>[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const rowData: Record<string, string | null> = {};
+        columnMapping.forEach((code, index) => {
+          const cellValue = row.getCell(index).value;
+          rowData[code] =
+            cellValue !== null && cellValue !== undefined && cellValue !== ""
+              ? cellValue.toString()
+              : null;
         });
-      };
 
-      reader.readAsArrayBuffer(file);
+        if (Object.values(rowData).some((value) => value !== null)) {
+          processedData.push(rowData);
+        }
+      });
+
+      if (processedData.length === 0) {
+        throw new Error("No valid data found in the file");
+      }
+
+      setPreviewData(processedData);
+      setIsPreviewModalOpen(true);
     } catch (error) {
       console.error("Upload error:", error);
       toast({
         title: "Error",
-        description: "Failed to process file",
+        description:
+          error instanceof Error ? error.message : "Failed to process file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handlePreviewSave = async (data: Record<string, string | null>[]) => {
+    try {
+      await onUpload({ data });
+      setIsPreviewModalOpen(false);
+      toast({
+        title: "Success",
+        description: `Successfully uploaded ${data.length} rows of data`,
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save data",
         variant: "destructive",
       });
     }
   };
+
   return (
     <div className="flex items-center space-x-2">
       <TooltipProvider>
@@ -280,7 +316,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
+              disabled={isLoading || isUploading}
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload Data
@@ -296,7 +332,14 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         className="hidden"
         accept=".xlsx,.xls"
         onChange={handleUpload}
-        disabled={isLoading}
+        disabled={isLoading || isUploading}
+      />
+      <ExcelPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        data={previewData}
+        columns={columns}
+        onSave={handlePreviewSave}
       />
     </div>
   );

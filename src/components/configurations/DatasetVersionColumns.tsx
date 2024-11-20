@@ -15,7 +15,6 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
   versionId,
   datasetId,
   columns = [],
-  onUpdateColumns,
   isLoading = false,
 }) => {
   if (isLoading) {
@@ -31,7 +30,6 @@ export const DatasetVersionColumns: React.FC<DatasetVersionColumnsProps> = ({
       <h3 className="text-lg font-semibold">Dataset Version Columns</h3>
       <EditableColumnTable
         initialColumns={columns}
-        onSave={onUpdateColumns}
         datasetId={datasetId}
         isLoading={isLoading}
         versionId={versionId}

@@ -40,6 +40,7 @@ const Data: React.FC = () => {
   const [metadata, setMetadata] = useState<any[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datasetVersion, setDatasetVersion] = useState<any>(null);
+  const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pageSize, _] = useState(10000);
@@ -113,27 +114,30 @@ const Data: React.FC = () => {
         );
 
         if (allFiltersEmpty) {
-          const response = await fastApiInstance.get(
-            `/api/v1/datasets/${selectedTable.dataset_id}/get_data/?version_id=${datasetVersion.dataset_version_id}`
-          );
-          setMetadataTableData(response.data);
-        } else {
-          const params = new URLSearchParams();
-          params.append(
-            "version_id",
-            datasetVersion.dataset_version_id.toString()
-          );
-          Object.entries(filterValues).forEach(([key, value]) => {
-            if (value !== null && value !== "") {
-              params.append(key, value.toString());
-            }
+          toast({
+            title: "Error",
+            description: "Please select at least one filter",
+            variant: "destructive",
           });
-
-          const response = await fastApiInstance.get(
-            `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
-          );
-          setMetadataTableData(response.data);
+          return;
         }
+
+        const params = new URLSearchParams();
+        params.append(
+          "version_id",
+          datasetVersion.dataset_version_id.toString()
+        );
+        Object.entries(filterValues).forEach(([key, value]) => {
+          if (value !== null && value !== "") {
+            params.append(key, value.toString());
+          }
+        });
+
+        const response = await fastApiInstance.get(
+          `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
+        );
+        setMetadataTableData(response.data);
+        setHasAppliedFilters(true); // Set this to true only after successful filter apply
       } catch (error) {
         console.error("Error applying filters:", error);
         toast({
@@ -332,6 +336,10 @@ const Data: React.FC = () => {
     setMetadata(null);
     setMetadataTableData([]);
     setDatasetVersion(null);
+  }, []);
+  const handleClearFilters = useCallback(() => {
+    setMetadataTableData([]);
+    setHasAppliedFilters(false);
   }, []);
 
   const handleSaveMetadata = useCallback(
@@ -544,22 +552,23 @@ const Data: React.FC = () => {
                 datasetId={selectedTable.dataset_id}
                 versionId={datasetVersion.dataset_version_id}
                 onFilterApply={handleFilterApply}
+                setHasAppliedFilters={setHasAppliedFilters}
                 disabled={isMetadataLoading}
                 isDataLoading={isFilterLoading || isMetadataLoading}
               />
-
-              {(metadataTableData.length > 0 || isFilterLoading) && (
+              <div className="mt-6">
                 <MetadataTable
                   metadata={metadata}
                   tableData={metadataTableData}
                   isLoading={isMetadataLoading}
                   onSave={handleSaveMetadata}
+                  hasAppliedFilters={hasAppliedFilters}
                   onValidate={handleValidate}
                   selectedTable={selectedTable}
                   datasetVersion={datasetVersion}
                   validationResults={validationResults}
                 />
-              )}
+              </div>
             </>
           ) : (
             <p className="text-gray-500 italic">

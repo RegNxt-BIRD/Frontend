@@ -62,10 +62,10 @@ const columnSchema = z.object({
   datatype_format: z.string().optional(),
   is_mandatory: z.boolean(),
   is_key: z.boolean(),
-  is_visible: z.boolean().default(false),
+  is_visible: z.boolean().default(true),
   is_filter: z.boolean().default(false),
+  is_mandatory_filter: z.boolean().default(false),
   value_statement: z.string().optional(),
-  is_report_snapshot_field: z.boolean().default(false),
   historization_type: z.number(),
 });
 
@@ -74,7 +74,7 @@ type ColumnFormData = z.infer<typeof columnSchema>;
 interface ColumnFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: ColumnFormData) => void;
+  onSubmit: (data: ColumnFormData) => Promise<void>;
   initialData?: Column;
   versionId: string | number;
 }
@@ -84,7 +84,6 @@ export default function ColumnFormModal({
   onClose,
   onSubmit,
   initialData,
-  versionId,
 }: ColumnFormModalProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -100,37 +99,23 @@ export default function ColumnFormModal({
       datatype_format: "",
       is_mandatory: false,
       is_key: false,
-      is_visible: false,
-      is_filter: false,
+      is_visible: true,
+      is_filter: true,
+      is_mandatory_filter: false,
       value_statement: "",
-      is_report_snapshot_field: false,
       historization_type: 1,
     },
   });
 
-  // Reset form when modal opens/closes or initialData changes
   useEffect(() => {
     if (isOpen) {
-      // If editing existing column
       if (initialData) {
         form.reset({
-          code: initialData.code || "",
-          label: initialData.label || "",
-          description: initialData.description || "",
-          role: initialData.role || "A",
-          dimension_type: initialData.dimension_type || "",
-          datatype: initialData.datatype || "string",
-          datatype_format: initialData.datatype_format || "",
-          is_mandatory: !!initialData.is_mandatory,
-          is_key: !!initialData.is_key,
-          is_visible: !!initialData.is_visible,
-          is_filter: !!initialData.is_filter,
-          value_statement: initialData.value_statement || "",
-          is_report_snapshot_field: !!initialData.is_report_snapshot_field,
-          historization_type: initialData.historization_type || 1,
+          ...initialData,
+          is_visible: initialData.is_visible ?? true,
+          is_mandatory_filter: initialData.is_report_snapshot_field ?? false,
         });
       } else {
-        // If creating new column, reset to default values
         form.reset({
           code: "",
           label: "",
@@ -141,10 +126,10 @@ export default function ColumnFormModal({
           datatype_format: "",
           is_mandatory: false,
           is_key: false,
-          is_visible: false,
-          is_filter: false,
+          is_visible: true,
+          is_filter: true,
+          is_mandatory_filter: false,
           value_statement: "",
-          is_report_snapshot_field: false,
           historization_type: 1,
         });
       }
@@ -154,7 +139,12 @@ export default function ColumnFormModal({
   const handleSubmit = async (data: ColumnFormData) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      const mappedData = {
+        ...data,
+        is_report_snapshot_field: data.is_mandatory_filter,
+      };
+      await onSubmit(mappedData);
+      onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
     } finally {
@@ -162,13 +152,8 @@ export default function ColumnFormModal({
     }
   };
 
-  const handleClose = () => {
-    form.reset(); // Reset form when closing
-    onClose();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
@@ -182,6 +167,7 @@ export default function ColumnFormModal({
             className="space-y-6"
           >
             <div className="grid grid-cols-2 gap-4">
+              {/* Basic Fields */}
               <FormField
                 control={form.control}
                 name="code"
@@ -216,6 +202,7 @@ export default function ColumnFormModal({
                 )}
               />
 
+              {/* Type Fields */}
               <FormField
                 control={form.control}
                 name="datatype"
@@ -307,6 +294,7 @@ export default function ColumnFormModal({
               />
             </div>
 
+            {/* Boolean Switches */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -315,6 +303,25 @@ export default function ColumnFormModal({
                   <FormItem className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
                       <FormLabel>Mandatory</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={initialData?.is_system_generated}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_key"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Is Key</FormLabel>
                     </div>
                     <FormControl>
                       <Switch
@@ -367,11 +374,11 @@ export default function ColumnFormModal({
 
               <FormField
                 control={form.control}
-                name="is_key"
+                name="is_mandatory_filter"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <FormLabel>Key Column</FormLabel>
+                      <FormLabel>Is Mandatory Filter</FormLabel>
                     </div>
                     <FormControl>
                       <Switch
@@ -386,7 +393,7 @@ export default function ColumnFormModal({
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
               <Button

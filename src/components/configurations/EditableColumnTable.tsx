@@ -9,121 +9,135 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { Column } from "@/types/databaseTypes";
-import { Plus, Save } from "lucide-react";
+import { History, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ColumnFormModal from "./ColumnFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 
+const HISTORIZATION_TYPES = {
+  0: {
+    label: "No Historization",
+    description: "No change tracking for this column",
+    className: "bg-gray-100 text-gray-700 hover:bg-gray-200",
+  },
+  1: {
+    label: "Always Latest",
+    description: "Only keeps the most recent value",
+    className: "bg-purple-100 text-purple-700 hover:bg-purple-200",
+  },
+  2: {
+    label: "Versioning",
+    description: "Maintains full history of all changes",
+    className: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
+  },
+} as const;
+
 interface EditableColumnTableProps {
   initialColumns: Column[];
-  onSave: (columns: Column[]) => Promise<void>;
-  isLoading?: boolean;
   datasetId: string | number;
   versionId: string | number;
+  onColumnChange?: () => void;
+  isLoading?: boolean;
 }
 
 export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
   initialColumns,
-  onSave,
   datasetId,
-  isLoading,
   versionId,
+  onColumnChange,
+  isLoading,
 }) => {
   const { toast } = useToast();
   const [columns, setColumns] = useState<Column[]>([]);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<Column | null>(null);
 
   useEffect(() => {
     setColumns(initialColumns);
   }, [initialColumns]);
 
-  // Track changes
-  useEffect(() => {
-    const columnsChanged =
-      JSON.stringify(columns) !== JSON.stringify(initialColumns);
-    setHasChanges(columnsChanged);
-  }, [columns, initialColumns]);
+  const refreshColumns = useCallback(async () => {
+    try {
+      const response = await fastApiInstance.get(
+        `/api/v1/datasets/${datasetId}/version-columns/`,
+        {
+          params: { version_id: versionId },
+        }
+      );
+      setColumns(response.data);
+      if (onColumnChange) {
+        onColumnChange();
+      }
+    } catch (error) {
+      console.error("Error refreshing columns:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh columns. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [datasetId, versionId, onColumnChange, toast]);
 
   const handleFormSubmit = useCallback(
     async (data: any) => {
-      setIsSaving(true);
       try {
-        if (selectedColumn) {
-          // Update existing column
-          await fastApiInstance.post(
-            `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+        // For updates, we must include the dataset_version_column_id
+        const payload = {
+          columns: [
             {
-              columns: [
-                {
-                  ...selectedColumn,
-                  ...data,
-                },
-              ],
-            }
-          );
+              ...selectedColumn, // Include existing column data
+              ...data, // Override with new values
+              dataset_version_column_id:
+                selectedColumn?.dataset_version_column_id, // Preserve ID for updates
+              column_order: selectedColumn?.column_order, // Preserve order
+              is_visible: true,
+              is_filter: data.is_filter ?? true,
+              is_report_snapshot_field: data.is_mandatory_filter ?? false,
+              is_system_generated: false,
+            },
+          ],
+        };
 
-          // Update local state
-          setColumns((prevColumns) =>
-            prevColumns.map((col) =>
-              col.dataset_version_column_id ===
-              selectedColumn.dataset_version_column_id
-                ? { ...col, ...data }
-                : col
-            )
-          );
-        } else {
-          // Create new column
-          const newColumn: Column = {
-            dataset_version_column_id: 0,
-            dataset_version_id: Number(versionId),
-            column_order: columns.length + 1,
-            ...data,
-            is_system_generated: false,
-          };
+        await fastApiInstance.post(
+          `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
+          payload
+        );
 
-          const response = await fastApiInstance.post(
-            `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
-            {
-              columns: [newColumn],
-            }
-          );
-
-          if (response.data?.updated_columns?.[0]) {
-            setColumns((prevColumns) => [
-              ...prevColumns,
-              response.data.updated_columns[0],
-            ]);
-          }
-        }
+        await refreshColumns();
 
         setIsFormModalOpen(false);
         setSelectedColumn(null);
 
         toast({
           title: "Success",
-          description: selectedColumn ? "Column updated" : "Column created",
+          description: selectedColumn
+            ? "Column updated successfully"
+            : "Column created successfully",
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error saving column:", error);
         toast({
           title: "Error",
-          description: "Failed to save column. Please try again.",
+          description:
+            error?.response?.data?.error ||
+            "Failed to save column. Please try again.",
           variant: "destructive",
         });
-      } finally {
-        setIsSaving(false);
       }
     },
-    [datasetId, versionId, selectedColumn, columns.length, toast]
+    [datasetId, versionId, refreshColumns, toast, selectedColumn] // Add selectedColumn to dependencies
   );
 
   const handleEditClick = useCallback((column: Column) => {
@@ -148,14 +162,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         }
       );
 
-      // Update local state
-      setColumns((prevColumns) =>
-        prevColumns.filter(
-          (col) =>
-            col.dataset_version_column_id !==
-            columnToDelete.dataset_version_column_id
-        )
-      );
+      await refreshColumns();
 
       toast({
         title: "Success",
@@ -172,30 +179,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
       setIsDeleteDialogOpen(false);
       setColumnToDelete(null);
     }
-  }, [columnToDelete, datasetId, versionId, toast]);
-
-  const handleSave = useCallback(async () => {
-    if (!hasChanges) return;
-
-    setIsSaving(true);
-    try {
-      await onSave(columns);
-      toast({
-        title: "Success",
-        description: "Columns updated successfully",
-      });
-      setHasChanges(false);
-    } catch (error) {
-      console.error("Save error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save changes",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [columns, hasChanges, onSave, toast]);
+  }, [columnToDelete, datasetId, versionId, toast, refreshColumns]);
 
   const filteredColumns = useMemo(() => {
     return columns.filter(
@@ -205,10 +189,37 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
     );
   }, [columns, searchTerm]);
 
-  const handleModalClose = useCallback(() => {
-    setIsFormModalOpen(false);
-    setSelectedColumn(null);
-  }, []);
+  const renderHistorizationBadge = (historization_type: number) => {
+    const config =
+      HISTORIZATION_TYPES[
+        historization_type as keyof typeof HISTORIZATION_TYPES
+      ];
+
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <div className="inline-flex items-center gap-2">
+              <div
+                className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 transition-colors ${config.className}`}
+              >
+                <History className="h-4 w-4" />
+                {config.label}
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="bg-white border shadow-lg p-3 rounded-lg max-w-xs">
+            <div className="space-y-2">
+              <p className="font-medium text-gray-600 text-sm">
+                {config.label}
+              </p>
+              <p className="text-sm text-gray-600">{config.description}</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -219,28 +230,20 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-xs"
         />
-        <div className="space-x-2">
-          <Button
-            onClick={() => setIsFormModalOpen(true)}
-            disabled={isLoading || isSaving}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Column
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isLoading || isSaving || !hasChanges}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
-        </div>
+        <Button
+          onClick={() => setIsFormModalOpen(true)}
+          disabled={isLoading}
+          className="bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Column
+        </Button>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-gray-50">
               <TableHead>Code</TableHead>
               <TableHead>Label</TableHead>
               <TableHead>Type</TableHead>
@@ -249,12 +252,17 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
               <TableHead>Key</TableHead>
               <TableHead>Visible</TableHead>
               <TableHead>Filter</TableHead>
+              <TableHead>Mandatory Filter</TableHead>
+              <TableHead>Historization</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredColumns.map((column) => (
-              <TableRow key={column.dataset_version_column_id}>
+              <TableRow
+                key={column.dataset_version_column_id}
+                className="hover:bg-gray-50"
+              >
                 <TableCell>{column.code}</TableCell>
                 <TableCell>{column.label}</TableCell>
                 <TableCell>{column.datatype}</TableCell>
@@ -272,12 +280,19 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                   <Switch checked={column.is_filter} disabled />
                 </TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <Switch checked={column.is_report_snapshot_field} disabled />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {renderHistorizationBadge(column.historization_type)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleEditClick(column)}
                       disabled={column.is_system_generated}
+                      className="text-gray-700 hover:text-gray-900"
                     >
                       Edit
                     </Button>
@@ -286,6 +301,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                       size="sm"
                       onClick={() => handleDeleteClick(column)}
                       disabled={column.is_system_generated}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       Delete
                     </Button>
@@ -296,10 +312,12 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
           </TableBody>
         </Table>
       </div>
-
       <ColumnFormModal
         isOpen={isFormModalOpen}
-        onClose={handleModalClose}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setSelectedColumn(null);
+        }}
         onSubmit={handleFormSubmit}
         initialData={selectedColumn || undefined}
         versionId={versionId}

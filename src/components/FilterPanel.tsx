@@ -25,6 +25,7 @@ import {
   FileQuestion,
   InfoIcon,
   Loader,
+  Loader2,
   X,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -49,6 +50,7 @@ interface FilterPanelProps {
   versionId: string | number;
   onFilterApply: (filterValues: Record<string, any>) => Promise<void>;
   disabled?: boolean;
+  setHasAppliedFilters: any;
   isDataLoading?: boolean;
 }
 
@@ -197,12 +199,12 @@ const FilterField: React.FC<{
   );
 };
 
-// Main Component
 export default function FilterPanel({
   datasetId,
   versionId,
   onFilterApply,
   disabled = false,
+  setHasAppliedFilters,
   isDataLoading = false,
 }: FilterPanelProps) {
   const { toast } = useToast();
@@ -314,6 +316,7 @@ export default function FilterPanel({
       }, {} as Record<string, any>);
 
       setFilterValues(clearedValues);
+      setHasAppliedFilters(false);
       await onFilterApply(clearedValues);
 
       toast({
@@ -330,6 +333,7 @@ export default function FilterPanel({
     } finally {
       setIsClearing(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterValues, onFilterApply, toast]);
 
   const handleApplyFilters = useCallback(async () => {
@@ -371,12 +375,10 @@ export default function FilterPanel({
 
   return (
     <div className="space-y-6 relative">
-      {/* Snapshot Fields */}
       {snapshotFields.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">Report Snapshot Fields</h3>
-            <Badge variant="outline">Priority 1</Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {snapshotFields.map((field) => (
@@ -412,7 +414,6 @@ export default function FilterPanel({
         </div>
       )}
 
-      {/* Regular Filters */}
       {regularFilters.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -452,19 +453,15 @@ export default function FilterPanel({
           </div>
         </div>
       )}
-
-      {/* Validation Warning */}
       {!canApplyFilters && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Please fill in all mandatory fields before applying filters.
+            Please fill in all mandatory fields to see the content.
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-end items-center gap-4">
+      <div className="flex space-x-4 mt-6">
         <Button
           variant="outline"
           onClick={handleClearFilters}
@@ -473,7 +470,7 @@ export default function FilterPanel({
             Object.values(filterValues).every((v) => v === null) ||
             isClearing
           }
-          className="min-w-[100px]"
+          className="w-32"
         >
           {isClearing ? (
             <>
@@ -500,7 +497,6 @@ export default function FilterPanel({
         </Button>
       </div>
 
-      {/* Active Filters */}
       <ActiveFilters
         filterValues={filterValues}
         fields={[...snapshotFields, ...regularFilters]}
@@ -508,11 +504,10 @@ export default function FilterPanel({
         disabled={isDisabled}
       />
 
-      {/* Loading Overlay */}
       {isDataLoading && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-lg">
-          <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-            <Loader className="h-5 w-5 animate-spin text-primary" />
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-lg">
+          <div className="flex items-center gap-3 bg-background p-4 rounded-lg shadow-lg">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-sm font-medium">Loading data...</span>
           </div>
         </div>

@@ -32,6 +32,7 @@ interface FrameworkAccordionProps {
   selectedFramework: string;
   onVersionSelect: any;
   onUpdateColumns: any;
+  handleViewHistory?: (dataset: Dataset, version: DatasetVersion) => void;
 }
 
 export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
@@ -51,6 +52,7 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
   selectedFramework,
   handleEditDataset,
   handleDeleteDataset,
+  handleViewHistory,
 }) => {
   const [frameworkPage, setFrameworkPage] = useState(1);
   const [groupPages, setGroupPages] = useState<Record<string, number>>({});
@@ -163,6 +165,7 @@ export const FrameworkAccordion: React.FC<FrameworkAccordionProps> = ({
                           handleDeleteVersion={handleDeleteVersion}
                           handleEditDataset={handleEditDataset}
                           handleDeleteDataset={handleDeleteDataset}
+                          handleViewHistory={handleViewHistory}
                         />
                       </AccordionContent>
                     </AccordionItem>

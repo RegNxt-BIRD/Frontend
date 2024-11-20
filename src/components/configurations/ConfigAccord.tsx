@@ -31,6 +31,7 @@ interface ConfigurationDataTableProps {
   isLoadingVersions: boolean;
   onVersionSelect: any;
   versionColumns: any;
+  handleViewHistory?: (dataset: Dataset, version: DatasetVersion) => void;
 }
 
 const FRAMEWORKS_PER_PAGE = 15;
@@ -52,6 +53,7 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
   handleCreateVersion,
   handleDeleteVersion,
   handleEditDataset,
+  handleViewHistory,
 }) => {
   const [expandedFramework, setExpandedFramework] = useState<
     string | undefined
@@ -163,6 +165,7 @@ export const ConfigurationAccordion: React.FC<ConfigurationDataTableProps> = ({
                           handleDeleteVersion={handleDeleteVersion}
                           handleEditDataset={handleEditDataset}
                           handleDeleteDataset={handleDeleteDataset}
+                          handleViewHistory={handleViewHistory}
                         />
                       </AccordionContent>
                     </AccordionItem>
