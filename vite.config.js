@@ -56,6 +56,7 @@ export default defineConfig(function (_a) {
                             "tailwind-merge",
                             "lucide-react",
                         ],
+                        others: ["xlsx", "d3-force"],
                     },
                 },
             },

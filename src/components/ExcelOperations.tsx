@@ -6,11 +6,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { MetadataItem } from "@/types/databaseTypes";
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
-import { read, utils, writeFile } from "xlsx";
+import { read, utils, writeFile, WritingOptions } from "xlsx";
 import ExcelPreviewModal from "./ExcelPreviewModal";
+
+interface MetadataItem {
+  code: string;
+  datatype?: string;
+  value_options?: Array<{
+    value?: string;
+    item_code?: string;
+    reporting_date?: string;
+    entity?: string;
+  }>;
+}
 
 interface ExcelOperationsProps {
   objectCode: string;
@@ -18,7 +28,6 @@ interface ExcelOperationsProps {
   onUpload: any;
   currentData?: any[];
   isLoading?: boolean;
-  // onDataLoad?: (data: Record<string, string | null>[]) => void; // New callback for data loading
 }
 
 export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
@@ -40,75 +49,100 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
     try {
       const wb = utils.book_new();
 
+      // Create validation sheet with columns that have value_options
+      const columnsWithValidation = columns?.filter(
+        (col) => col.value_options && col.value_options.length > 0
+      );
+
       // Create validation sheet
-      const validationData = new Map();
-      let maxLength = 0;
+      const validationData: string[][] = [];
 
-      // Transform data to vertical format
-      columns.forEach((col) => {
-        if (col.value_options?.length) {
-          const values = col.value_options.map((opt) => ({
-            code: (
-              opt.item_code ||
-              opt.reporting_date ||
-              opt.entity ||
-              ""
-            ).toString(),
-            label: (
-              opt.item_name ||
-              opt.label ||
-              opt.reporting_date ||
-              opt.entity ||
-              ""
-            ).toString(),
-          }));
-          validationData.set(col.code, values);
-          maxLength = Math.max(maxLength, values.length);
-        }
-      });
+      // Add headers
+      validationData.push(columnsWithValidation.map((col) => col.code));
 
-      // Create vertical validation arrays
-      const validationHeaders = Array.from(validationData.keys());
-      const validationArrays = [validationHeaders];
+      // Find max length of validation options
+      const maxLength = Math.max(
+        ...columnsWithValidation.map((col) => col.value_options?.length || 0)
+      );
 
-      // Fill values vertically
+      // Fill validation data
       for (let i = 0; i < maxLength; i++) {
-        const row = validationHeaders.map((header) => {
-          const values = validationData.get(header);
-          return values && values[i] ? values[i].code : "";
+        const row = columnsWithValidation.map((col) => {
+          const option = col.value_options?.[i];
+          if (!option) return "";
+          return String(
+            option.item_code ||
+              option.value ||
+              option.reporting_date ||
+              option.entity ||
+              ""
+          );
         });
-        validationArrays.push(row);
+        validationData.push(row);
       }
 
-      const validationWs = utils.aoa_to_sheet(validationArrays);
+      const validationWs = utils.aoa_to_sheet(validationData);
 
-      // Create data sheet with validation
+      // Create data sheet
       const dataHeaders = columns.map((col) => col.code);
       const dataWs = utils.aoa_to_sheet([dataHeaders]);
 
-      // Apply validation to columns
-      validationHeaders.forEach((header, colIndex) => {
-        const dataColIndex = dataHeaders.indexOf(header);
-        if (dataColIndex !== -1) {
-          const colLetter = utils.encode_col(dataColIndex);
-          const validationColLetter = utils.encode_col(colIndex);
+      // Initialize Workbook properties if they don't exist
+      if (!wb.Workbook) {
+        wb.Workbook = { Names: [] };
+      }
+      if (!wb.Workbook.Names) {
+        wb.Workbook.Names = [];
+      }
 
-          dataWs[`${colLetter}2:${colLetter}1000`] = {
-            t: "s",
-            v: "",
-            dataValidation: {
-              type: "list",
-              allowBlank: true,
-              showDropDown: true,
-              formula1: `=Validation!$${validationColLetter}$2:$${validationColLetter}$${
-                maxLength + 1
-              }`,
-            },
+      // Add validation to columns that have value_options
+      columnsWithValidation.forEach((col, validationColIndex) => {
+        const dataColIndex = dataHeaders.indexOf(col.code);
+        if (dataColIndex !== -1) {
+          const dataColLetter = utils.encode_col(dataColIndex);
+          const validationColLetter = utils.encode_col(validationColIndex);
+
+          // Add data validation properties
+          if (!dataWs["!dataValidations"]) {
+            dataWs["!dataValidations"] = [];
+          }
+
+          // Create the validation range (excluding header)
+          const validationRange = {
+            sqref: `${dataColLetter}2:${dataColLetter}1000`,
+            type: "list",
+            formula1: `Validation!$${validationColLetter}$2:$${validationColLetter}$${
+              maxLength + 1
+            }`,
+            allowBlank: true,
+            showDropDown: true,
+            error: null,
+            errorTitle: null,
+            errorStyle: null,
+            promptTitle: null,
+            prompt: null,
           };
+
+          dataWs["!dataValidations"].push(validationRange);
         }
       });
 
-      // Add sheets
+      columnsWithValidation.forEach((col, validationColIndex) => {
+        const validationColLetter = utils.encode_col(validationColIndex);
+        wb?.Workbook?.Names?.push({
+          Name: `_xlfn.${col.code}_VALIDATION`,
+          Ref: `Validation!$${validationColLetter}$2:$${validationColLetter}$${
+            maxLength + 1
+          }`,
+          Sheet: 1,
+        });
+      });
+
+      // Set column widths
+      const wscols = dataHeaders.map(() => ({ wch: 20 }));
+      dataWs["!cols"] = wscols;
+
+      // Add sheets to workbook
       utils.book_append_sheet(wb, dataWs, "Data");
       utils.book_append_sheet(wb, validationWs, "Validation");
       utils.book_append_sheet(
@@ -117,7 +151,17 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         "Info"
       );
 
-      writeFile(wb, `${objectCode}_template.xlsx`);
+      const opts: WritingOptions = {
+        bookType: "xlsx",
+        bookSST: false,
+        type: "binary",
+        cellDates: true,
+        cellStyles: true,
+        compression: true,
+      };
+
+      writeFile(wb, `${objectCode}_template.xlsx`, opts);
+
       toast({
         title: "Success",
         description: "Template downloaded successfully",
@@ -130,45 +174,6 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         variant: "destructive",
       });
     }
-  };
-
-  const processExcelData = (
-    data: Record<string, any>[]
-  ): Record<string, string | null>[] => {
-    return data.map((row) => {
-      const processedRow: Record<string, string | null> = {};
-
-      columns.forEach((column) => {
-        let value = row[column.code];
-
-        // Handle different data types
-        if (value !== undefined && value !== null) {
-          if (column.datatype.toLowerCase() === "gregorianday") {
-            // Convert date formats if needed
-            try {
-              const dateStr = value.toString();
-              if (dateStr.length === 8) {
-                // Format YYYYMMDD
-                value = `${dateStr.slice(0, 4)}-${dateStr.slice(
-                  4,
-                  6
-                )}-${dateStr.slice(6, 8)}`;
-              }
-            } catch (e) {
-              console.warn(
-                `Failed to format date for column ${column.code}:`,
-                e
-              );
-            }
-          }
-          processedRow[column.code] = value.toString();
-        } else {
-          processedRow[column.code] = null;
-        }
-      });
-
-      return processedRow;
-    });
   };
 
   const handleSavePreview = async (data: Record<string, string | null>[]) => {
@@ -278,13 +283,14 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
               mappedRow[col.code] = null;
             });
 
-            // Map values from Excel using the column mapping
             Object.entries(columnMapping).forEach(([index, code]) => {
               const value = row[parseInt(index)];
               if (value !== undefined && value !== null && value !== "") {
-                // Handle date format conversion if needed
                 const column = columns.find((col) => col.code === code);
-                if (column?.datatype.toLowerCase() === "gregorianday") {
+                if (
+                  column?.datatype &&
+                  column?.datatype.toLowerCase() === "gregorianday"
+                ) {
                   const dateStr = value.toString();
                   if (dateStr.length === 8) {
                     mappedRow[code] = `${dateStr.slice(0, 4)}-${dateStr.slice(
