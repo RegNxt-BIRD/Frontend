@@ -44,46 +44,86 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
   const downloadTemplate = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Data");
+
+      // Create Validation Sheet first
+      const validationSheet = workbook.addWorksheet("Validation");
+
+      // Get all columns that have value_options
+      const columnsWithValidation = columns.filter(
+        (col) => col.value_options?.length
+      );
+
+      // Add headers in Validation sheet
+      validationSheet.addRow(columnsWithValidation.map((col) => col.code));
+
+      // Find the maximum length of value_options across all columns
+      const maxOptions = Math.max(
+        ...columnsWithValidation.map((col) => col.value_options?.length || 0)
+      );
+
+      // Add validation values in columns
+      for (let i = 0; i < maxOptions; i++) {
+        const rowValues = columnsWithValidation.map((col) => {
+          const option = col.value_options?.[i];
+          return (
+            option?.item_code ||
+            option?.value ||
+            option?.reporting_date ||
+            option?.entity ||
+            ""
+          );
+        });
+        validationSheet.addRow(rowValues);
+      }
+
+      // Create Data Sheet
+      const dataSheet = workbook.addWorksheet("Data");
 
       // Add headers
       const headers = columns.map((col) => col.label);
-      worksheet.addRow(headers);
+      dataSheet.addRow(headers);
 
       // Set column widths and add data validation where applicable
       columns.forEach((col, index) => {
-        const column = worksheet.getColumn(index + 1);
+        const column = dataSheet.getColumn(index + 1);
         column.width = 15;
 
         if (col.value_options?.length) {
-          const values = col.value_options
-            .map(
-              (opt) =>
-                opt.item_code ||
-                opt.value ||
-                opt.reporting_date ||
-                opt.entity ||
-                ""
-            )
-            .filter(Boolean);
+          // Find the column letter in validation sheet
+          const validationColumnIndex = columnsWithValidation.findIndex(
+            (vc) => vc.code === col.code
+          );
+          if (validationColumnIndex !== -1) {
+            const validationColumnLetter = getExcelColumn(
+              validationColumnIndex + 1
+            );
 
-          if (values.length) {
+            // Create validation referencing the Validation sheet
             const dataValidation = {
               type: "list" as const,
               allowBlank: true,
-              formulae: [`"${values.join(",")}"`],
+              formulae: [
+                `Validation!$${validationColumnLetter}$2:$${validationColumnLetter}$${
+                  maxOptions + 1
+                }`,
+              ],
             };
-            worksheet
+
+            // Apply validation to all cells in the column (except header)
+            dataSheet
               .getColumn(index + 1)
-              .eachCell({ includeEmpty: true }, (cell) => {
-                if (cell.row > 1) {
-                  // Skip header row
+              .eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+                if (rowNumber > 1) {
                   cell.dataValidation = dataValidation;
                 }
               });
           }
         }
       });
+
+      // Create Info sheet
+      const infoSheet = workbook.addWorksheet("Info");
+      infoSheet.addRow(["object_code", objectCode]);
 
       // Generate buffer and download
       const buffer = await workbook.xlsx.writeBuffer();
@@ -110,6 +150,21 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
       });
     }
   };
+
+  // Helper function to convert column index to Excel column letter
+  function getExcelColumn(columnNumber: number): string {
+    let dividend = columnNumber;
+    let columnName = "";
+    let modulo;
+
+    while (dividend > 0) {
+      modulo = (dividend - 1) % 26;
+      columnName = String.fromCharCode(65 + modulo) + columnName;
+      dividend = Math.floor((dividend - modulo) / 26);
+    }
+
+    return columnName;
+  }
 
   const downloadData = async () => {
     try {
