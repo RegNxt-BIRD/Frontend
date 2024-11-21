@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Workbook } from "exceljs/dist/exceljs.min.js";
+import { Workbook } from "exceljs";
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import ExcelPreviewModal from "./ExcelPreviewModal";

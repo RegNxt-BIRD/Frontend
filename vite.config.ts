@@ -12,10 +12,14 @@ export default defineConfig(({ mode }): UserConfig => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    worker: {
+      format: "es", // Add this line
+    },
 
     build: {
       outDir: "dist",
       rollupOptions: {
+        external: ["web-worker"],
         output: {
           manualChunks: {
             react: ["react", "react-dom"],
@@ -62,9 +66,10 @@ export default defineConfig(({ mode }): UserConfig => {
           },
         },
       },
+
       assetsInlineLimit: 0,
       chunkSizeWarningLimit: 2000,
-      sourcemap: true,
+      sourcemap: mode === "development",
     },
     define: {
       "import.meta.env.VITE_API_BASE_URL": JSON.stringify(
@@ -73,6 +78,9 @@ export default defineConfig(({ mode }): UserConfig => {
       "import.meta.env.VITE_FAST_API_BACKEND": JSON.stringify(
         env.VITE_FAST_API_BACKEND
       ),
+    },
+    optimizeDeps: {
+      exclude: ["web-worker"], // Add this line
     },
   };
 });
