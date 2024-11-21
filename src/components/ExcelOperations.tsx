@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import * as ExcelJS from "exceljs";
+import { Workbook } from "exceljs";
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import ExcelPreviewModal from "./ExcelPreviewModal";
@@ -48,7 +48,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
 
   const downloadTemplate = async () => {
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       const dataSheet = workbook.addWorksheet("Data") as any;
       const headers = columns.map((col) => col.code);
 
@@ -157,7 +157,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         return;
       }
 
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       const worksheet = workbook.addWorksheet("Data");
       worksheet.addRow(columns.map((col) => col.label));
       currentData.forEach((row) => {
@@ -199,7 +199,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         description: "Reading file data...",
       });
 
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       await workbook.xlsx.load(await file.arrayBuffer());
 
       const worksheet = workbook.getWorksheet("Data");

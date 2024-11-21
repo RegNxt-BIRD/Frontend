@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+
     build: {
       outDir: "dist",
       rollupOptions: {
@@ -57,7 +58,7 @@ export default defineConfig(({ mode }) => {
               "tailwind-merge",
               "lucide-react",
             ],
-            others: ["exceljs",  "elkjs", "@radix-ui/react-scroll-area"],
+            others: ["exceljs", "elkjs", "@radix-ui/react-scroll-area"],
           },
         },
       },
