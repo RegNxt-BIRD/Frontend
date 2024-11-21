@@ -149,7 +149,6 @@ export default function DatasetFilter({
     setFilterValues({});
   }, []);
 
-  // Check if all mandatory fields are filled
   const canApplyFilters = useMemo(() => {
     const mandatoryFields = [...snapshotFields, ...regularFilters].filter(
       (f) => f.is_mandatory
