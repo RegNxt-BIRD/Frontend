@@ -57,7 +57,7 @@ export default defineConfig(({ mode }) => {
               "tailwind-merge",
               "lucide-react",
             ],
-            others: ["xlsx", "d3-force"],
+            others: ["exceljs",  "elkjs", "@radix-ui/react-scroll-area"],
           },
         },
       },
