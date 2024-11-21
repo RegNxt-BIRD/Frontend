@@ -19,7 +19,7 @@ export default defineConfig(({ mode }): UserConfig => {
     build: {
       outDir: "dist",
       rollupOptions: {
-        external: ["web-worker"],
+        external: [""],
         output: {
           manualChunks: {
             react: ["react", "react-dom"],
