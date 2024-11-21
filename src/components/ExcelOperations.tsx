@@ -16,6 +16,7 @@ interface MetadataItem {
   datatype?: string;
   value_options?: Array<{
     value?: string;
+    item_name?: string;
     item_code?: string;
     reporting_date?: string;
     entity?: string;
@@ -67,7 +68,7 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         // Add validation values
         col.value_options?.forEach((option, index) => {
           const value =
-            option?.item_code ||
+            option?.item_name ||
             option?.value ||
             option?.reporting_date ||
             option?.entity ||
@@ -225,10 +226,24 @@ export const ExcelOperations: React.FC<ExcelOperationsProps> = ({
         const rowData: Record<string, string | null> = {};
         columnMapping.forEach((code, index) => {
           const cellValue = row.getCell(index).value;
-          rowData[code] =
-            cellValue !== null && cellValue !== undefined && cellValue !== ""
-              ? cellValue.toString()
-              : null;
+          if (
+            cellValue !== null &&
+            cellValue !== undefined &&
+            cellValue !== ""
+          ) {
+            const column = columns.find((col) => col.code === code);
+            if (column?.value_options) {
+              // Find the corresponding item_code for the displayed item_name
+              const option = column.value_options.find(
+                (opt) => opt.item_name === cellValue.toString()
+              );
+              rowData[code] = option?.item_code || cellValue.toString();
+            } else {
+              rowData[code] = cellValue.toString();
+            }
+          } else {
+            rowData[code] = null;
+          }
         });
 
         if (Object.values(rowData).some((value) => value !== null)) {

@@ -17,7 +17,7 @@ export default defineConfig(function (_a) {
         build: {
             outDir: "dist",
             rollupOptions: {
-                external: ["web-worker"],
+                external: [""],
                 output: {
                     manualChunks: {
                         react: ["react", "react-dom"],
