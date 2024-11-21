@@ -61,7 +61,7 @@ export default defineConfig(function (_a) {
                 },
             },
             assetsInlineLimit: 0,
-            chunkSizeWarningLimit: 1500,
+            chunkSizeWarningLimit: 2000,
             sourcemap: true,
         },
         define: {
