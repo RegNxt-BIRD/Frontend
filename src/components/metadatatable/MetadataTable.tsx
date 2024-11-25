@@ -1,8 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { MetadataItem, ValidationResult } from "@/types/databaseTypes";
+import { AlertCircle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ExcelOperations } from "../ExcelOperations";
+import { NoResults } from "../NoResults";
 import { MetadataTableBody } from "./MetadataTableBody";
 import { MetadataTableHeader } from "./MetadataTableHeader";
 
@@ -71,39 +73,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     setLocalTableData((prevData) => [...prevData, newRow]);
     setIsDataModified(true);
   }, [metadata]);
-
-  const handleExcelDataLoad = useCallback(
-    (excelData: Record<string, string | null>[]) => {
-      // Map column codes to match your table structure and add any missing columns
-      const mappedData = excelData.map((row) => {
-        const mappedRow: Record<string, string | null> = {};
-        if (metadata) {
-          metadata.forEach((column) => {
-            mappedRow[column.code] = row[column.code] || null;
-          });
-        }
-        return mappedRow;
-      });
-
-      setLocalTableData((prevData) => {
-        const combinedData = [...prevData, ...mappedData];
-
-        // Log the number of rows added
-        const newRowsCount = mappedData.length;
-        toast({
-          title: "Data Appended",
-          description: `Added ${newRowsCount} new row${
-            newRowsCount !== 1 ? "s" : ""
-          } to the table`,
-        });
-
-        return combinedData;
-      });
-
-      setIsDataModified(true);
-    },
-    [metadata, toast]
-  );
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -174,11 +143,22 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     return <LoadingSkeleton />;
   }
 
+  // if (!hasAppliedFilters) {
+  //   return (
+  //     <NoResults
+  //       title="Filters Required"
+  //       message="Please apply the required filters above to view the data."
+  //       icon={AlertCircle}
+  //     />
+  //   );
+  // }
+
   if (!metadata || metadata.length === 0) {
     return (
-      <p className="text-gray-500 italic">
-        No data available for the selected table.
-      </p>
+      <NoResults
+        title="No Data Available"
+        message="No data available for the selected filters."
+      />
     );
   }
 
@@ -189,6 +169,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
           Data for table {selectedTable.code} | {selectedTable.label}{" "}
           {datasetVersion && `| Version ${datasetVersion.version_nr}`}
         </h3>
+
         <div className="flex items-center space-x-2">
           <ExcelOperations
             objectCode={selectedTable.code.toLowerCase()}
@@ -196,10 +177,10 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             onUpload={onSave}
             currentData={localTableData}
             isLoading={isSaving || isLoading}
-            // onDataLoad={handleExcelDataLoad}
           />
         </div>
       </div>
+
       {hasAppliedFilters && (
         <>
           <MetadataTableHeader
@@ -226,6 +207,13 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             validationResults={validationResults}
           />
         </>
+      )}
+      {!hasAppliedFilters && (
+        <NoResults
+          title="Filters Required"
+          message="Please apply the required filters above to view the data."
+          icon={AlertCircle}
+        />
       )}
     </div>
   );

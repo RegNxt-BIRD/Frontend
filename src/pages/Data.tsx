@@ -137,7 +137,7 @@ const Data: React.FC = () => {
           `/api/v1/datasets/${selectedTable.dataset_id}/get_filtered_data/?${params}`
         );
         setMetadataTableData(response.data);
-        setHasAppliedFilters(true); // Set this to true only after successful filter apply
+        setHasAppliedFilters(true);
       } catch (error) {
         console.error("Error applying filters:", error);
         toast({
