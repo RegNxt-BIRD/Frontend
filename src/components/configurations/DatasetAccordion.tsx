@@ -23,7 +23,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit,
-  History,
   Plus,
   Settings2,
   Trash,
@@ -161,7 +160,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
               </div>
 
               <div className="flex items-center space-x-2">
-                {handleViewHistory && (
+                {/* {handleViewHistory && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -170,7 +169,7 @@ export const DatasetAccordion: React.FC<DatasetAccordionProps> = ({
                     <History className="h-4 w-4 mr-2" />
                     History
                   </Button>
-                )}
+                )} */}
 
                 <Button
                   variant="outline"

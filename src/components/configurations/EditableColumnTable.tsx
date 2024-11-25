@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Edit, Trash2 } from "lucide-react"; // Add this import
+
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -17,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
+import { cn } from "@/lib/utils";
 import { Column } from "@/types/databaseTypes";
 import { History, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -285,26 +288,59 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                 <TableCell className="whitespace-nowrap">
                   {renderHistorizationBadge(column.historization_type)}
                 </TableCell>
+
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditClick(column)}
-                      disabled={column.is_system_generated}
-                      className="text-gray-700 hover:text-gray-900"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteClick(column)}
-                      disabled={column.is_system_generated}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      Delete
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(column)}
+                              disabled={column.is_system_generated}
+                              className="h-8 w-8 text-gray-600 hover:text-gray-900"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {column.is_system_generated
+                            ? "Cannot edit system-generated column"
+                            : "Edit column"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(column)}
+                              disabled={column.is_system_generated}
+                              className={cn(
+                                "h-8 w-8",
+                                column.is_system_generated
+                                  ? "text-gray-400"
+                                  : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                              )}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {column.is_system_generated
+                            ? "Cannot delete system-generated column"
+                            : "Delete column"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </TableCell>
               </TableRow>
