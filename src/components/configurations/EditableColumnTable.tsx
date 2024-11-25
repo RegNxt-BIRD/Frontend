@@ -96,15 +96,14 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
   const handleFormSubmit = useCallback(
     async (data: any) => {
       try {
-        // For updates, we must include the dataset_version_column_id
         const payload = {
           columns: [
             {
-              ...selectedColumn, // Include existing column data
-              ...data, // Override with new values
+              ...selectedColumn,
+              ...data,
               dataset_version_column_id:
-                selectedColumn?.dataset_version_column_id, // Preserve ID for updates
-              column_order: selectedColumn?.column_order, // Preserve order
+                selectedColumn?.dataset_version_column_id,
+              column_order: selectedColumn?.column_order,
               is_visible: true,
               is_filter: data.is_filter ?? true,
               is_report_snapshot_field: data.is_mandatory_filter ?? false,
@@ -140,7 +139,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         });
       }
     },
-    [datasetId, versionId, refreshColumns, toast, selectedColumn] // Add selectedColumn to dependencies
+    [datasetId, versionId, refreshColumns, toast, selectedColumn]
   );
 
   const handleEditClick = useCallback((column: Column) => {
@@ -313,7 +312,6 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

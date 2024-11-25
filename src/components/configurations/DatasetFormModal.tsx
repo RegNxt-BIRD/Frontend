@@ -176,7 +176,6 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
 
   const handleSubmit = async (data: FormValues) => {
     try {
-      // Check if code exists before submission
       const response = await fastApiInstance.get(`/api/v1/datasets/`, {
         params: { code: data.code },
       });
@@ -197,7 +196,6 @@ export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
       }
 
       onSubmit(data);
-      onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
 

@@ -40,8 +40,7 @@ import { VersionHistoryModal } from "./VersionHistoryModal";
 const NO_FILTER = "NO_FILTER";
 
 interface VersionColumnsData {
-  data: any; // Adjust this according to the actual shape of your data
-  // other properties if they exist...
+  data: any;
 }
 
 export const ConfigureDatasets: React.FC = () => {
@@ -249,16 +248,18 @@ export const ConfigureDatasets: React.FC = () => {
 
   const handleCreateDataset = async (newDataset: Partial<Dataset>) => {
     try {
+      // Make the API call
       await fastApiInstance.post("/api/v1/datasets/", {
         ...newDataset,
         is_system_generated: false,
       });
       await mutateDatasets();
+      setIsDatasetModalOpen(false);
+
       toast({
         title: "Success",
         description: "Dataset created successfully.",
       });
-      setIsDatasetModalOpen(false);
     } catch (error: any) {
       console.error("Error creating dataset:", error);
       toast({
