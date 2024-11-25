@@ -59,13 +59,16 @@ export const ConfigureGrouping: React.FC = () => {
     try {
       await fastApiInstance.post("/api/v1/groups/", newGroup);
       await mutateGroups();
+      setIsGroupModalOpen(false); // Close modal first
       toast({ title: "Success", description: "Group created successfully." });
-      setIsGroupModalOpen(false);
-    } catch (error) {
-      console.error("Error creating group:", error);
+    } catch (error: any) {
+      setIsGroupModalOpen(false); // Close modal
+      const errorMessage =
+        error.response?.data?.error ||
+        "Failed to create group. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to create group. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

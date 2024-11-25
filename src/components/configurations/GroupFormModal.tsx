@@ -47,16 +47,21 @@ export const GroupFormModal: React.FC<GroupFormModalProps> = ({
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset(initialData);
-    } else {
-      form.reset({});
+    if (isOpen) {
+      if (initialData) {
+        form.reset(initialData);
+      } else {
+        form.reset({});
+      }
     }
-  }, [initialData, form]);
+  }, [isOpen, initialData, form]);
 
-  const handleSubmit = (data: FormValues) => {
-    onSubmit(data);
-    onClose();
+  const handleSubmit = async (data: FormValues) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    }
   };
 
   return (
