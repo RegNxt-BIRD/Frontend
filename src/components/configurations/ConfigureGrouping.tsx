@@ -3,10 +3,16 @@ import { GroupItemsModal } from "@/components/configurations/GroupItemsModal";
 import { SharedDataTable } from "@/components/SharedDataTable";
 import { SharedColumnFilters } from "@/components/SharedFilters";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { fastApiInstance } from "@/lib/axios";
 import { ColumnDef } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
+import { Edit, Eye, Plus, Trash } from "lucide-react";
 import React, { useState } from "react";
 import useSWR from "swr";
 import { Skeleton } from "../ui/skeleton";
@@ -24,6 +30,7 @@ interface GroupsResponse {
   num_pages: number;
   results: Group[];
 }
+
 interface Grouping {
   data: GroupsResponse;
 }
@@ -119,36 +126,74 @@ export const ConfigureGrouping: React.FC = () => {
     {
       id: "actions",
       cell: ({ row }) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setEditingGroup(row.original);
-              setIsGroupModalOpen(true);
-            }}
-            disabled={row.original.is_system_generated}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleDeleteGroup(row.original.code)}
-            disabled={row.original.is_system_generated}
-          >
-            Delete
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSelectedGroup(row.original);
-              setIsItemsModalOpen(true);
-            }}
-          >
-            View Items
-          </Button>
+        <div className="flex items-center space-x-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEditingGroup(row.original);
+                      setIsGroupModalOpen(true);
+                    }}
+                    disabled={row.original.is_system_generated}
+                    className="h-8 w-8"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {row.original.is_system_generated
+                  ? "Cannot edit system-generated group"
+                  : "Edit group"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteGroup(row.original.code)}
+                    disabled={row.original.is_system_generated}
+                    className="h-8 w-8 text-destructive hover:text-destructive/90"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {row.original.is_system_generated
+                  ? "Cannot delete system-generated group"
+                  : "Delete group"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedGroup(row.original);
+                    setIsItemsModalOpen(true);
+                  }}
+                  className="h-8 w-8"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>View group items</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       ),
     },
