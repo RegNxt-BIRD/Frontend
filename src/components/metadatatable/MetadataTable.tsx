@@ -89,25 +89,29 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Get IDs of rows in the current localTableData
-      const currentIds = new Set(
-        localTableData.map((row) => row.id).filter(Boolean)
+      // Get current and original IDs to determine deletes
+      const currentIds = new Set(localTableData.map((row) => row.id));
+      const originalIds = new Set(tableData.map((row) => row.id));
+
+      // Find deleted IDs by comparing original and current IDs
+      const deletedIds = Array.from(originalIds).filter(
+        (id) => !currentIds.has(id)
       );
 
-      const originalIds = new Set(
-        tableData.map((row) => row.id).filter(Boolean)
-      );
-      const deletedIds = [...originalIds].filter((id) => !currentIds.has(id));
-      const savePayload = {
+      // Pass both data and deletions to onSave
+      await onSave({
         data: localTableData,
         deletions: deletedIds,
-      } as any;
+      });
 
-      await onSave(savePayload);
       setIsDataModified(false);
+
       toast({
         title: "Success",
-        description: "All changes saved successfully",
+        description:
+          deletedIds.length > 0
+            ? `Successfully saved changes and deleted ${deletedIds.length} row(s)`
+            : "Successfully saved changes",
       });
     } catch (error) {
       console.error("Save error:", error);
@@ -120,7 +124,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
       setIsSaving(false);
     }
   }, [localTableData, tableData, onSave, toast]);
-
   const handleValidate = useCallback(async () => {
     setIsValidating(true);
     try {

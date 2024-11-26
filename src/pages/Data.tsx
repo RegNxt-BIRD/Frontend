@@ -347,11 +347,15 @@ const Data: React.FC = () => {
   }, []);
 
   const handleSaveMetadata = useCallback(
-    async (updatedData: { data: Record<string, string | null>[] }) => {
+    async (saveData: {
+      data: Record<string, string | null>[];
+      deletions: number[]; // Add deletions to the parameter type
+    }) => {
       try {
         const payload = {
-          data: updatedData.data,
-          dataset_version_id: selectedTable.dataset_version_id, // Assuming this is available
+          data: saveData.data,
+          deletions: saveData.deletions, // Include deletions in payload
+          dataset_version_id: selectedTable.dataset_version_id,
         };
 
         await fastApiInstance.post(
@@ -359,7 +363,12 @@ const Data: React.FC = () => {
           payload
         );
 
-        toast({ title: "Success", description: "Data saved successfully." });
+        toast({
+          title: "Success",
+          description: saveData.deletions?.length
+            ? `Successfully saved changes and deleted ${saveData.deletions.length} row(s)`
+            : "Successfully saved changes",
+        });
         fetchTableData();
       } catch (error) {
         console.error("Error saving data:", error);
