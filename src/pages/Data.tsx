@@ -349,10 +349,16 @@ const Data: React.FC = () => {
   const handleSaveMetadata = useCallback(
     async (updatedData: { data: Record<string, string | null>[] }) => {
       try {
+        const payload = {
+          data: updatedData.data,
+          dataset_version_id: selectedTable.dataset_version_id, // Assuming this is available
+        };
+
         await fastApiInstance.post(
           `/api/v1/datasets/${selectedTable.dataset_id}/save_data/`,
-          updatedData
+          payload
         );
+
         toast({ title: "Success", description: "Data saved successfully." });
         fetchTableData();
       } catch (error) {
