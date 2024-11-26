@@ -101,6 +101,14 @@ const Data: React.FC = () => {
     }, {});
   }, [dataTableJson]);
 
+  const hasMandatoryFilters = useCallback(() => {
+    return (
+      metadata?.some(
+        (col) => col.is_report_snapshot_field && col.is_mandatory
+      ) ?? false
+    );
+  }, [metadata]);
+
   const handleFilterApply = useCallback(
     async (filterValues: Record<string, any>) => {
       if (!selectedTable || !datasetVersion) return;
@@ -562,6 +570,7 @@ const Data: React.FC = () => {
                   tableData={metadataTableData}
                   isLoading={isMetadataLoading}
                   onSave={handleSaveMetadata}
+                  hasMandatoryFilters={hasMandatoryFilters}
                   hasAppliedFilters={hasAppliedFilters}
                   onValidate={handleValidate}
                   selectedTable={selectedTable}

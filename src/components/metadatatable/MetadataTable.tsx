@@ -18,6 +18,7 @@ interface MetadataTableProps {
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
   validationResults: ValidationResult[];
+  hasMandatoryFilters: any;
 }
 
 export const MetadataTable: React.FC<MetadataTableProps> = ({
@@ -30,6 +31,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   hasAppliedFilters,
   datasetVersion,
   validationResults,
+  hasMandatoryFilters,
 }) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -143,16 +145,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     return <LoadingSkeleton />;
   }
 
-  // if (!hasAppliedFilters) {
-  //   return (
-  //     <NoResults
-  //       title="Filters Required"
-  //       message="Please apply the required filters above to view the data."
-  //       icon={AlertCircle}
-  //     />
-  //   );
-  // }
-
   if (!metadata || metadata.length === 0) {
     return (
       <NoResults
@@ -181,7 +173,13 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         </div>
       </div>
 
-      {hasAppliedFilters && (
+      {hasMandatoryFilters() && !hasAppliedFilters ? (
+        <NoResults
+          title="Mandatory Filters Required"
+          message="Please apply the required filters above to view the data."
+          icon={AlertCircle}
+        />
+      ) : (
         <>
           <MetadataTableHeader
             searchTerm={searchTerm}
@@ -207,13 +205,6 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
             validationResults={validationResults}
           />
         </>
-      )}
-      {!hasAppliedFilters && (
-        <NoResults
-          title="Filters Required"
-          message="Please apply the required filters above to view the data."
-          icon={AlertCircle}
-        />
       )}
     </div>
   );

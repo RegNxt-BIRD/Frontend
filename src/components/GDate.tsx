@@ -20,7 +20,12 @@ interface DatePickerProps {
   isValidDate?: (date: Date) => boolean;
 }
 
-export function DatePicker({ value, onChange, className }: DatePickerProps) {
+export function DatePicker({
+  value,
+  onChange,
+  disabled = false,
+  className,
+}: DatePickerProps) {
   const parseDate = (dateString: string | null): Date | undefined => {
     if (!dateString) return undefined;
 
@@ -80,7 +85,7 @@ export function DatePicker({ value, onChange, className }: DatePickerProps) {
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="single"
-            disabled
+            disabled={disabled}
             selected={date}
             onSelect={handleDateChange}
             // disabled={isValidDate ? (date) => !isValidDate(date) : undefined}
