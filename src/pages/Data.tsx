@@ -345,10 +345,6 @@ const Data: React.FC = () => {
     setMetadataTableData([]);
     setDatasetVersion(null);
   }, []);
-  const handleClearFilters = useCallback(() => {
-    setMetadataTableData([]);
-    setHasAppliedFilters(false);
-  }, []);
 
   const handleSaveMetadata = useCallback(
     async (updatedData: { data: Record<string, string | null>[] }) => {
@@ -405,8 +401,6 @@ const Data: React.FC = () => {
         );
 
         setValidationResults(response.data);
-
-        // Show validation summary
         const errorCount = response.data.length;
         toast({
           title: "Validation Complete",
