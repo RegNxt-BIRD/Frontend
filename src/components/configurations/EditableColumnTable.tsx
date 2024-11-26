@@ -22,7 +22,8 @@ import { fastApiInstance } from "@/lib/axios";
 import { cn } from "@/lib/utils";
 import { Column } from "@/types/databaseTypes";
 import { History, Plus } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import useSWR from "swr";
 import ColumnFormModal from "./ColumnFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -52,46 +53,30 @@ interface EditableColumnTableProps {
   isLoading?: boolean;
 }
 
+interface ColumnData {
+  data: Column[];
+}
+
 export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
-  initialColumns,
   datasetId,
   versionId,
-  onColumnChange,
   isLoading,
 }) => {
   const { toast } = useToast();
-  const [columns, setColumns] = useState<Column[]>([]);
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<Column | null>(null);
+  const columnKey = versionId
+    ? `/api/v1/datasets/${datasetId}/version-columns/?version_id=${versionId}`
+    : null;
 
-  useEffect(() => {
-    setColumns(initialColumns);
-  }, [initialColumns]);
-
-  const refreshColumns = useCallback(async () => {
-    try {
-      const response = await fastApiInstance.get(
-        `/api/v1/datasets/${datasetId}/version-columns/`,
-        {
-          params: { version_id: versionId },
-        }
-      );
-      setColumns(response.data);
-      if (onColumnChange) {
-        onColumnChange();
-      }
-    } catch (error) {
-      console.error("Error refreshing columns:", error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh columns. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [datasetId, versionId, onColumnChange, toast]);
+  const { data: columns, mutate: mutateColumns } = useSWR<ColumnData>(
+    columnKey,
+    fastApiInstance
+  );
 
   const handleFormSubmit = useCallback(
     async (data: any) => {
@@ -117,7 +102,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
           payload
         );
 
-        await refreshColumns();
+        mutateColumns();
 
         setIsFormModalOpen(false);
         setSelectedColumn(null);
@@ -139,7 +124,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         });
       }
     },
-    [datasetId, versionId, refreshColumns, toast, selectedColumn]
+    [datasetId, versionId, mutateColumns, toast, selectedColumn]
   );
 
   const handleEditClick = useCallback((column: Column) => {
@@ -160,11 +145,11 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
         `/api/v1/datasets/${datasetId}/update-columns/?version_id=${versionId}`,
         {
           is_delete_operation: true,
-          columns_to_delete: [columnToDelete.dataset_version_column_id],
+          columns_to_delete: [columnToDelete?.dataset_version_column_id],
         }
       );
 
-      await refreshColumns();
+      mutateColumns();
 
       toast({
         title: "Success",
@@ -181,13 +166,17 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
       setIsDeleteDialogOpen(false);
       setColumnToDelete(null);
     }
-  }, [columnToDelete, datasetId, versionId, toast, refreshColumns]);
+  }, [columnToDelete, datasetId, versionId, toast, mutateColumns]);
 
   const filteredColumns = useMemo(() => {
-    return columns.filter(
-      (column) =>
-        column.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        column.label.toLowerCase().includes(searchTerm.toLowerCase())
+    console.log("columns: ", columns);
+    return (
+      columns &&
+      columns?.data?.filter(
+        (column: Column) =>
+          column.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          column.label.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     );
   }, [columns, searchTerm]);
 
@@ -260,7 +249,7 @@ export const EditableColumnTable: React.FC<EditableColumnTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredColumns.map((column) => (
+            {filteredColumns?.map((column: Column) => (
               <TableRow
                 key={column.dataset_version_column_id}
                 className="hover:bg-gray-50"

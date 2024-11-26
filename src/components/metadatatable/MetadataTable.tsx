@@ -5,6 +5,7 @@ import { AlertCircle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ExcelOperations } from "../ExcelOperations";
 import { NoResults } from "../NoResults";
+import { Button } from "../ui/button";
 import { MetadataTableBody } from "./MetadataTableBody";
 import { MetadataTableHeader } from "./MetadataTableHeader";
 
@@ -18,7 +19,10 @@ interface MetadataTableProps {
   selectedTable: { code: string; label: string };
   datasetVersion: { version_nr: string };
   validationResults: ValidationResult[];
+  hasMandatoryFilters: any;
 }
+
+const PAGE_SIZE = 10;
 
 export const MetadataTable: React.FC<MetadataTableProps> = ({
   metadata,
@@ -30,6 +34,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
   hasAppliedFilters,
   datasetVersion,
   validationResults,
+  hasMandatoryFilters,
 }) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,6 +44,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     Record<string, string | null>[]
   >([]);
   const [isDataModified, setIsDataModified] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (tableData && tableData.length > 0) {
@@ -48,6 +54,7 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
       setLocalTableData([]);
     }
     setIsDataModified(false);
+    setCurrentPage(1);
   }, [tableData]);
 
   const handleCellChange = useCallback(
@@ -72,7 +79,12 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     );
     setLocalTableData((prevData) => [...prevData, newRow]);
     setIsDataModified(true);
-  }, [metadata]);
+
+    // If adding a new row would be on a new page, switch to that page
+    const newTotalRows = localTableData.length + 1;
+    const newLastPage = Math.ceil(newTotalRows / PAGE_SIZE);
+    setCurrentPage(newLastPage);
+  }, [metadata, localTableData.length]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -139,19 +151,19 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
     );
   }, [metadata, searchTerm]);
 
+  const totalPages = Math.ceil(localTableData.length / PAGE_SIZE);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return localTableData.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [localTableData, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   if (isLoading) {
     return <LoadingSkeleton />;
   }
-
-  // if (!hasAppliedFilters) {
-  //   return (
-  //     <NoResults
-  //       title="Filters Required"
-  //       message="Please apply the required filters above to view the data."
-  //       icon={AlertCircle}
-  //     />
-  //   );
-  // }
 
   if (!metadata || metadata.length === 0) {
     return (
@@ -181,7 +193,13 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
         </div>
       </div>
 
-      {hasAppliedFilters && (
+      {hasMandatoryFilters() && !hasAppliedFilters ? (
+        <NoResults
+          title="Mandatory Filters Required"
+          message="Please apply the required filters above to view the data."
+          icon={AlertCircle}
+        />
+      ) : (
         <>
           <MetadataTableHeader
             searchTerm={searchTerm}
@@ -196,24 +214,56 @@ export const MetadataTable: React.FC<MetadataTableProps> = ({
 
           <MetadataTableBody
             filteredMetadata={filteredMetadata}
-            localTableData={localTableData}
+            localTableData={paginatedData}
             handleCellChange={handleCellChange}
             handleDeleteRow={(rowIndex) => {
+              const actualIndex = (currentPage - 1) * PAGE_SIZE + rowIndex;
               setLocalTableData((prevData) =>
-                prevData.filter((_, index) => index !== rowIndex)
+                prevData.filter((_, index) => index !== actualIndex)
               );
               setIsDataModified(true);
             }}
             validationResults={validationResults}
           />
+
+          <div className="flex justify-between items-center mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1} to{" "}
+              {Math.min(currentPage * PAGE_SIZE, localTableData.length)} of{" "}
+              {localTableData.length} entries
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center space-x-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      onClick={() => handlePageChange(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  )
+                )}
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </>
-      )}
-      {!hasAppliedFilters && (
-        <NoResults
-          title="Filters Required"
-          message="Please apply the required filters above to view the data."
-          icon={AlertCircle}
-        />
       )}
     </div>
   );

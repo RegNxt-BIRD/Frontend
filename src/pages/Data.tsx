@@ -101,6 +101,14 @@ const Data: React.FC = () => {
     }, {});
   }, [dataTableJson]);
 
+  const hasMandatoryFilters = useCallback(() => {
+    return (
+      metadata?.some(
+        (col) => col.is_report_snapshot_field && col.is_mandatory
+      ) ?? false
+    );
+  }, [metadata]);
+
   const handleFilterApply = useCallback(
     async (filterValues: Record<string, any>) => {
       if (!selectedTable || !datasetVersion) return;
@@ -337,18 +345,20 @@ const Data: React.FC = () => {
     setMetadataTableData([]);
     setDatasetVersion(null);
   }, []);
-  const handleClearFilters = useCallback(() => {
-    setMetadataTableData([]);
-    setHasAppliedFilters(false);
-  }, []);
 
   const handleSaveMetadata = useCallback(
     async (updatedData: { data: Record<string, string | null>[] }) => {
       try {
+        const payload = {
+          data: updatedData.data,
+          dataset_version_id: selectedTable.dataset_version_id, // Assuming this is available
+        };
+
         await fastApiInstance.post(
           `/api/v1/datasets/${selectedTable.dataset_id}/save_data/`,
-          updatedData
+          payload
         );
+
         toast({ title: "Success", description: "Data saved successfully." });
         fetchTableData();
       } catch (error) {
@@ -397,8 +407,6 @@ const Data: React.FC = () => {
         );
 
         setValidationResults(response.data);
-
-        // Show validation summary
         const errorCount = response.data.length;
         toast({
           title: "Validation Complete",
@@ -562,6 +570,7 @@ const Data: React.FC = () => {
                   tableData={metadataTableData}
                   isLoading={isMetadataLoading}
                   onSave={handleSaveMetadata}
+                  hasMandatoryFilters={hasMandatoryFilters}
                   hasAppliedFilters={hasAppliedFilters}
                   onValidate={handleValidate}
                   selectedTable={selectedTable}
